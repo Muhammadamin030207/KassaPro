@@ -1,0 +1,196 @@
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Cell,
+  PieChart,
+  Pie,
+  Legend,
+} from "recharts";
+
+import { api } from "../api/client";
+import { daysAgoISO, formatMoney, todayISO } from "../utils/format";
+import { useCountUp } from "../hooks/useCountUp";
+
+const PAY_COLORS = { cash: "#0E7C5A", card: "#29C77D", click: "#FF8A3D", payme: "#5B8DEF" };
+
+function AnimatedStat({ label, value, plain }) {
+  const animated = useCountUp(Number(value || 0), { duration: 700 });
+  return (
+    <motion.div
+      className="stat-card"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 220, damping: 22 }}
+    >
+      <div className="label">{label}</div>
+      <div className={`value ${plain ? "plain" : ""}`}>
+        {plain ? Math.round(animated) : formatMoney(animated)}
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * Hisobotlar sahifasi: davr tanlash, savdo grafigi, top mahsulotlar, kassirlar taqqoslash.
+ */
+export function ReportsPage() {
+  const [from, setFrom] = useState(daysAgoISO(6));
+  const [to, setTo] = useState(todayISO());
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["reports", from, to],
+    queryFn: () => api.get(`reports/summary/?from=${from}&to=${to}`),
+  });
+
+  const dailySeries = useMemo(
+    () => (data?.daily_series || []).map((d) => ({ ...d, day: String(d.day).slice(0, 10) })),
+    [data]
+  );
+
+  const topProducts = useMemo(
+    () =>
+      (data?.top_products || []).map((p, i) => ({
+        name: p.product_name_snapshot,
+        amount: Number(p.total_amount || 0),
+        qty: Number(p.total_qty || 0),
+        rank: i + 1,
+      })),
+    [data]
+  );
+
+  const byCashier = useMemo(() => (data?.by_cashier || []).map((c) => ({ name: c.cashier__username || "Noma'lum", total: Number(c.total || 0), count: c.count })), [data]);
+
+  const byPayment = useMemo(() => {
+    if (!data) return [];
+    // summary'da by_payment yo'q — kunlik hisobotdan olamiz. Shu yerda oddiy variant:
+    const total = Number(data.total_revenue || 0);
+    return total ? [{ name: "Sotuvlar", value: total }] : [];
+  }, [data]);
+
+  return (
+    <div>
+      <div className="page-head">
+        <div>
+          <h1>Hisobotlar</h1>
+          <div className="sub">Savdo natijalari va tahlil</div>
+        </div>
+        <div className="flex">
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label className="label">Dan</label>
+            <input type="date" className="input" value={from} onChange={(e) => setFrom(e.target.value)} />
+          </div>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label className="label">Gacha</label>
+            <input type="date" className="input" value={to} onChange={(e) => setTo(e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="empty-state">Yuklanmoqda...</div>
+      ) : (
+        <>
+          <div className="stat-grid">
+            <AnimatedStat label="Jami savdo" value={data?.total_revenue} />
+            <AnimatedStat label="Foyda" value={data?.total_profit} />
+            <AnimatedStat label="Sotuvlar soni" value={data?.sale_count} plain />
+            <AnimatedStat label="Mahsulotlar" value={data?.items_sold} plain />
+          </div>
+
+          <div className="chart-card">
+            <h3>Kunlik savdo</h3>
+            <ResponsiveContainer width="100%" height={280}>
+              <ComposedChart data={dailySeries}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e3e8df" vertical={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} width={70} tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)} />
+                <Tooltip formatter={(v) => formatMoney(v)} />
+                <Bar dataKey="total" fill="#29C77D" radius={[6, 6, 0, 0]} name="Savdo" />
+                <Line dataKey="total" type="monotone" stroke="#FF8A3D" strokeWidth={2} dot={false} name="Trend" />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="grid-2">
+            <div className="chart-card">
+              <h3>Top mahsulotlar</h3>
+              {topProducts.length === 0 ? (
+                <div className="empty-state" style={{ padding: 20 }}>
+                  Bu davrda sotuv yo'q
+                </div>
+              ) : (
+                <div className="table-wrap">
+                  <table className="data">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Mahsulot</th>
+                        <th>Miqdor</th>
+                        <th>Summa</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topProducts.map((p) => (
+                        <tr key={p.rank}>
+                          <td className="mono">{p.rank}</td>
+                          <td>{p.name}</td>
+                          <td className="mono">{p.qty}</td>
+                          <td className="mono">{formatMoney(p.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="chart-card">
+              <h3>Kassirlar kesimida</h3>
+              {byCashier.length === 0 ? (
+                <div className="empty-state" style={{ padding: 20 }}>Ma'lumot yo'q</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <PieChart>
+                    <Pie data={byCashier} dataKey="total" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={3}>
+                      {byCashier.map((_, i) => (
+                        <Cell key={i} fill={PAY_COLORS[["cash", "card", "click", "payme"][i % 4]]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v) => formatMoney(v)} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+              {byCashier.length > 0 && (
+                <div className="table-wrap" style={{ marginTop: 12 }}>
+                  <table className="data">
+                    <tbody>
+                      {byCashier.map((c) => (
+                        <tr key={c.name}>
+                          <td>{c.name}</td>
+                          <td className="mono">{c.count} ta</td>
+                          <td className="mono">{formatMoney(c.total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default ReportsPage;

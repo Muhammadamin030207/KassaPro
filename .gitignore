@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.so
+venv/
+.venv/
+db.sqlite3
+
+# Env
+.env
+.env.local
+*.env
+!**/.env.example
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Logs / OS
+*.log
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Render / Vercel local state
+.vercel/
+.render/
