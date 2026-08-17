@@ -1511,6 +1511,38 @@ table.data tbody tr:hover {
   margin: 18px 0 4px;
 }
 
+.apply-steps {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: grid;
+  gap: 10px;
+}
+.apply-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+.apply-steps li span {
+  flex: 0 0 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand), var(--brand2));
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  display: grid;
+  place-items: center;
+}
+.apply-steps code {
+  background: var(--panel-inset);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 2px 8px;
+}
+
 /* ---------- Empty state ---------- */
 .empty-state {
   text-align: center;
@@ -1621,6 +1653,137 @@ table.data tbody tr:hover {
 .badge-warn {
   background: rgba(245, 158, 11, 0.16);
   color: var(--warn);
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.panel-foot {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin: 18px 0;
+  flex-wrap: wrap;
+}
+
+.tab {
+  padding: 9px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab.active {
+  background: linear-gradient(135deg, var(--brand), var(--brand2));
+  color: #fff;
+  border-color: transparent;
+}
+
+.app-list {
+  display: grid;
+  gap: 12px;
+}
+
+.app-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.app-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.app-card-head h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+}
+
+.app-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.status-pill {
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-pending {
+  background: rgba(245, 158, 11, 0.16);
+  color: var(--warn);
+}
+
+.status-approved {
+  background: rgba(52, 211, 153, 0.16);
+  color: var(--success);
+}
+
+.status-rejected {
+  background: rgba(248, 113, 113, 0.16);
+  color: #f87171;
+}
+
+.creds-box {
+  margin-top: 14px;
+  background: var(--panel-inset);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.creds-box div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.creds-box span {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.creds-box b {
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+.small {
+  font-size: 12px;
 }
 
 .badge-txn {

@@ -5,6 +5,7 @@ from django.db.models import Sum
 from rest_framework import serializers
 
 from customers.models import Customer, DebtTransaction
+from customers.utils import normalize_phone
 
 
 class DebtTransactionSerializer(serializers.ModelSerializer):
@@ -67,6 +68,21 @@ class CustomerSerializer(serializers.ModelSerializer):
 
     def get_is_settled(self, obj):
         return obj.is_settled
+
+    def validate_phone(self, value):
+        normalized = normalize_phone(value)
+        if not normalized:
+            raise serializers.ValidationError("Telefon raqam noto'g'ri.")
+        value = normalized
+        qs = Customer.objects.filter(shop=self.context["request"].user.shop)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        dup = qs.filter(phone=value).first()
+        if dup:
+            raise serializers.ValidationError(
+                f"Bu raqam {dup.name} ga tegishli."
+            )
+        return value
 
 
 class CustomerDetailSerializer(CustomerSerializer):

@@ -77,7 +77,7 @@ export function DebtsPage() {
       setDetail(res);
       setPayOpen(false);
       setReload((r) => r + 1);
-      show("To'lov qabul qilindi", "success");
+      show(res.deleted ? "Qarz to'liq yopildi — mijoz ro'yxatdan o'chirildi" : "To'lov qabul qilindi", "success");
     } catch (err) {
       show(err.message, "error");
     } finally {

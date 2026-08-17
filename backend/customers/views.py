@@ -82,6 +82,25 @@ class CustomerPaymentView(views.APIView):
         serializer = CustomerPaymentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         txn = serializer.save(customer=customer, user=request.user)
+
+        # 🛑 QARZ TO'LIQ YOPILDI → mijoz va uning BARCHA qarzdorlik
+        # tranzaksiyalari DATABASE'DAN TO'LIQ O'CHIRILADI (Hard Delete).
+        # Qarzini to'liq to'lagan shaxs haqida bazada hech narsa qolmaydi.
+        if customer.balance <= 0:
+            customer_id = customer.id
+            customer_data = {
+                "id": customer.id,
+                "name": customer.name,
+                "phone": customer.phone,
+                "balance": 0,
+                "is_settled": True,
+                "deleted": True,
+            }
+            customer.delete()  # CASCADE: barcha DebtTransaction ham o'chadi
+            return response.Response(
+                customer_data, status=status.HTTP_200_OK
+            )
+
         return response.Response(
             CustomerDetailSerializer(customer).data, status=status.HTTP_201_CREATED
         )

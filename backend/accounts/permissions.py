@@ -11,6 +11,21 @@ class IsOwner(BasePermission):
         return bool(user and user.is_authenticated and user.is_owner)
 
 
+class IsAdmin(BasePermission):
+    """Faqat Super Admin (platforma administratori).
+
+    Super admin hech qaysi do'konga egalik qilmaydi, arizalarni ko'radi,
+    yangi do'konlar yaratadi va tasdiqlaydi. Owner/kassir buni ko'ra olmaydi.
+    Django superuser (is_superuser) ham admin hisoblanadi.
+    """
+
+    message = "Faqat Super Admin bu amalni bajarishi mumkin."
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(user and user.is_authenticated and user.is_admin)
+
+
 class IsShopMember(BasePermission):
     """Foydalanuvchi o'z do'koniga tegishli ob'ektlarga kirish huquqini tekshiradi."""
 

@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 
 import { api } from "../api/client";
 import { Modal } from "./Modal";
 import { PhoneInputMask } from "./PhoneInputMask";
+import { useToast } from "./Toast";
 import { formatMoney } from "../utils/format";
 
 /**
@@ -25,6 +26,16 @@ export function NasiyaCustomerModal({ open, total, onSelect, onClose }) {
   const [searching, setSearching] = useState(false);
   const [creating, setCreating] = useState(false);
   const [mode, setMode] = useState("search"); // search | create
+  const { show } = useToast();
+
+  useEffect(() => {
+    if (open) {
+      setPhone("");
+      setName("");
+      setFound(null);
+      setMode("search");
+    }
+  }, [open]);
 
   const lookup = async () => {
     if (!phone || phone.replace(/\D/g, "").length !== 12) {
@@ -57,7 +68,7 @@ export function NasiyaCustomerModal({ open, total, onSelect, onClose }) {
       onSelect({ phone: data.phone, name: data.name });
     } catch (err) {
       setCreating(false);
-      throw err;
+      show(err.message || "Mijoz yaratishda xatolik", "error");
     }
   };
 

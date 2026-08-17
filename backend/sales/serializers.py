@@ -97,6 +97,7 @@ class SaleCreateSerializer(serializers.Serializer):
             product = products[item["product_id"]]
             qty = item["qty"]
 
+            # Zahirani tekshiramiz (stock None bo'lsa — boshqarilmaydi, cheklanmaydi)
             if product.stock_qty is not None and qty > product.stock_qty:
                 raise serializers.ValidationError(
                     f"'{product.name}' mahsulotidan yetarli zahira yo'q "
@@ -118,9 +119,10 @@ class SaleCreateSerializer(serializers.Serializer):
                 }
             )
 
-            # Zahirani kamaytiramiz
-            product.stock_qty -= qty
-            product.save(update_fields=["stock_qty"])
+            # Zahirani kamaytiramiz (agar ombor boshqarilayotgan bo'lsa)
+            if product.stock_qty is not None:
+                product.stock_qty -= qty
+                product.save(update_fields=["stock_qty"])
 
         sale = Sale.objects.create(
             shop=shop,

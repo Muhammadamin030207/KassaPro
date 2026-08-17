@@ -7,7 +7,9 @@ import { useAuthStore } from "../stores/authStore";
 import { useToast } from "../components/Toast";
 import { Modal } from "../components/Modal";
 import { Scene3D } from "../components/Scene3D";
-import { PhoneInputMask } from "../components/PhoneInputMask";
+
+const BOT_USERNAME = "KassaProBot";
+const BOT_URL = `https://t.me/${BOT_USERNAME}`;
 
 const fieldBase = {
   initial: { opacity: 0, y: 14 },
@@ -18,13 +20,13 @@ const fieldBase = {
 /**
  * Login sahifasi — JWT token olib store'ga saqlaydi.
  * Orqada 3D sahna (grid + suzuvchi kartalar).
+ * Ro'yxatdan o'tish ochiq emas — yangi do'kon Telegram bot orqali ariza qoldiradi.
  */
 export function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [registerOpen, setRegisterOpen] = useState(false);
-  const [reg, setReg] = useState({ username: "", password: "", shop_name: "", phone: "", address: "" });
+  const [applyOpen, setApplyOpen] = useState(false);
 
   const login = useAuthStore((s) => s.login);
   const navigate = useNavigate();
@@ -44,31 +46,6 @@ export function LoginPage() {
       navigate("/");
     } catch (err) {
       show(err.message || "Login yoki parol xato", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const register = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const user = await api.post("auth/register/", reg);
-      if (!user) throw new Error("Serverdan bo'sh javob keldi");
-      const data = await api.post("auth/login/", {
-        username: user.username,
-        password: reg.password,
-      });
-      if (!data || !data.access) {
-        throw new Error("Ro'yxatdan o'tdi, lekin kirishda xatolik — qayta kiring");
-      }
-      const ok = login(data);
-      if (!ok) throw new Error("Login natijasi saqlanmadi");
-      show("Do'kon yaratildi!", "success");
-      setRegisterOpen(false);
-      navigate("/");
-    } catch (err) {
-      show(err.message || "Ro'yxatdan o'tishda xatolik", "error");
     } finally {
       setLoading(false);
     }
@@ -123,7 +100,7 @@ export function LoginPage() {
               type="button"
               className="btn btn-ghost btn-block"
               style={{ marginTop: 12 }}
-              onClick={() => setRegisterOpen(true)}
+              onClick={() => setApplyOpen(true)}
             >
               Yangi do'kon ochish
             </button>
@@ -133,39 +110,32 @@ export function LoginPage() {
         <div className="barcode-deco" />
       </motion.div>
 
-      <Modal open={registerOpen} onClose={() => setRegisterOpen(false)}>
-        <h3>Yangi do'kon ro'yxatdan o'tkazish</h3>
-        <form onSubmit={register}>
-          <div className="field">
-            <label>Do'kon nomi</label>
-            <input className="input" value={reg.shop_name} onChange={(e) => setReg({ ...reg, shop_name: e.target.value })} required />
-          </div>
-          <div className="field">
-            <label>Telefon (ixtiyoriy)</label>
-            <PhoneInputMask
-              value={reg.phone}
-              onChange={(v) => setReg({ ...reg, phone: v })}
-            />
-          </div>
-          <div className="grid-2">
-            <div className="field">
-              <label>Login</label>
-              <input className="input" value={reg.username} onChange={(e) => setReg({ ...reg, username: e.target.value })} required />
-            </div>
-            <div className="field">
-              <label>Parol</label>
-              <input className="input" type="password" value={reg.password} onChange={(e) => setReg({ ...reg, password: e.target.value })} required />
-            </div>
-          </div>
-          <div className="grid-2">
-            <button className="btn btn-ghost" type="button" onClick={() => setRegisterOpen(false)}>
-              Bekor qilish
-            </button>
-            <button className="btn btn-primary" disabled={loading}>
-              Yaratish
-            </button>
-          </div>
-        </form>
+      <Modal open={applyOpen} onClose={() => setApplyOpen(false)}>
+        <h3>Yangi do'kon ochish</h3>
+        <p style={{ marginTop: 8, opacity: 0.85 }}>
+          Ro'yxatdan o'tish endi <b>Telegram bot</b> orqali amalga oshiriladi.
+          Bot'ga ariza qoldiring — admin tasdiqlagach, login va parol shu
+          Telegram chat'ga yuboriladi.
+        </p>
+        <ol className="apply-steps">
+          <li><span>1</span> Telegram'ni oching</li>
+          <li><span>2</span> @{BOT_USERNAME} bot'ga <code>/start</code> yuboring</li>
+          <li><span>3</span> Do'kon ma'lumotlarini to'ldiring</li>
+          <li><span>4</span> Tasdiqlashni kuting</li>
+        </ol>
+        <div className="grid-2" style={{ marginTop: 18 }}>
+          <a
+            className="btn btn-ghost"
+            href={BOT_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            @{BOT_USERNAME}
+          </a>
+          <button className="btn btn-primary" type="button" onClick={() => setApplyOpen(false)}>
+            Tushunarli
+          </button>
+        </div>
       </Modal>
     </div>
   );

@@ -13,6 +13,7 @@ class Sale(models.Model):
         CARD = "card", "Karta"
         CLICK = "click", "Click"
         PAYME = "payme", "Payme"
+        PAYNET = "paynet", "Paynet"
         VISA = "visa", "Visa"
         NASIYA = "nasiya", "Nasiya"
 

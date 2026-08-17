@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from accounts.permissions import IsOwner
+from accounts.permissions import IsAdmin, IsOwner
 from accounts.serializers import (
     OwnerRegisterSerializer,
     StaffCreateSerializer,
@@ -25,9 +25,14 @@ class RefreshView(TokenRefreshView):
 
 
 class RegisterOwnerView(APIView):
-    """Do'kon egasi ro'yxatdan o'tadi (do'kon ham yaratiladi)."""
+    """PUBLIC REGISTER BIRINCHI YOPILDI — faqat Super Admin ochadi.
 
-    permission_classes = [AllowAny]
+    Eski open-register (har kim o'zi do'kon ochsin) butunlay yopildi.
+    Yangi do'konlar faqat Super Admin paneli orqali yaratiladi.
+    (Bot orqali arizalar → Admin tasdiqlaydi → kredensial avtomatik beriladi.)
+    """
+
+    permission_classes = [IsAdmin]
 
     def post(self, request):
         serializer = OwnerRegisterSerializer(data=request.data)

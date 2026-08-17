@@ -11,6 +11,8 @@ const LINKS = [
   { to: "/reports", label: "Hisobotlar", icon: "chart" },
   { to: "/debts", label: "Qarzdorlar", icon: "money", ownerOnly: true },
   { to: "/staff", label: "Kassirlar", icon: "users", ownerOnly: true },
+  { to: "/settings", label: "Sozlamalar", icon: "settings", ownerOnly: true },
+  { to: "/admin", label: "Admin", icon: "shield", superAdminOnly: true },
 ];
 
 /**
@@ -28,7 +30,12 @@ export function AppLayout({ children }) {
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const links = LINKS.filter((l) => !l.ownerOnly || user?.role === "owner");
+  const isAdmin = user?.role === "super_admin" || user?.is_admin;
+  const links = LINKS.filter(
+    (l) =>
+      (!l.ownerOnly || user?.role === "owner") &&
+      (!l.superAdminOnly || isAdmin)
+  );
 
   const onLogout = () => {
     setDrawerOpen(false);

@@ -22,12 +22,13 @@ const PAY_METHODS = [
   { key: "card", label: "Karta" },
   { key: "click", label: "Click" },
   { key: "payme", label: "Payme" },
+  { key: "paynet", label: "Paynet" },
   { key: "visa", label: "Visa" },
   { key: "nasiya", label: "Nasiya" },
 ];
 
-/** Naqd/karta — to'g'ridan to'g'ri, Click/Payme/Visa — QR+karta modali orqali */
-const ONLINE_METHODS = ["click", "payme", "visa"];
+/** Naqd/karta — to'g'ridan to'g'ri, Click/Payme/Paynet/Visa — QR+karta modali orqali */
+const ONLINE_METHODS = ["click", "payme", "paynet", "visa"];
 
 /**
  * Kassa sahifasi — shtrix kod bilan uzluksiz ishlaydi.
@@ -44,6 +45,8 @@ export function CashierPage() {
   const [quickPrice, setQuickPrice] = useState("");
   const [paying, setPaying] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
+  const [orderId, setOrderId] = useState(null);
+  const [settings, setSettings] = useState(null);
   const [lastSale, setLastSale] = useState(null);
   const [printOpen, setPrintOpen] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
@@ -69,6 +72,18 @@ export function CashierPage() {
 
   useEffect(() => {
     inputRef.current?.focus();
+  }, []);
+
+  // Do'kon to'lov sozlamalari (Payme/Click/Paynet merchant ID'lari) — dinamik QR uchun
+  useEffect(() => {
+    let alive = true;
+    api
+      .get("stores/settings/")
+      .then((s) => alive && setSettings(s))
+      .catch(() => alive && setSettings(null));
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const focusInput = useCallback(() => inputRef.current?.focus(), []);
@@ -180,6 +195,7 @@ export function CashierPage() {
       return;
     }
     if (ONLINE_METHODS.includes(payment)) {
+      setOrderId(Date.now());
       setPayOpen(true);
       return;
     }
@@ -467,12 +483,14 @@ export function CashierPage() {
         }}
       />
 
-      {/* Click/Payme — QR + karta modali */}
+      {/* Click/Payme/Paynet — QR + karta modali */}
       <PaymentModal
         open={payOpen}
         method={payment}
         total={total}
         saleId={items.length}
+        orderId={orderId}
+        settings={settings || {}}
         shopName={user?.shop_name}
         onConfirm={checkout}
         onClose={() => setPayOpen(false)}

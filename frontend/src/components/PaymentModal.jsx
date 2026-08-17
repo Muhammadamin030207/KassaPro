@@ -3,32 +3,62 @@ import { motion } from "framer-motion";
 import { Modal } from "./Modal";
 import { formatMoney } from "../utils/format";
 
+const BRANDS = {
+  payme: { label: "Payme", color: "#47C7FB" },
+  click: { label: "Click", color: "#30C39E" },
+  paynet: { label: "Paynet", color: "#E86A10" },
+  visa: { label: "Visa", color: "#1A1F71" },
+};
+
+const DEFAULT_CARDS = {
+  payme: "5614 6821 1575 9963",
+  click: "5600 0004 6646 4473",
+  paynet: "9860 0103 4291 8749",
+  visa: "4916 9903 3779 9537",
+};
+
 /**
- * Payme/Click to'lov modali — QR kod + karta raqami ko'rsatiladi.
- * "Tasdiqlash" bosilganda sotuv yakunlanadi.
+ * To'lov QR + karta modali.
+ *
+ * - Agar do'kon sozlamalarida merchant ID ko'rsatilgan bo'lsa — dinamik QR
+ *   (Payme: checkout.paycom.uz, Click: my.click.uz, Paynet: paynet.uz).
+ * - Aks holda karta raqamiga QR tushadi (skaner orqali pul o'tkazish).
  *
  * @param {{
  *   open: boolean,
  *   method: string,
  *   total: number,
  *   saleId?: string|number,
+ *   orderId?: string|number,
+ *   settings?: object,
  *   shopName?: string,
  *   onConfirm: function,
  *   onClose: function,
  * }} props
  */
-export function PaymentModal({ open, method, total = 0, saleId, shopName, onConfirm, onClose }) {
-  const isPayme = method === "payme";
-  const isClick = method === "click";
-  const isVisa = method === "visa";
-  const brand = isPayme ? "Payme" : isClick ? "Click" : "Visa";
-  const brandColor = isPayme ? "#47C7FB" : isClick ? "#30C39E" : "#1A1F71";
+export function PaymentModal({ open, method, total = 0, saleId, orderId, settings = {}, shopName, onConfirm, onClose }) {
+  const brand = BRANDS[method];
+  if (!brand) return null;
 
-  // Karta to'lov raqamlari — QR ham shu kartaga pul tushish uchun
-  const cardNumber = isVisa ? "4916 9903 3779 9537" : "5614 6821 1575 9963";
-  const cardDigits = cardNumber.replace(/\s+/g, "");
-  const holder = "ASATOVA NILUFAR";
-  const qrValue = cardDigits;
+  const { label, color } = brand;
+  const isVisa = method === "visa";
+  const amount = Math.round(Number(total) || 0);
+  const ord = orderId ?? saleId ?? "";
+
+  // Dinamik QR (agar merchant ID sozlangan bo'lsa)
+  let qrValue = "";
+  if (method === "payme" && settings.payme_merchant_id) {
+    qrValue = `https://checkout.paycom.uz/${settings.payme_merchant_id}?amount=${amount}00&order_id=${ord}`;
+  } else if (method === "click" && settings.click_merchant_id && settings.click_service_id) {
+    qrValue = `https://my.click.uz/services/pay?merchant_id=${settings.click_merchant_id}&service_id=${settings.click_service_id}&amount=${amount}`;
+  } else if (method === "paynet" && settings.paynet_merchant_id) {
+    qrValue = `https://paynet.uz/pay/${settings.paynet_merchant_id}?amount=${amount}`;
+  }
+
+  // Agar merchant yo'q bo'lsa — karta raqamiga QR
+  const cardNumber = settings.qr_card_number || (isVisa ? DEFAULT_CARDS.visa : settings[`${method}_card`] || DEFAULT_CARDS[method]);
+  const effectiveQr = qrValue || cardNumber.replace(/\s+/g, "");
+  const holder = settings.qr_holder || "ASATOVA NILUFAR";
 
   return (
     <Modal open={open} onClose={onClose} size="lg">
@@ -39,9 +69,11 @@ export function PaymentModal({ open, method, total = 0, saleId, shopName, onConf
         transition={{ type: "spring", stiffness: 260, damping: 22 }}
       >
         <div style={{ textAlign: "center", marginBottom: 18 }}>
-          <h3>{brand} orqali to'lov</h3>
+          <h3>{label} orqali to'lov</h3>
           <div className="sub" style={{ color: "var(--ink-soft)", fontSize: 13, marginTop: 6 }}>
-            Skaner orqali yoki karta raqamini qo'lda kiriting
+            {qrValue
+              ? "QR kodni ilovada skanerlang yoki ushbu ilovada otqazing"
+              : "Skaner orqali yoki karta raqamini qo'lda kiriting"}
           </div>
         </div>
 
@@ -51,7 +83,7 @@ export function PaymentModal({ open, method, total = 0, saleId, shopName, onConf
           animate={{ rotateY: 0, opacity: 1 }}
           transition={{ type: "spring", stiffness: 200, damping: 18, delay: 0.1 }}
           style={{
-            background: `linear-gradient(135deg, ${brandColor}, #4338ca)`,
+            background: `linear-gradient(135deg, ${color}, #4338ca)`,
             borderRadius: 20,
             padding: "22px 24px",
             color: "#fff",
@@ -66,7 +98,7 @@ export function PaymentModal({ open, method, total = 0, saleId, shopName, onConf
           <div style={{ position: "absolute", right: -40, top: -50, width: 160, height: 160, borderRadius: "50%", background: "rgba(255,255,255,0.12)" }} />
           <div style={{ position: "absolute", right: 20, bottom: -60, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.1)" }} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 17, letterSpacing: "0.04em" }}>{brand}</span>
+            <span style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 17, letterSpacing: "0.04em" }}>{label}</span>
             <span style={{ fontSize: 11, opacity: 0.85 }}>{shopName || "KassaPro"}</span>
           </div>
           <div style={{ fontFamily: "var(--font-mono)", fontSize: 21, letterSpacing: "0.1em", margin: "22px 0 14px" }}>
@@ -81,14 +113,15 @@ export function PaymentModal({ open, method, total = 0, saleId, shopName, onConf
         {/* QR kod */}
         <div className="pay-qr-block">
           <div style={{ background: "#fff", padding: 12, borderRadius: 12, boxShadow: "var(--shadow-md)" }}>
-            <QRCodeSVG value={qrValue} size={140} fgColor="#0f1115" />
+            <QRCodeSVG value={effectiveQr} size={140} fgColor="#0f1115" />
           </div>
           <div className="pay-qr-txt">
             <b style={{ color: "var(--ink)", display: "block", marginBottom: 4 }}>
-              {brand} orqali o'tkazing
+              {qrValue ? `${label} orqali o'tkazing` : "Karta raqamiga o'tkazing"}
             </b>
-            Karta raqamiga pul o'tkazing yoki QR kodni {isVisa ? "bank ilovasida" : isPayme ? "Payme" : "Click"} ilovasida skanerlang.
-            To'lov kelgach quyidagi tugmani bosing.
+            {qrValue
+              ? `QR kod ${label} ilovasida skanerlanadi, summa avtomatik: ${formatMoney(total)}. To'lov kelgach tasdiqlash tugmasini bosing.`
+              : `Karta raqamiga pul o'tkazing yoki QR kodni ${label} ilovasida skanerlang. To'lov kelgach quyidagi tugmani bosing.`}
           </div>
         </div>
 

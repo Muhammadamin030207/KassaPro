@@ -8,6 +8,8 @@ import ProductsPage from "./pages/ProductsPage";
 import ReportsPage from "./pages/ReportsPage";
 import StaffPage from "./pages/StaffPage";
 import DebtsPage from "./pages/DebtsPage";
+import SettingsPage from "./pages/SettingsPage";
+import AdminPanelPage from "./pages/AdminPanelPage";
 
 /**
  * Sahifa himoyasi: login bo'lmagan yo token eskirgan bo'lsa /login'ga.
@@ -24,10 +26,17 @@ function Protected({ children }) {
   return <AppLayout>{children}</AppLayout>;
 }
 
-/** Kassirlar sahifasi faqat owner uchun. */
+/** Owner / SuperAdmin sahifalari faqat egasiga. */
 function OwnerOnly({ children }) {
   const user = useAuthStore((s) => s.user);
   if (user?.role !== "owner") return <Navigate to="/" replace />;
+  return children;
+}
+
+/** Super Admin sahifalari faqat platforma adminiga. */
+function SuperAdminOnly({ children }) {
+  const user = useAuthStore((s) => s.user);
+  if (!user?.is_admin && user?.role !== "super_admin") return <Navigate to="/" replace />;
   return children;
 }
 
@@ -48,6 +57,26 @@ export default function App() {
             <OwnerOnly>
               <StaffPage />
             </OwnerOnly>
+          </Protected>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <Protected>
+            <OwnerOnly>
+              <SettingsPage />
+            </OwnerOnly>
+          </Protected>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <Protected>
+            <SuperAdminOnly>
+              <AdminPanelPage />
+            </SuperAdminOnly>
           </Protected>
         }
       />

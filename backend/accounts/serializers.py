@@ -20,11 +20,15 @@ class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     shop_name = serializers.CharField(source="shop.name", read_only=True)
+    is_admin = serializers.SerializerMethodField()
 
     class Meta:
         model = UserModel
-        fields = ["id", "username", "first_name", "last_name", "phone", "role", "shop", "shop_name"]
+        fields = ["id", "username", "first_name", "last_name", "phone", "role", "shop", "shop_name", "is_admin"]
         read_only_fields = ["id"]
+
+    def get_is_admin(self, obj):
+        return obj.is_admin
 
 
 class StaffCreateSerializer(serializers.ModelSerializer):
