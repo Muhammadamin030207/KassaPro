@@ -80,10 +80,11 @@ class ProductUpsertByBarcodeView(views.APIView):
     """Barcode bo'yicha create-or-update (upsert).
 
     Kod mavjud bo'lsa yangilanadi, mavjud bo'lmasa yaratiladi.
-    Faqat owner uchun. Bitta so'rov bilan ishlaydi.
+    Kassada nomavjud mahsulot tez qo'shilsa ham chek davom etishi uchun
+    do'kon a'zolari (owner yoki kassir) qo'sha oladi.
     """
 
-    permission_classes = [IsShopMember, IsShopOwnerOrCashierReadOnly]
+    permission_classes = [IsShopMember]
 
     def put(self, request):
         data = request.data

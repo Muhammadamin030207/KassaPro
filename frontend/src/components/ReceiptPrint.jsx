@@ -22,14 +22,14 @@ function barcodeBars(code) {
  * @param {{ sale: object, shopName?: string, cashierName?: string }} props
  */
 export const ReceiptPrint = forwardRef(function ReceiptPrint(
-  { sale, shopName = "SmartKassa", cashierName = "" },
+  { sale, shopName = "KassaPro", cashierName = "" },
   ref
 ) {
   const payName = PAY_NAMES[sale?.payment_method] || sale?.payment_method;
   const created = sale?.created_at ? new Date(sale.created_at) : new Date();
   const id = sale?.id ? String(sale.id).padStart(6, "0") : "";
   const itemsFingerprint = `${id}${sale?.total || 0}`;
-  const shopsave = (shopName || "SmartKassa").toUpperCase();
+  const shopsave = (shopName || "KassaPro").toUpperCase();
   // Soliq/keshbek QR — fiskal keshbek tizimi uchun (my.soliq.uz / keshbek)
   const taxQr = `https://soliq.uz/tmc/${id}?total=${sale?.total || 0}`;
 
@@ -37,7 +37,7 @@ export const ReceiptPrint = forwardRef(function ReceiptPrint(
     <div className="print-receipt" ref={ref}>
       <div className="pr-head">
         <div className="pr-name">{shopsave}</div>
-        <div className="pr-brand">SMARTKASSA · KASSA TIZIMI</div>
+        <div className="pr-brand">KASSAPRO · KASSA TIZIMI</div>
       </div>
       <div className="pr-divider" />
       <div className="pr-row">
@@ -96,7 +96,7 @@ export const ReceiptPrint = forwardRef(function ReceiptPrint(
 
       <div className="pr-foot">
         <div className="pr-thanks">XUSH KELIBSIZ!</div>
-        <div>smart-kassa.uz · {shopsave}</div>
+        <div>kassapro.uz · {shopsave}</div>
       </div>
     </div>
   );

@@ -114,3 +114,11 @@ class ProductUpsertSerializer(serializers.ModelSerializer):
         if value <= 0:
             raise serializers.ValidationError("Narx 0 dan katta bo'lishi kerak.")
         return value
+
+    def validate(self, attrs):
+        # Kassa tezkor qo'shishida stock berilmasa 0 chiqib ketadi va mahsulot
+        # ro'yxatda ko'rinmaydi. Default 1 qilamiz — tez qo'shilgan mahsulot
+        # darhol "Mahsulotlar" bo'limida ko'rinadi va qayta skanerlansa topiladi.
+        if "stock_qty" not in attrs:
+            attrs["stock_qty"] = 1
+        return attrs

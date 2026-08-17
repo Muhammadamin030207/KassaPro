@@ -1,4 +1,4 @@
-# SmartKassa — Do'kon uchun shtrix-kodli kassa tizimi
+# KassaPro — Do'kon uchun shtrix-kodli kassa tizimi
 
 Kichik va o'rta do'konlar uchun shtrix-kod asosida ishlaydigan, Korzinka/Havas
 darajasidagi UI/UX'ga ega kassa (POS) tizimi. Mahsulot skanerlanganda narx

@@ -145,8 +145,9 @@ export function ProductsPage() {
       setFormOpen(true);
       setTimeout(() => nameRef.current?.focus(), 120);
     } catch (err) {
-      if (err.status === 404) {
-        // Topilmadi — darhol forma ochmaymiz, chiroyli "yo'q" paneli ko'rsatamiz
+      // 404, tarmoq xatosi yoki server 5xx — hammasida "yo'q mahsulot" paneli chiqadi
+      const notFound = err.status === 404 || !err.status || err.status >= 500;
+      if (notFound) {
         setNotFoundCode(code);
       } else if (err.status === 400) {
         setNotFoundCode(code);

@@ -1,9 +1,9 @@
-# ---- SmartKassa Backend — Render deploy sozlamalari ----
+# ---- KassaPro Backend — Render deploy sozlamalari ----
 # Render'da: Blueprint (New +) yoki backend/ papirasini Root Directory qilib Web Service yarating.
 
 services:
   - type: web
-    name: smartkassa-backend
+    name: kassapro-backend
     runtime: python
     plan: free
     rootDir: backend
@@ -21,14 +21,14 @@ services:
       - key: ALLOWED_HOSTS
         value: ".onrender.com,localhost,127.0.0.1"
       - key: CORS_ALLOWED_ORIGINS
-        value: "https://smartkassa.vercel.app"
+        value: "https://kassapro.vercel.app"
       - key: DATABASE_URL
         fromDatabase:
-          name: smartkassa-db
+          name: kassapro-db
           property: connectionString
 
 databases:
-  - name: smartkassa-db
+  - name: kassapro-db
     plan: free
-    databaseName: smartkassa
-    user: smartkassa
+    databaseName: kassapro
+    user: kassapro

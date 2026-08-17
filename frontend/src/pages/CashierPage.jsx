@@ -82,9 +82,11 @@ export function CashierPage() {
       });
       show(`Qo'shildi: ${product.name}`, "success", 1200);
     } catch (err) {
-      // 404 (topilmadi) YOKI tarmoq xatosi (server o'chik bo'lsa ham)
-      // — ikkala holatda ham inline panel ochamiz, oqim to'xtamaydi.
-      if (err.status === 404 || !err.status) {
+      // 404 (topilmadi), tarmoq xatosi yoki server 5xx xatosi — hammasida
+      // "Bunday mahsulot yo'q + Shu mahsulotni qo'shamiz" panelini ochamiz.
+      // Oqim to'xtamaydi, kassir davom etadi.
+      const notFound = err.status === 404 || !err.status || err.status >= 500;
+      if (notFound) {
         setQuickBarcode(barcode);
         setQuickStep("confirm");
         setQuickName("");
@@ -92,11 +94,10 @@ export function CashierPage() {
         show(
           err.status === 404
             ? `Bunday mahsulot yo'q — "${barcode}" bazada topilmadi`
-            : `"${barcode}" topilmadi yoki server o'chik — panelni oching`,
+            : `"${barcode}" topilmadi yoki server javob bermadi — quyida tekshiring`,
           "info",
           3000
         );
-        setTimeout(() => quickNameRef.current?.focus(), 80);
       } else {
         show(err.message, "error");
       }

@@ -25,8 +25,8 @@ export function ReceiptTape({ onEmptyAction }) {
     <div className="receipt-tape">
       <span className="sawtooth" />
       <div className="receipt-head">
-        <h3>{shopName || "SmartKassa"}</h3>
-        <div className="store">smart-kassa.cn</div>
+        <h3>{shopName || "KassaPro"}</h3>
+        <div className="store">kassapro.uz</div>
         <div className="meta">
           #{new Date().toLocaleString("uz-UZ", { dateStyle: "short", timeStyle: "short" })}
           {" · "}Kassir: {cashier}
@@ -112,6 +112,9 @@ function ReceiptRow({ item, bump, onDec, onInc, onRemove }) {
         <button className="row-btn remove" onClick={onRemove} title="Bekor qilish" aria-label="Bekor qilish">✕</button>
         <span className="price mono">{formatMoney(item.price * item.qty)}</span>
       </div>
+      <span className="sub-line">
+        {item.barcode} · {formatMoney(item.price)} × {item.qty}
+      </span>
     </motion.div>
   );
 }

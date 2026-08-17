@@ -37,9 +37,9 @@ export function AppLayout({ children }) {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <img src="/favicon.svg" alt="SmartKassa" />
+          <img src="/favicon.svg" alt="KassaPro" />
           <span>
-            SmartKassa
+            KassaPro
             <span className="logo-sub">Barcode POS</span>
           </span>
         </motion.div>

@@ -4,8 +4,8 @@
 set -e
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_PORT="${BACKEND_PORT:-8010}"
-FRONTEND_PORT="${FRONTEND_PORT:-5280}"
+BACKEND_PORT="${BACKEND_PORT:-8001}"
+FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 
 # Virtual env: avval .venv, aks holda venv
 PY=""
@@ -23,7 +23,7 @@ fi
 
 cd "$ROOT/backend"
 "$PY" manage.py migrate --noinput >/dev/null
-"$PY" manage.py seed_demo --owner owner --password owner12345 --shop "Smart Do'kon" >/dev/null 2>&1 || true
+"$PY" manage.py seed_demo --owner admin --password admin123 --shop "My Shop" >/dev/null 2>&1 || true
 nohup "$PY" manage.py runserver "0.0.0.0:$BACKEND_PORT" > /tmp/smartkassa-backend.log 2>&1 &
 BACK_PID=$!
 echo "  ✔ backend: http://localhost:$BACKEND_PORT  (pid $BACK_PID)"
@@ -43,6 +43,6 @@ echo "=========================================================="
 echo "  SmartKassa ishga tushdi!"
 echo "  Manzil:      http://localhost:$FRONTEND_PORT"
 [ -n "$LAN" ] && echo "  Tarmoq:      http://$LAN:$FRONTEND_PORT  (telefon/planshet uchun)"
-echo "  Admin login: owner / owner12345"
+echo "  Admin login: admin / admin123"
 echo "  To'xtatish:  kill $BACK_PID $FRONT_PID"
 echo "=========================================================="

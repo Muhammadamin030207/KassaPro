@@ -977,9 +977,9 @@ table.data tbody tr:hover {
 
 .receipt-row {
   display: grid;
-  grid-template-columns: 30px 1fr auto;
+  grid-template-columns: 34px 1fr auto;
   gap: 8px;
-  padding: 8px 0;
+  padding: 9px 0;
   border-bottom: 1px dotted #d8d2be;
   font-size: 12.5px;
   align-items: center;
@@ -988,16 +988,24 @@ table.data tbody tr:hover {
 .receipt-row .qty {
   color: #0e7c5a;
   font-weight: 700;
+  font-size: 13px;
+  text-align: center;
+  background: rgba(14, 124, 90, 0.08);
+  border-radius: 8px;
+  padding: 2px 0;
 }
 
 .receipt-row .name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 600;
+  color: #222;
 }
 
 .receipt-row .row-controls {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto auto 1fr;
   align-items: center;
   gap: 4px;
   justify-content: flex-end;
@@ -1005,9 +1013,17 @@ table.data tbody tr:hover {
 
 .receipt-row .row-controls .price {
   font-weight: 700;
-  min-width: 86px;
+  min-width: 84px;
   text-align: right;
   margin-left: 4px;
+  font-size: 12.5px;
+}
+
+.receipt-row .sub-line {
+  grid-column: 2 / -1;
+  font-size: 11px;
+  color: #8a8371;
+  font-family: var(--font-mono);
 }
 
 .receipt-row .row-btn {

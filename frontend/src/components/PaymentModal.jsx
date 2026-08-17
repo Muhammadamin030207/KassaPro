@@ -67,7 +67,7 @@ export function PaymentModal({ open, method, total = 0, saleId, shopName, onConf
           <div style={{ position: "absolute", right: 20, bottom: -60, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.1)" }} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontFamily: "var(--font-head)", fontWeight: 800, fontSize: 17, letterSpacing: "0.04em" }}>{brand}</span>
-            <span style={{ fontSize: 11, opacity: 0.85 }}>{shopName || "SmartKassa"}</span>
+            <span style={{ fontSize: 11, opacity: 0.85 }}>{shopName || "KassaPro"}</span>
           </div>
           <div style={{ fontFamily: "var(--font-mono)", fontSize: 21, letterSpacing: "0.1em", margin: "22px 0 14px" }}>
             {cardNumber}

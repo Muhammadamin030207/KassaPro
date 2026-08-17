@@ -75,9 +75,9 @@ export function LoginPage() {
         transition={{ type: "spring", stiffness: 200, damping: 22 }}
       >
         <div className="brand">
-          <img src="/favicon.svg" alt="SmartKassa" />
+          <img src="/favicon.svg" alt="KassaPro" />
           <div>
-            <h1>SmartKassa</h1>
+            <h1>KassaPro</h1>
             <div className="sub">Do'koningiz uchun zamonaviy kassa tizimi</div>
           </div>
         </div>
