@@ -1823,37 +1823,190 @@ table.data tbody tr:hover {
 }
 
 /* ---------- Mobile ---------- */
+/* Yuqoridagi header — faqat mobil (<768px) */
+.mobile-header {
+  display: none;
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(10, 20, 16, 0.88);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.35);
+}
+
+.hamburger-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.hamburger-btn:active {
+  background: var(--panel-hover);
+}
+
+.hamburger-btn:hover {
+  border-color: rgba(46, 229, 154, 0.5);
+  color: var(--brand-light);
+}
+
+.mobile-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  flex: 1;
+}
+
+.mobile-logo img {
+  width: 30px;
+  height: 30px;
+  filter: drop-shadow(0 0 10px var(--brand-glow));
+}
+
+.mobile-avatar {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--brand), var(--brand-light));
+  color: #04231a;
+  font-weight: 800;
+  font-size: 16px;
+  box-shadow: 0 0 18px rgba(46, 229, 154, 0.3);
+}
+
+/* Drawer overlay */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+/* Mobile navigatsiya drawer */
+.mobile-drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 80;
+  width: min(320px, 84vw);
+  background: rgba(12, 23, 19, 0.96);
+  backdrop-filter: blur(22px);
+  border-right: 1px solid var(--line);
+  box-shadow: 24px 0 80px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 14px;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px 18px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 10px;
+}
+
+.drawer-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-head);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.drawer-title img {
+  width: 32px;
+  height: 32px;
+  filter: drop-shadow(0 0 10px var(--brand-glow));
+}
+
+.drawer-close {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink-soft);
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.drawer-close:hover {
+  background: var(--panel-hover);
+  color: var(--ink);
+}
+
+.drawer-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.drawer-nav .nav-link {
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-size: 15px;
+  min-height: 48px;
+}
+
+.drawer-nav .nav-link.active {
+  box-shadow: inset 3px 0 0 var(--brand-light), 0 0 24px rgba(46, 229, 154, 0.12);
+}
+
+.drawer-nav .nav-link.active::after {
+  right: 14px;
+}
+
+.drawer-foot {
+  border-top: 1px solid var(--line);
+  margin-top: 8px;
+}
+
 @media (max-width: 768px) {
   .app-shell {
     flex-direction: column;
+    overflow-x: hidden;
   }
   .sidebar {
-    width: 100%;
-    height: auto;
-    position: static;
-    flex-direction: row;
-    overflow-x: auto;
-    padding: 10px;
-    align-items: center;
-  }
-  .sidebar .logo {
-    padding: 4px 10px;
-    margin-right: 6px;
-  }
-  .sidebar .logo .logo-sub {
     display: none;
   }
-  .nav-link {
-    white-space: nowrap;
-    font-size: 13px;
-    padding: 10px 12px;
-  }
-  .sidebar .spacer,
-  .sidebar .user-box {
-    display: none;
+  .mobile-header {
+    display: flex;
   }
   .main {
-    padding: 16px;
+    padding: 14px 12px;
   }
   .grid-2 {
     grid-template-columns: 1fr;
@@ -1909,13 +2062,109 @@ table.data tbody tr:hover {
   }
 }
 
+/* Global mobile overflow himoyasi */
+html,
+body {
+  overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+  .cashier-layout {
+    height: auto;
+  }
+  .cashier-layout > .scan-zone {
+    height: auto;
+  }
+  /* Mahsulot qidiruv formasi + kamera tugmasi to'liq qatorda */
+  .scan-zone > div:first-child {
+    flex-wrap: nowrap;
+  }
+  .scan-input-wrap {
+    flex: 1 1 auto;
+    min-width: 0 !important;
+  }
+  .camera-btn {
+    flex: 0 0 auto;
+    padding: 16px 14px;
+  }
+  /* Receipt compact */
+  .receipt-tape {
+    padding: 12px 14px 8px;
+    border-radius: 14px;
+  }
+  .receipt-tape .sawtooth {
+    top: 6px;
+  }
+  .receipt-head {
+    padding: 8px 0 10px;
+    margin-bottom: 8px;
+  }
+  .receipt-head h3 {
+    font-size: 16px;
+  }
+  .receipt-items {
+    min-height: 0;
+  }
+  .receipt-row {
+    padding: 8px 0;
+    gap: 6px;
+  }
+  .receipt-empty {
+    padding: 26px 8px;
+  }
+  .receipt-empty .emoji {
+    font-size: 32px;
+    margin-bottom: 6px;
+  }
+  .receipt-total .amount {
+    font-size: 22px;
+  }
+  .receipt-actions {
+    padding: 6px 0;
+  }
+  /* Jami va to'lov — compact */
+  .pay-zone {
+    padding: 16px !important;
+  }
+  .pay-total-display {
+    padding: 4px 0;
+  }
+  .pay-total-display .amount {
+    font-size: 28px;
+    margin-top: 4px;
+  }
+  .pay-btn {
+    min-height: 44px;
+    padding: 12px 8px;
+  }
+  .pay-zone .btn-lg {
+    min-height: 54px;
+    padding: 14px 18px;
+    font-size: 16px;
+  }
+  /* pay-zone inline flex:0 0 320px ni mobile'da butun qatorga yoyish */
+  .cashier-layout .pay-zone {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .cashier-layout .receipt-area {
+    flex: 1 1 100% !important;
+    min-height: 0 !important;
+  }
+  .cashier-layout .receipt-row-wrap {
+    flex-direction: column !important;
+  }
+}
+
 @media (max-width: 480px) {
   .main {
-    padding: 12px;
+    padding: 12px 10px;
   }
   .modal {
     padding: 20px;
     border-radius: 18px;
+    max-width: 94vw;
   }
   .page-head {
     flex-direction: column;
@@ -1924,16 +2173,16 @@ table.data tbody tr:hover {
     margin-bottom: 16px;
   }
   .page-head h1 {
-    font-size: 26px;
+    font-size: 24px;
   }
   .scan-input {
-    font-size: 17px;
-    padding: 15px 14px 15px 50px;
+    font-size: 16px;
+    padding: 15px 14px 15px 46px;
     letter-spacing: 0.08em;
   }
   .camera-btn {
-    width: 100%;
-    justify-content: center;
+    width: auto;
+    padding: 16px 12px;
   }
   .scan-input-wrap {
     min-width: 0 !important;
@@ -1965,6 +2214,7 @@ table.data tbody tr:hover {
   .pay-btn {
     padding: 12px 6px;
     font-size: 12.5px;
+    min-height: 44px;
   }
   .toast-stack {
     right: 12px;
@@ -1982,6 +2232,9 @@ table.data tbody tr:hover {
   }
   .pnf-actions {
     justify-content: center;
+  }
+  .pnf-actions .btn {
+    min-height: 48px;
   }
   .camera-frame {
     aspect-ratio: 3 / 4;

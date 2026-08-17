@@ -356,8 +356,8 @@ export function CashierPage() {
                 </button>
               )}
             </div>
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", flex: 1 }}>
-              <div style={{ flex: "1 1 300px", minHeight: 340 }}>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", flex: 1 }} className="receipt-row-wrap">
+              <div style={{ flex: "1 1 300px", minHeight: 340 }} className="receipt-area">
                 <ReceiptTape />
               </div>
 
