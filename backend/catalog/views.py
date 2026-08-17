@@ -73,7 +73,12 @@ class ProductByBarcodeView(generics.RetrieveAPIView):
     def get_object(self):
         qs = self.get_queryset()
         code = str(self.kwargs.get(self.lookup_url_kwarg, "")).strip()
-        return generics.get_object_or_404(qs, barcode__iexact=code)
+        try:
+            return qs.get(barcode__iexact=code)
+        except Product.DoesNotExist:
+            from rest_framework.exceptions import NotFound
+
+            raise NotFound({"detail": "Bunday mahsulot bazada topilmadi"})
 
 
 class ProductUpsertByBarcodeView(views.APIView):
