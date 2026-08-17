@@ -65,7 +65,10 @@ class ProductByBarcodeView(generics.RetrieveAPIView):
     lookup_url_kwarg = "code"
 
     def get_queryset(self):
-        return Product.objects.filter(shop=self.request.user.shop, is_active=True)
+        # Kassa qidiruvi mahsulotlar ro'yxati bilan bir xil qoidada ishlaydi:
+        # zahirasi 0 yoki aktiv bo'lmagan mahsulot "mavjud emas" hisoblanadi,
+        # shunda kassada "Bunday mahsulot yo'q" paneli chiqadi va oqim to'xtamaydi.
+        return Product.objects.filter(shop=self.request.user.shop, is_active=True, stock_qty__gt=0)
 
     def get_object(self):
         qs = self.get_queryset()
