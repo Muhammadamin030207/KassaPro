@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
 
 import { api } from "../api/client";
 import { useAuthStore } from "../stores/authStore";
-import { useCartStore } from "../stores/cartStore";
 import { useToast } from "../components/Toast";
 import { TiltCard } from "../components/TiltCard";
 import { CameraScannerModal } from "../components/CameraScannerModal";
@@ -26,6 +24,7 @@ export function ProductsPage() {
   const [form, setForm] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [camOpen, setCamOpen] = useState(false);
+  const [notFoundCode, setNotFoundCode] = useState("");
 
   const scanRef = useRef(null);
   const barcodeRef = useRef(null);
@@ -37,8 +36,6 @@ export function ProductsPage() {
   const isOwner = user?.role === "owner";
   const { show } = useToast();
   const qc = useQueryClient();
-  const addItem = useCartStore((s) => s.addItem);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 350);
@@ -113,36 +110,46 @@ export function ProductsPage() {
       setFormOpen(false);
       setForm({ barcode: "", name: "", price: "", cost_price: "", stock_qty: "" });
       setEditingId(null);
-      setTimeout(() => barcodeRef.current?.focus(), 100);
+      setTimeout(() => scanRef.current?.focus(), 100);
     } catch (err) {
       show(err.message, "error");
     }
   };
 
-  // Kod bo'yicha bazadan qidirib topilganda — darhol kassaga qo'shib yuboramiz.
+  // Kod bo'yicha bazadan qidirib topilganda — tahrirlash formasini ochamiz.
   // Topilmasa — yangi mahsulot yaratish formasini ochamiz.
+  // FAKAT: forma ochiq bo'lsa (yangi mahsulot qo'shilyapti) skaner qilingan kod
+  // formadagi barcode maydoniga yoziladi — kassaga hech qachon tashlab yuborilmaydi.
   async function lookupAndFill(code) {
     if (!code) return;
+
+    // Forma ochiq — skaner kassaga tashlamaydi, balki formani to'ldiradi
+    if (formOpen) {
+      setEditingId(null);
+      setForm((f) => ({ ...f, barcode: code }));
+      setTimeout(() => nameRef.current?.focus(), 60);
+      return;
+    }
+
     try {
       const p = await api.get(`products/by-barcode/${encodeURIComponent(code)}/`);
-      addItem({
-        product_id: p.id,
+      // Topildi — shu mahsulotni tahrirlash uchun formani ochamiz (kassaga emas)
+      setEditingId(p.id);
+      setForm({
         barcode: p.barcode,
         name: p.name,
-        price: Number(p.price),
+        price: p.price,
+        cost_price: p.cost_price || "",
+        stock_qty: p.stock_qty || "",
       });
-      show(`Kassaga qo'shildi: ${p.name}`, "success", 1500);
-      navigate("/");
+      setFormOpen(true);
+      setTimeout(() => nameRef.current?.focus(), 120);
     } catch (err) {
       if (err.status === 404) {
-        setEditingId(null);
-        setForm({ barcode: code, name: "", price: "", cost_price: "", stock_qty: "" });
-        setFormOpen(true);
-        setTimeout(() => nameRef.current?.focus(), 120);
+        // Topilmadi — darhol forma ochmaymiz, chiroyli "yo'q" paneli ko'rsatamiz
+        setNotFoundCode(code);
       } else if (err.status === 400) {
-        setEditingId(null);
-        setForm({ barcode: code, name: "", price: "", cost_price: "", stock_qty: "" });
-        setFormOpen(true);
+        setNotFoundCode(code);
         show(err.message, "info", 2200);
       } else {
         show(err.message, "error");
@@ -151,6 +158,15 @@ export function ProductsPage() {
       scanRef.current?.focus();
     }
   }
+
+  // Panelda "Qo'shamiz" bosilganda — shu barcode bilan yangi mahsulot formasini ochadi
+  const openAddFor = (code) => {
+    setNotFoundCode("");
+    setEditingId(null);
+    setForm({ barcode: code, name: "", price: "", cost_price: "", stock_qty: "" });
+    setFormOpen(true);
+    setTimeout(() => nameRef.current?.focus(), 120);
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
@@ -217,6 +233,37 @@ export function ProductsPage() {
           </div>
         </div>
       </motion.div>
+
+      {/* Topilmagan shtrix — chiroyli "yo'q" paneli + qo'shish taklifi */}
+      <AnimatePresence>
+        {notFoundCode && (
+          <motion.div
+            className="product-not-found"
+            initial={{ opacity: 0, y: -12, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 300, damping: 24 }}
+          >
+            <div className="pnf-icon">
+              <Icon name="scan" size={30} />
+            </div>
+            <div className="pnf-body">
+              <div className="pnf-title">Bunday mahsulot yo'q</div>
+              <div className="pnf-sub">
+                <b className="mono">{notFoundCode}</b> — omborda bazada topilmadi, chekka tushmadi
+              </div>
+              <div className="pnf-actions">
+                <button className="btn btn-primary" onClick={() => openAddFor(notFoundCode)}>
+                  <Icon name="plus" /> Shu mahsulotni qo'shamiz
+                </button>
+                <button className="btn btn-ghost" onClick={() => { setNotFoundCode(""); scanRef.current?.focus(); }}>
+                  Yopish
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <motion.div
         className="card glass-panel"

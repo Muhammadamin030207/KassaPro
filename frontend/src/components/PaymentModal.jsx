@@ -19,13 +19,16 @@ import { formatMoney } from "../utils/format";
  */
 export function PaymentModal({ open, method, total = 0, saleId, shopName, onConfirm, onClose }) {
   const isPayme = method === "payme";
-  const brand = isPayme ? "Payme" : "Click";
-  const brandColor = isPayme ? "#47C7FB" : "#30C39E";
+  const isClick = method === "click";
+  const isVisa = method === "visa";
+  const brand = isPayme ? "Payme" : isClick ? "Click" : "Visa";
+  const brandColor = isPayme ? "#47C7FB" : isClick ? "#30C39E" : "#1A1F71";
 
-  // Demo to'lov ma'lumotlari — haqiqiy merchant'ga ulanganda almashtiriladi
-  const cardNumber = isPayme ? "8600 0103 0000 0000" : "8600 0493 0000 0000";
-  const holder = isPayme ? "PAYME / MERCHANT" : "CLICK / MERCHANT";
-  const qrValue = `${brand}|SMARTKASSA|${saleId || ""}|${Number(total || 0).toFixed(2)}`;
+  // Karta to'lov raqamlari — QR ham shu kartaga pul tushish uchun
+  const cardNumber = isVisa ? "4916 9903 3779 9537" : "5614 6821 1575 9963";
+  const cardDigits = cardNumber.replace(/\s+/g, "");
+  const holder = "ASATOVA NILUFAR";
+  const qrValue = cardDigits;
 
   return (
     <Modal open={open} onClose={onClose} size="lg">
@@ -76,27 +79,15 @@ export function PaymentModal({ open, method, total = 0, saleId, shopName, onConf
         </motion.div>
 
         {/* QR kod */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 20,
-            margin: "22px 0 20px",
-            padding: 18,
-            borderRadius: 16,
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid var(--line)",
-            justifyContent: "center",
-          }}
-        >
+        <div className="pay-qr-block">
           <div style={{ background: "#fff", padding: 12, borderRadius: 12, boxShadow: "var(--shadow-md)" }}>
             <QRCodeSVG value={qrValue} size={140} fgColor="#0b1110" />
           </div>
-          <div style={{ textAlign: "left", fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.6, maxWidth: 220 }}>
+          <div className="pay-qr-txt">
             <b style={{ color: "var(--ink)", display: "block", marginBottom: 4 }}>
-              {isPayme ? "Payme ilovasida skanerlang" : "Click ilovasida skanerlang"}
+              {brand} orqali o'tkazing
             </b>
-            QR kodni skanerlab, so'mmasini tasdiqlang.
+            Karta raqamiga pul o'tkazing yoki QR kodni {isVisa ? "bank ilovasida" : isPayme ? "Payme" : "Click"} ilovasida skanerlang.
             To'lov kelgach quyidagi tugmani bosing.
           </div>
         </div>

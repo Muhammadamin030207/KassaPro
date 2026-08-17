@@ -13,6 +13,7 @@ class Sale(models.Model):
         CARD = "card", "Karta"
         CLICK = "click", "Click"
         PAYME = "payme", "Payme"
+        VISA = "visa", "Visa"
 
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="sales")
     cashier = models.ForeignKey(

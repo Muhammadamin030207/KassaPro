@@ -1,7 +1,8 @@
 import { forwardRef } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { formatMoney } from "../utils/format";
 
-const PAY_NAMES = { cash: "Naqd", card: "Karta", click: "Click", payme: "Payme" };
+const PAY_NAMES = { cash: "Naqd", card: "Karta", click: "Click", payme: "Payme", visa: "Visa" };
 
 /** Kodni 1D barcode ko'rinishidagi chiziqlarga aylantiradi (faqat ko'rinish uchun). */
 function barcodeBars(code) {
@@ -29,6 +30,8 @@ export const ReceiptPrint = forwardRef(function ReceiptPrint(
   const id = sale?.id ? String(sale.id).padStart(6, "0") : "";
   const itemsFingerprint = `${id}${sale?.total || 0}`;
   const shopsave = (shopName || "SmartKassa").toUpperCase();
+  // Soliq/keshbek QR — fiskal keshbek tizimi uchun (my.soliq.uz / keshbek)
+  const taxQr = `https://soliq.uz/tmc/${id}?total=${sale?.total || 0}`;
 
   return (
     <div className="print-receipt" ref={ref}>
@@ -75,6 +78,18 @@ export const ReceiptPrint = forwardRef(function ReceiptPrint(
       <div className="pr-divider" />
       <div className="pr-code-bars" style={{ backgroundImage: `repeating-linear-gradient(90deg, ${barcodeBars(itemsFingerprint)}#000 0 0.7mm, transparent 0.7mm 1.6mm)` }} />
       <div className="pr-code-text">{itemsFingerprint}</div>
+
+      {/* Soliq/keshbek QR — skanerlaganda keshbek qaytariladi */}
+      <div className="pr-taxq">
+        <div className="pr-taxq-inner">
+          <QRCodeSVG value={taxQr} size={92} fgColor="#000" bgColor="#fff" />
+          <div className="pr-taxq-txt">
+            <b>KESHBЕК / SOLIQ</b>
+            <span>Skanerlab pulingizni qaytaring</span>
+          </div>
+        </div>
+      </div>
+
       <div className="pr-priv" style={{ textAlign: "center", fontSize: 9, color: "#777", marginTop: "1mm" }}>
         Ushbu chek kassa jihozining esdalik hujjati hisoblanadi
       </div>
