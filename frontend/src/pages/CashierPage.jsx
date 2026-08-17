@@ -12,6 +12,7 @@ import { ReceiptPrint } from "../components/ReceiptPrint";
 import { CameraScannerModal } from "../components/CameraScannerModal";
 import { SuccessOverlay } from "../components/SuccessOverlay";
 import { PaymentModal } from "../components/PaymentModal";
+import { NasiyaCustomerModal } from "../components/NasiyaCustomerModal";
 import Icon from "../components/Icon";
 import { useCountUp } from "../hooks/useCountUp";
 import { formatMoney } from "../utils/format";
@@ -22,6 +23,7 @@ const PAY_METHODS = [
   { key: "click", label: "Click" },
   { key: "payme", label: "Payme" },
   { key: "visa", label: "Visa" },
+  { key: "nasiya", label: "Nasiya" },
 ];
 
 /** Naqd/karta — to'g'ridan to'g'ri, Click/Payme/Visa — QR+karta modali orqali */
@@ -46,6 +48,8 @@ export function CashierPage() {
   const [printOpen, setPrintOpen] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const [camOpen, setCamOpen] = useState(false);
+  const [nasiyaOpen, setNasiyaOpen] = useState(false);
+  const [nasiyaCustomer, setNasiyaCustomer] = useState(null);
 
   const inputRef = useRef(null);
   const quickNameRef = useRef(null);
@@ -167,9 +171,14 @@ export function CashierPage() {
     setTimeout(() => quickNameRef.current?.focus(), 80);
   };
 
-  // To'lov: Click/Payme bo'lsa QR+karta modali avval ko'rsatiladi
+  // To'lov: Click/Payme/Visa bo'lsa QR+karta modali avval ko'rsatiladi;
+  // Nasiya bo'lsa mijozni tanlash modali ochiladi.
   const onPay = () => {
     if (!hasItems) return;
+    if (payment === "nasiya") {
+      setNasiyaOpen(true);
+      return;
+    }
     if (ONLINE_METHODS.includes(payment)) {
       setPayOpen(true);
       return;
@@ -178,18 +187,36 @@ export function CashierPage() {
   };
 
   // Sotuvni yakunlash (asosiy API chaqiruvi)
-  const checkout = async () => {
+  const checkout = async (customer) => {
     if (!hasItems) return;
     setPaying(true);
     setPayOpen(false);
+    setNasiyaOpen(false);
     try {
-      const sale = await api.post("sales/", {
+      const payload = {
         payment_method: payment,
         items: items.map((it) => ({ product_id: it.product_id, qty: it.qty })),
-      });
+      };
+      if (payment === "nasiya") {
+        const phone = customer?.phone || nasiyaCustomer?.phone;
+        if (!phone) {
+          setPaying(false);
+          show("Nasiya uchun mijoz telefonini tanlang", "error");
+          return;
+        }
+        payload.phone = phone;
+      }
+      const sale = await api.post("sales/", payload);
       setLastSale(sale);
       clearCart();
-      show(`Sotuv saqlandi: ${formatMoney(sale.total)}`, "success", 2000);
+      setNasiyaCustomer(null);
+      show(
+        payment === "nasiya"
+          ? `Nasiya saqlandi: ${formatMoney(sale.total)}`
+          : `Sotuv saqlandi: ${formatMoney(sale.total)}`,
+        "success",
+        2000
+      );
       setCelebrate(true);
     } catch (err) {
       show(err.message, "error");
@@ -449,6 +476,18 @@ export function CashierPage() {
         shopName={user?.shop_name}
         onConfirm={checkout}
         onClose={() => setPayOpen(false)}
+      />
+
+      {/* Nasiya — mijoz tanlash/yangi yaratish */}
+      <NasiyaCustomerModal
+        open={nasiyaOpen}
+        total={total}
+        onSelect={(c) => {
+          setNasiyaCustomer(c);
+          setNasiyaOpen(false);
+          checkout(c);
+        }}
+        onClose={() => setNasiyaOpen(false)}
       />
 
       {/* Chop etish modali */}

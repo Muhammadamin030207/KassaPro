@@ -14,10 +14,18 @@ class Sale(models.Model):
         CLICK = "click", "Click"
         PAYME = "payme", "Payme"
         VISA = "visa", "Visa"
+        NASIYA = "nasiya", "Nasiya"
 
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name="sales")
     cashier = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    customer = models.ForeignKey(
+        "customers.Customer",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sales",
     )
     total = models.DecimalField(max_digits=14, decimal_places=2)
     payment_method = models.CharField(

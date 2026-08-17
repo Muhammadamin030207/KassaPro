@@ -57,9 +57,10 @@ class ProductSerializer(serializers.ModelSerializer):
         qs = Product.objects.filter(shop=self.context["request"].user.shop)
         if self.instance:
             qs = qs.exclude(pk=self.instance.pk)
-        if qs.filter(barcode__iexact=value).exists():
+        dup = qs.filter(barcode__iexact=value).first()
+        if dup:
             raise serializers.ValidationError(
-                f"Bu shtrix kod allaqachon ishlatilgan: {value}"
+                f"Bu shtrix kod '{dup.name}' mahsulotiga tegishli."
             )
         return value
 
@@ -104,9 +105,10 @@ class ProductUpsertSerializer(serializers.ModelSerializer):
         qs = Product.objects.filter(shop=self.context["request"].user.shop)
         if self.instance:
             qs = qs.exclude(pk=self.instance.pk)
-        if qs.filter(barcode__iexact=value).exists():
+        dup = qs.filter(barcode__iexact=value).first()
+        if dup:
             raise serializers.ValidationError(
-                f"Bu shtrix kod allaqachon ishlatilgan: {value}"
+                f"Bu shtrix kod '{dup.name}' mahsulotiga tegishli."
             )
         return value
 

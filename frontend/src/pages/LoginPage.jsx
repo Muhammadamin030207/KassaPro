@@ -7,6 +7,7 @@ import { useAuthStore } from "../stores/authStore";
 import { useToast } from "../components/Toast";
 import { Modal } from "../components/Modal";
 import { Scene3D } from "../components/Scene3D";
+import { PhoneInputMask } from "../components/PhoneInputMask";
 
 const fieldBase = {
   initial: { opacity: 0, y: 14 },
@@ -140,8 +141,11 @@ export function LoginPage() {
             <input className="input" value={reg.shop_name} onChange={(e) => setReg({ ...reg, shop_name: e.target.value })} required />
           </div>
           <div className="field">
-            <label>Manzil (ixtiyoriy)</label>
-            <input className="input" value={reg.address} onChange={(e) => setReg({ ...reg, address: e.target.value })} />
+            <label>Telefon (ixtiyoriy)</label>
+            <PhoneInputMask
+              value={reg.phone}
+              onChange={(v) => setReg({ ...reg, phone: v })}
+            />
           </div>
           <div className="grid-2">
             <div className="field">

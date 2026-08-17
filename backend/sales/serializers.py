@@ -4,6 +4,8 @@ from django.db import transaction
 from rest_framework import serializers
 
 from catalog.models import Product
+from customers.models import Customer, DebtTransaction
+from customers.utils import normalize_phone
 from sales.models import Sale, SaleItem
 
 
@@ -38,6 +40,18 @@ class SaleCreateSerializer(serializers.Serializer):
 
     payment_method = serializers.ChoiceField(choices=Sale.PaymentMethod.choices)
     items = SaleItemInputSerializer(many=True)
+    phone = serializers.CharField(required=False, allow_blank=True, write_only=True)
+
+    def validate(self, attrs):
+        # Nasiya uchun telefon talab qilinadi
+        if attrs.get("payment_method") == Sale.PaymentMethod.NASIYA:
+            phone = normalize_phone(attrs.get("phone", ""))
+            if not phone or len(phone) != 13:
+                raise serializers.ValidationError(
+                    {"phone": "Nasiya uchun mijozning telefon raqami talab qilinadi."}
+                )
+            attrs["phone"] = phone
+        return attrs
 
     def validate_items(self, value):
         if not value:
@@ -115,6 +129,23 @@ class SaleCreateSerializer(serializers.Serializer):
             payment_method=validated_data["payment_method"],
         )
 
+        # Nasiya: mijozni top yoki yarat, qarz DEBT yozuvini avtomatik qo'sh
+        if sale.payment_method == Sale.PaymentMethod.NASIYA:
+            phone = validated_data.get("phone", "")
+            customer, _ = Customer.objects.get_or_create(
+                shop=shop, phone=phone, defaults={"name": phone}
+            )
+            sale.customer = customer
+            sale.save(update_fields=["customer"])
+            DebtTransaction.objects.create(
+                customer=customer,
+                type=DebtTransaction.Type.DEBT,
+                amount=sale.total,
+                sale=sale,
+                note="Nasiya sotuvi",
+                created_by=user,
+            )
+
         for si in sale_items:
             SaleItem.objects.create(
                 sale=sale,
@@ -130,6 +161,8 @@ class SaleCreateSerializer(serializers.Serializer):
 
 class SaleSerializer(serializers.ModelSerializer):
     cashier_name = serializers.SerializerMethodField()
+    customer_name = serializers.CharField(source="customer.name", read_only=True, default="")
+    customer_phone = serializers.CharField(source="customer.phone", read_only=True, default="")
     payment_method_display = serializers.CharField(
         source="get_payment_method_display", read_only=True
     )
@@ -142,6 +175,9 @@ class SaleSerializer(serializers.ModelSerializer):
             "shop",
             "cashier",
             "cashier_name",
+            "customer",
+            "customer_name",
+            "customer_phone",
             "total",
             "payment_method",
             "payment_method_display",

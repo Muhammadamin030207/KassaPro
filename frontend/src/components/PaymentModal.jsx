@@ -51,7 +51,7 @@ export function PaymentModal({ open, method, total = 0, saleId, shopName, onConf
           animate={{ rotateY: 0, opacity: 1 }}
           transition={{ type: "spring", stiffness: 200, damping: 18, delay: 0.1 }}
           style={{
-            background: `linear-gradient(135deg, ${brandColor}, #0e7c5a)`,
+            background: `linear-gradient(135deg, ${brandColor}, #4338ca)`,
             borderRadius: 20,
             padding: "22px 24px",
             color: "#fff",
@@ -81,7 +81,7 @@ export function PaymentModal({ open, method, total = 0, saleId, shopName, onConf
         {/* QR kod */}
         <div className="pay-qr-block">
           <div style={{ background: "#fff", padding: 12, borderRadius: 12, boxShadow: "var(--shadow-md)" }}>
-            <QRCodeSVG value={qrValue} size={140} fgColor="#0b1110" />
+            <QRCodeSVG value={qrValue} size={140} fgColor="#0f1115" />
           </div>
           <div className="pay-qr-txt">
             <b style={{ color: "var(--ink)", display: "block", marginBottom: 4 }}>

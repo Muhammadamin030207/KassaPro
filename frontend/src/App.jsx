@@ -7,6 +7,7 @@ import CashierPage from "./pages/CashierPage";
 import ProductsPage from "./pages/ProductsPage";
 import ReportsPage from "./pages/ReportsPage";
 import StaffPage from "./pages/StaffPage";
+import DebtsPage from "./pages/DebtsPage";
 
 /**
  * Sahifa himoyasi: login bo'lmagan yo token eskirgan bo'lsa /login'ga.
@@ -39,6 +40,7 @@ export default function App() {
       <Route path="/" element={<Protected><CashierPage /></Protected>} />
       <Route path="/products" element={<Protected><ProductsPage /></Protected>} />
       <Route path="/reports" element={<Protected><ReportsPage /></Protected>} />
+      <Route path="/debts" element={<Protected><DebtsPage /></Protected>} />
       <Route
         path="/staff"
         element={
