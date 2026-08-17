@@ -85,10 +85,8 @@ class DailyReportView(views.APIView):
                 0,
                 output_field=DecimalField(max_digits=14, decimal_places=2),
             ),
-        )
-        totals = sales.aggregate(
-            total=Coalesce(
-                Sum("total"),
+            total_revenue=Coalesce(
+                Sum(F("price_snapshot") * F("qty")),
                 0,
                 output_field=DecimalField(max_digits=14, decimal_places=2),
             ),
@@ -112,11 +110,11 @@ class DailyReportView(views.APIView):
         return response.Response(
             {
                 "date": day,
-                "total_revenue": totals["total"],
+                "total_revenue": agg["total_revenue"],
                 "sale_count": sales.count(),
                 "items_sold": agg["items_sold"],
                 "avg_sale": (
-                    round(float(totals["total"]) / sales.count(), 2)
+                    round(float(agg["total_revenue"]) / sales.count(), 2)
                     if sales.count()
                     else 0
                 ),
@@ -147,22 +145,24 @@ class SummaryReportView(views.APIView):
             sale__created_at__date__lte=to_param,
         )
 
-        totals = sales.aggregate(
-            total_revenue=Coalesce(
-                Sum("total"),
+        profit = items.aggregate(
+            total_profit=Coalesce(
+                Sum(
+                    (F("price_snapshot") - Coalesce(F("product__cost_price"), Decimal("0")))
+                    * F("qty")
+                ),
                 0,
                 output_field=DecimalField(max_digits=14, decimal_places=2),
             ),
         )
-        profit = items.annotate(
-            cost_snapshot=Coalesce(
-                F("product__cost_price"),
-                Decimal("0"),
-                output_field=DecimalField(max_digits=12, decimal_places=2),
-            )
-        ).aggregate(
-            total_profit=Coalesce(
-                Sum((F("price_snapshot") - F("cost_snapshot")) * F("qty")),
+        totals = items.aggregate(
+            total_revenue=Coalesce(
+                Sum(F("price_snapshot") * F("qty")),
+                0,
+                output_field=DecimalField(max_digits=14, decimal_places=2),
+            ),
+            items_sold=Coalesce(
+                Sum("qty"),
                 0,
                 output_field=DecimalField(max_digits=14, decimal_places=2),
             ),
@@ -194,13 +194,7 @@ class SummaryReportView(views.APIView):
                 "total_revenue": totals["total_revenue"] or 0,
                 "total_profit": profit["total_profit"] or 0,
                 "sale_count": sales.count(),
-                "items_sold": items.aggregate(
-                    items=Coalesce(
-                        Sum("qty"),
-                        0,
-                        output_field=DecimalField(max_digits=14, decimal_places=2),
-                    )
-                )["items"],
+                "items_sold": totals["items_sold"],
                 "by_cashier": by_cashier,
                 "top_products": list(by_product),
                 "daily_series": [
