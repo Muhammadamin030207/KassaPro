@@ -46,3 +46,5 @@ echo "  Manzil:      http://localhost:$FRONTEND_PORT"
 echo "  Admin login: admin / admin123"
 echo "  To'xtatish:  kill $BACK_PID $FRONT_PID"
 echo "=========================================================="
+
+wait -n "$BACK_PID" "$FRONT_PID"
