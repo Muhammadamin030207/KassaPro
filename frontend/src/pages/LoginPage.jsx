@@ -34,7 +34,11 @@ export function LoginPage() {
     setLoading(true);
     try {
       const data = await api.post("auth/login/", { username, password });
-      login(data);
+      if (!data || !data.access) {
+        throw new Error("Serverdan bo'sh javob keldi — qayta urinib ko'ring");
+      }
+      const ok = login(data);
+      if (!ok) throw new Error("Login natijasi saqlanmadi");
       show("Xush kelibsiz!", "success");
       navigate("/");
     } catch (err) {
@@ -49,11 +53,16 @@ export function LoginPage() {
     setLoading(true);
     try {
       const user = await api.post("auth/register/", reg);
+      if (!user) throw new Error("Serverdan bo'sh javob keldi");
       const data = await api.post("auth/login/", {
         username: user.username,
         password: reg.password,
       });
-      login(data);
+      if (!data || !data.access) {
+        throw new Error("Ro'yxatdan o'tdi, lekin kirishda xatolik — qayta kiring");
+      }
+      const ok = login(data);
+      if (!ok) throw new Error("Login natijasi saqlanmadi");
       show("Do'kon yaratildi!", "success");
       setRegisterOpen(false);
       navigate("/");

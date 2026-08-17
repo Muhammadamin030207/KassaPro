@@ -12,9 +12,20 @@ export const useAuthStore = create(
       access: null,
       refresh: null,
 
-      setTokens: ({ access, refresh }) => set({ access, refresh }),
+      setTokens: ({ access, refresh } = {}) => set({ access, refresh }),
       setUser: (user) => set({ user }),
-      login: ({ access, refresh, user }) => set({ access, refresh, user }),
+      login: (data) => {
+        if (!data || typeof data !== "object") {
+          console.error("LOGIN DATA NULL:", data);
+          return false;
+        }
+        set({
+          access: data.access || null,
+          refresh: data.refresh || null,
+          user: data.user || null,
+        });
+        return true;
+      },
       logout: () => set({ user: null, access: null, refresh: null }),
     }),
     { name: "smartkassa-auth" }
