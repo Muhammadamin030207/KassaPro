@@ -1473,6 +1473,11 @@ table.data tbody tr:hover {
   letter-spacing: 0.4px;
   color: #d1fae5;
 }
+.boot-sub {
+  font-size: 13px;
+  color: #64748b;
+  animation: bootPulse 1.4s ease-in-out infinite;
+}
 @keyframes bootPulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.08); }

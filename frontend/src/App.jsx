@@ -59,41 +59,57 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
-  // PWA standalone: access token eskirgan bo'lsa refresh orqali tiklash.
-  // Aks holda / -> /login -> / cheksiz loop (bounce) yuz beradi.
+  // PWA standalone / sahifa ochilishi: access token eskirgan bo'lsa refresh
+  // orqali tiklash. Aks holda / -> /login -> / cheksiz loop (bounce) yuz beradi.
   useEffect(() => {
+    let cancelled = false;
     const boot = async () => {
       const { access, refresh, setTokens, setUser, logout } = useAuthStore.getState();
+
+      // Token hali amalga ega bo'lsa — darhol kiramiz.
+      if (access && !isTokenExpired(access)) {
+        if (!cancelled) setBooted(true);
+        return;
+      }
+      // Refresh token bo'lmasa — login zarur, sessiya artish ham shart emas.
+      if (!refresh) {
+        if (!cancelled) setBooted(true);
+        return;
+      }
       try {
-        if (isTokenExpired(access) && refresh) {
-          const res = await fetch(`${BASE}/auth/refresh/`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refresh }),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            setTokens(data);
-            // User ma'lumotini ham yangilaymiz
-            const me = await fetch(`${BASE}/auth/me/`, {
-              headers: { Authorization: `Bearer ${data.access}` },
-            });
-            if (me.ok) {
-              setUser(await me.json());
-            }
-          } else {
-            logout();
-          }
-        } else if (!access) {
+        const res = await fetch(`${BASE}/auth/refresh/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh }),
+        });
+        if (!res.ok) {
+          // Refresh rad etildi (muddat tugagan) — sessiyani tozalab login'ga.
           logout();
+          if (!cancelled) setBooted(true);
+          return;
         }
+        const data = await res.json();
+        setTokens(data);
+        const me = await fetch(`${BASE}/auth/me/`, {
+          headers: { Authorization: `Bearer ${data.access}` },
+        });
+        if (me.ok) {
+          setUser(await me.json());
+        }
+        if (!cancelled) setBooted(true);
       } catch {
-        logout();
-      } finally {
-        setBooted(true);
+        // Tarmoq xatosi — backend uyqudan uyg'onayotgan yoki aloqa yo'q.
+        // Sessiyani O'CHIRMAYMIZ: 5 soniyadan keyin qayta urinamiz,
+        // aks holda ilova "otib yuborib" login'ga tashlab qo'ygan bo'lardi.
+        if (!cancelled) {
+          setTimeout(boot, 5000);
+        }
       }
     };
     boot();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!booted) {
@@ -101,6 +117,7 @@ export default function App() {
       <div className="boot-screen">
         <img src="/favicon.svg" alt="KassaPro" />
         <div className="boot-title">KassaPro</div>
+        <div className="boot-sub">Ulanish davom etmoqda, bir oz kuting...</div>
       </div>
     );
   }

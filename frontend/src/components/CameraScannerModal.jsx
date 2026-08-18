@@ -6,9 +6,10 @@ import Icon from "./Icon";
 let scanUID = 0;
 
 /**
- * Kamera orqali shtrix kod skanerlash modali.
+ * Sthrix-kod skaneri modali (shtrix-kod skanerlash uchun kamera).
  * Kamera ruxsati berilishi shart (https). Kod aniqlanganda onDetected(code).
- * Orqa (environment) / oldi (user) kamera o'rtasida almashish tugmasi mavjud.
+ * Orqa (environment) / oldi (user) kamera o'rtasida almashish va fonar
+ * (chiroq) tugmasi mavjud. Aniqlanganda qisqa tebranish beriladi.
  *
  * @param {{ open: boolean, onClose: function, onDetected: function(string): void }} props
  */
@@ -16,11 +17,14 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
   const [error, setError] = useState(null);
   const [flash, setFlash] = useState(false);
   const [facing, setFacing] = useState("environment");
+  const [torch, setTorch] = useState(false);
   const scannerRef = useRef(null);
   const onDetectedRef = useRef(onDetected);
   onDetectedRef.current = onDetected;
   const facingRef = useRef(facing);
   facingRef.current = facing;
+  const torchRef = useRef(torch);
+  torchRef.current = torch;
 
   const [readerId] = useState(() => `camera-reader-${++scanUID}`);
 
@@ -45,6 +49,11 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
               if (!text) return;
               onDetectedRef.current?.(text);
               setFlash(true);
+              try {
+                navigator.vibrate?.(120);
+              } catch {
+                /* e'tiborsiz */
+              }
               setTimeout(() => setFlash(false), 350);
               // Duplikat urilmasligi uchun qisqa pauza
               try {
@@ -64,15 +73,18 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
         })
         .catch(() => {
           if (!cancelled) {
-            setError("Kamera ochilmadi. Brauzer ruxsat so'raganda «Ruxsat berish»ni bosing.");
-          }
-        });
+setError("Skaner ochilmadi. Brauzer ruxsat so'raganda «Ruxsat berish»ni bosing.");
+        }
+      });
     };
 
     startScanner();
 
     return () => {
       cancelled = true;
+      // Fonarni o'chirib qo'yamiz
+      torchRef.current = false;
+      setTorch(false);
       const s = scannerRef.current;
       scannerRef.current = null;
       if (s) {
@@ -82,6 +94,19 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
       }
     };
   }, [open, readerId]);
+
+  // Fonar (chiroq) — orqa kameraning torch ini yoqadi/o'chiradi
+  const toggleTorch = async () => {
+    const next = !torchRef.current;
+    const s = scannerRef.current;
+    setTorch(next);
+    torchRef.current = next;
+    try {
+      await s?.applyVideoConstraints({ advanced: [{ torch: next }] });
+    } catch {
+      setError("Fonar bu qurilmada qo'llab-quvvatlanmaydi.");
+    }
+  };
 
   // Oldi / orqa kamera almashish
   const switchCamera = async () => {
@@ -129,15 +154,24 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
         );
       })
       .catch(() => {
-        setError("Kamera almashdi, lekin yangi kamera ochilmadi.");
+        setError("Skaner almashmadi, lekin yangi kamera ochilmadi.");
       });
   };
 
   return (
     <Modal open={open} onClose={onClose} size="lg">
       <div className="flex spread" style={{ marginBottom: 14 }}>
-        <h3>Kamera orqali skanerlash</h3>
+        <h3>Shtrix-kod skaneri</h3>
         <div className="flex" style={{ gap: 8 }}>
+          <button
+            className="ghost-btn"
+            onClick={toggleTorch}
+            title={torch ? "Fonarni o'chirish" : "Fonarni yoqish"}
+            aria-label="Fonar"
+            style={{ color: torch ? "var(--warn)" : "inherit" }}
+          >
+            <Icon name="zap" /> Fonar
+          </button>
           <button className="ghost-btn" onClick={switchCamera} title="Oldi/orqa kamera">
             <Icon name="refresh" /> {facing === "environment" ? "Orqa" : "Oldi"}
           </button>

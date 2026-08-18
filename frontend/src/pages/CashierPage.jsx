@@ -308,12 +308,12 @@ export function CashierPage() {
             <motion.button
               className="camera-btn"
               onClick={() => setCamOpen(true)}
-              title="Kamera orqali skanerlash"
-              aria-label="Kamera orqali skanerlash"
+              title="Skaner orqali qidirish"
+              aria-label="Skaner orqali qidirish"
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
             >
-              <Icon name="camera" /> <span className="cam-lbl">Kamera</span>
+              <Icon name="camera" /> <span className="cam-lbl">Skaner</span>
             </motion.button>
           </div>
 

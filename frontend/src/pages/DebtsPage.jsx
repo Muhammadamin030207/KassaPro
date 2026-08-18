@@ -25,6 +25,7 @@ export function DebtsPage() {
   const [payAmount, setPayAmount] = useState("");
   const [payNote, setPayNote] = useState("");
   const [paying, setPaying] = useState(false);
+  const [payDone, setPayDone] = useState(null);
   const [reload, setReload] = useState(0);
 
   const load = useCallback(async () => {
@@ -59,6 +60,17 @@ export function DebtsPage() {
     setPayOpen(true);
     setPayAmount("");
     setPayNote("");
+    setPayDone(null);
+  };
+
+  const closePay = () => {
+    setPayOpen(false);
+    const done = payDone;
+    setPayDone(null);
+    // To'liq yopilganda mijoz chindan o'chib ketgan bo'lishi mumkin —
+    // ghost detal kartochka qolmasligi uchun detail'ni ham tozalaymiz.
+    if (done?.deleted) setDetail(null);
+    setReload((r) => r + 1);
   };
 
   const submitPay = async () => {
@@ -74,10 +86,9 @@ export function DebtsPage() {
         type: "payment",
         note: payNote,
       });
-      setDetail(res);
-      setPayOpen(false);
-      setReload((r) => r + 1);
-      show(res.deleted ? "Qarz to'liq yopildi — mijoz ro'yxatdan o'chirildi" : "To'lov qabul qilindi", "success");
+      // To'liq to'lov bo'lsa backend mijozni DB'dan o'chirib "deleted" qaytaradi.
+      setPayDone(res);
+      setDetail(null);
     } catch (err) {
       show(err.message, "error");
     } finally {
@@ -229,40 +240,89 @@ export function DebtsPage() {
       </Modal>
 
       {/* To'lov qabul qilish */}
-      <Modal open={payOpen} onClose={() => setPayOpen(false)}>
-        <h3>Qarz to'lovi</h3>
-        <div className="sub" style={{ marginBottom: 18 }}>
-          {detail?.name} · <span className="mono">{detail?.phone}</span> — qarzi{" "}
-          <b className="mono">{formatMoney(detail?.balance)}</b>
-        </div>
-        <div className="field">
-          <label>To'lov miqdori (so'm)</label>
-          <input
-            className="input mono"
-            type="number"
-            min="1"
-            value={payAmount}
-            onChange={(e) => setPayAmount(e.target.value)}
-            placeholder="Qarz miqdoridan oshmasligi kerak"
-          />
-        </div>
-        <div className="field">
-          <label>Izoh (ixtiyoriy)</label>
-          <input
-            className="input"
-            value={payNote}
-            onChange={(e) => setPayNote(e.target.value)}
-            placeholder="Masalan: 10.08.2026 qisman to'lov"
-          />
-        </div>
-        <div className="grid-2">
-          <button className="btn btn-ghost" onClick={() => setPayOpen(false)}>
-            Bekor qilish
-          </button>
-          <button className="btn btn-primary" disabled={paying} onClick={submitPay}>
-            <Icon name="check" /> To'langanini tasdiqlash
-          </button>
-        </div>
+      <Modal open={payOpen} onClose={() => { if (!paying) closePay(); }}>
+        {!payDone ? (
+          <AnimatePresence mode="wait">
+            <motion.div key="pay" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <h3>Qarz to'lovi</h3>
+              <div className="sub" style={{ marginBottom: 18 }}>
+                {detail?.name} · <span className="mono">{detail?.phone}</span> — qarzi{" "}
+                <b className="mono">{formatMoney(detail?.balance)}</b>
+              </div>
+              <div className="field">
+                <label>To'lov miqdori (so'm)</label>
+                <input
+                  className="input mono"
+                  type="number"
+                  min="1"
+                  value={payAmount}
+                  onChange={(e) => setPayAmount(e.target.value)}
+                  placeholder="Qarz miqdoridan oshmasligi kerak"
+                />
+              </div>
+              <div className="field">
+                <label>Izoh (ixtiyoriy)</label>
+                <input
+                  className="input"
+                  value={payNote}
+                  onChange={(e) => setPayNote(e.target.value)}
+                  placeholder="Masalan: 10.08.2026 qisman to'lov"
+                />
+              </div>
+              <div className="grid-2">
+                <button className="btn btn-ghost" onClick={closePay} disabled={paying}>
+                  Bekor qilish
+                </button>
+                <button className="btn btn-primary" disabled={paying} onClick={submitPay}>
+                  <Icon name="check" /> {paying ? "Saqlanmoqda..." : "To'langanini tasdiqlash"}
+                </button>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", stiffness: 260, damping: 22 }}
+            style={{ textAlign: "center", padding: "6px 0 2px" }}
+          >
+            <motion.div
+              initial={{ scale: 0.5 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 240, damping: 14 }}
+              style={{
+                width: 56,
+                height: 56,
+                margin: "0 auto 12px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #10b981, #34d399)",
+                color: "#04231a",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Icon name="check" size={28} />
+            </motion.div>
+            <h3>{payDone.deleted ? "Qarz to'liq yopildi" : "To'lov qabul qilindi"}</h3>
+            <div className="sub" style={{ color: "var(--ink-soft)", margin: "10px 0 4px" }}>
+              {payDone.deleted ? (
+                <>
+                  <b style={{ color: "var(--success)" }}>{payDone.name || detail?.name}</b> qarzini to'liq
+                  to'ladi — mijoz qarzdorlar ro'yxatidan o'chirildi.
+                </>
+              ) : (
+                <>
+                  Qolgan qarz:{" "}
+                  <b className="mono" style={{ color: "var(--warn)" }}>{formatMoney(payDone.balance)}</b>
+                </>
+              )}
+            </div>
+            <button className="btn btn-accent btn-lg btn-block" style={{ marginTop: 20 }} onClick={closePay}>
+              Yopish
+            </button>
+          </motion.div>
+        )}
       </Modal>
     </motion.div>
   );
