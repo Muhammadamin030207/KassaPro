@@ -32,5 +32,9 @@ class User(AbstractUser):
         return self.role == self.Role.OWNER
 
     @property
+    def role_is_owner(self):
+        return self.is_owner or self.is_superuser
+
+    @property
     def is_cashier(self):
         return self.role == self.Role.CASHIER

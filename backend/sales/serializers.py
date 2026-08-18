@@ -1,10 +1,12 @@
+from datetime import timedelta
 from decimal import Decimal
 
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
 
 from catalog.models import Product
-from customers.models import Customer, DebtTransaction
+from customers.models import AuditLog, Customer, Debt
 from customers.utils import normalize_phone
 from sales.models import Sale, SaleItem
 
@@ -41,9 +43,16 @@ class SaleCreateSerializer(serializers.Serializer):
     payment_method = serializers.ChoiceField(choices=Sale.PaymentMethod.choices)
     items = SaleItemInputSerializer(many=True)
     phone = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    customer_name = serializers.CharField(
+        required=False, allow_blank=True, max_length=255, write_only=True
+    )
+    due_date = serializers.DateField(required=False, write_only=True)
+    force_credit = serializers.BooleanField(
+        required=False, default=False, write_only=True
+    )
 
     def validate(self, attrs):
-        # Nasiya uchun telefon talab qilinadi
+        # Nasiya uchun mijoz telefoni talab qilinadi
         if attrs.get("payment_method") == Sale.PaymentMethod.NASIYA:
             phone = normalize_phone(attrs.get("phone", ""))
             if not phone or len(phone) != 13:
@@ -130,21 +139,62 @@ class SaleCreateSerializer(serializers.Serializer):
             payment_method=validated_data["payment_method"],
         )
 
-        # Nasiya: mijozni top yoki yarat, qarz DEBT yozuvini avtomatik qo'sh
+        # Nasiya: mijozni top yoki yarat; kredit limitni tekshirib qarz yozadi
         if sale.payment_method == Sale.PaymentMethod.NASIYA:
             phone = validated_data.get("phone", "")
             customer, _ = Customer.objects.get_or_create(
-                shop=shop, phone=phone, defaults={"name": phone}
+                shop=shop,
+                phone=phone,
+                defaults={
+                    "name": validated_data.get("customer_name", "")
+                    or phone
+                },
             )
             sale.customer = customer
             sale.save(update_fields=["customer"])
-            DebtTransaction.objects.create(
+
+            # Kredit limiti tekshiruvi (overridable)
+            new_balance = customer.balance + sale.total
+            allow_force = validated_data.get("force_credit", False)
+            if (
+                customer.has_credit_limit
+                and new_balance > customer.credit_limit
+                and not allow_force
+            ):
+                raise serializers.ValidationError(
+                    {
+                        "credit": (
+                            "Bu mijozning kredit limiti yetarli emas. "
+                            f"Limit: {customer.credit_limit} so'm, kutilayotgan jami qarz: "
+                            f"{new_balance} so'm. Egasi/admin `force_credit` bilan tasdiqlashi mumkin."
+                        )
+                    }
+                )
+
+            due_date = validated_data.get("due_date") or (
+                timezone.localdate() + timedelta(days=7)
+            )
+            debt = Debt.objects.create(
                 customer=customer,
-                type=DebtTransaction.Type.DEBT,
-                amount=sale.total,
+                shop=shop,
                 sale=sale,
+                original_amount=sale.total,
+                remaining_amount=sale.total,
+                due_date=due_date,
                 note="Nasiya sotuvi",
                 created_by=user,
+            )
+            AuditLog.objects.create(
+                shop=shop,
+                actor=user,
+                action=AuditLog.Action.DEBT_CREATED,
+                entity="Debt",
+                entity_id=debt.pk,
+                detail={
+                    "sale": sale.pk,
+                    "amount": str(sale.total),
+                    "due_date": str(due_date),
+                },
             )
 
         for si in sale_items:
