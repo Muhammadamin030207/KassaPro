@@ -298,10 +298,11 @@ export function CashierPage() {
               className="camera-btn"
               onClick={() => setCamOpen(true)}
               title="Kamera orqali skanerlash"
+              aria-label="Kamera orqali skanerlash"
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
             >
-              <Icon name="camera" /> Kamera
+              <Icon name="camera" /> <span className="cam-lbl">Kamera</span>
             </motion.button>
           </div>
 
@@ -458,7 +459,7 @@ export function CashierPage() {
                 </AnimatePresence>
 
                 <motion.button
-                  className="btn btn-accent btn-lg btn-block"
+                  className="btn btn-accent btn-lg btn-block pay-checkout"
                   disabled={!hasItems || paying}
                   onClick={onPay}
                   style={{ marginTop: 16 }}

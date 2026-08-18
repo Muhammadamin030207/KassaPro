@@ -623,13 +623,6 @@ select {
   text-shadow: none;
 }
 
-.stat-card .unit {
-  font-family: var(--font-base);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink-soft);
-}
-
 /* ---------- Table ---------- */
 .table-wrap {
   overflow-x: auto;
@@ -2547,249 +2540,250 @@ body {
     object-fit: cover;
   }
 }
+/* ==========================================================================
+   KASSA (POS) MOBILE UI/UX — sticky bottom action bar + overflow fix
+   ========================================================================== */
 
-/* ================================================================
-   KASSA MOBILE — STICKY BOTTOM ACTION BAR (to'lov tugmasi doim ko'rinadi)
-   + gorizontal overflow fix + ixcham scanner + chiroyli chek
-   ================================================================ */
+html, body, #root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.app-shell,
+.main,
+.cashier-page,
+.cashier-layout,
+.scan-zone,
+.card.glass-panel {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* ---------- Mobile: full-height Kassa konteyner ---------- */
 @media (max-width: 768px) {
-  :root {
-    --mob-header-h: 64px;
-  }
-
-  /* Gorizontal surilishni butunlay yo'qotamiz */
-  html,
-  body,
-  #root {
-    width: 100%;
-    overflow-x: hidden;
-  }
-  .app-shell,
-  .main {
-    max-width: 100vw;
-    overflow-x: hidden;
-  }
-  .main {
-    padding-left: 10px;
-    padding-right: 10px;
-  }
-
-  /* Kassa sahifasi — viewport bo'ylab flex ustun: header / scan / chek / to'lov bar */
   .cashier-page {
     display: flex;
     flex-direction: column;
-    height: calc(100dvh - var(--mob-header-h) - 28px);
-    max-height: calc(100dvh - var(--mob-header-h) - 28px);
+    /* mobile-header (65px) + main padding (28px) dan toza viewport */
+    height: calc(100vh - 93px);
+    height: calc(100dvh - 93px);
+    min-height: 0;
     overflow: hidden;
   }
-  .cashier-page > .page-head {
-    flex-shrink: 0;
-    margin-bottom: 10px;
-  }
-  .cashier-page > .page-head h1 {
-    font-size: 22px;
-  }
-  .cashier-page > .page-head .sub {
-    font-size: 12px;
-  }
-  .cashier-page > .page-head .btn {
-    padding: 8px 14px;
-    font-size: 13px;
+
+  .cashier-page .page-head {
+    flex: 0 0 auto;
+    margin-bottom: 12px;
   }
 
-  /* Layout — bitta ustun, qolgan joy chekka */
   .cashier-layout {
     display: flex;
     flex-direction: column;
-    flex: 1;
+    flex: 1 1 auto;
     min-height: 0;
     height: auto;
-    gap: 10px;
+    gap: 12px;
+    overflow: hidden;
   }
 
-  /* Scanner bar ixcham */
   .scan-zone {
-    flex-shrink: 0;
-    gap: 10px;
-    height: auto;
-  }
-  .scan-zone > div:first-child {
-    gap: 8px;
-  }
-  .scan-input-wrap {
+    display: flex;
+    flex-direction: column;
     flex: 1 1 auto;
-    min-width: 0 !important;
-  }
-  .scan-input {
-    font-size: 15px;
-    padding: 13px 12px 13px 42px;
-    letter-spacing: 0.06em;
-    border-radius: 13px;
-  }
-  .scan-icon {
-    left: 13px;
-  }
-  .camera-btn {
-    flex: 0 0 auto;
-    min-height: 46px;
-    padding: 12px 14px;
-    border-radius: 13px;
-    font-size: 13.5px;
+    min-height: 0;
+    height: auto;
+    gap: 12px;
+    overflow: hidden;
   }
 
-  /* Chek kartasi — qolgan balandlikni egallaydi, ichida scroll */
-  .cashier-layout .card.glass-panel {
-    flex: 1;
+  /* Chek konteyneri — qolgan balandlikning hammasini oladi */
+  .cashier-layout > .scan-zone .card.glass-panel {
+    flex: 1 1 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
     padding: 14px;
-  }
-  .cashier-layout .card.glass-panel .flex.spread {
-    flex-shrink: 0;
-    margin-bottom: 8px;
-  }
-  .cashier-layout .receipt-row-wrap {
-    flex: 1;
-    min-height: 0;
-    flex-direction: column !important;
-    flex-wrap: nowrap !important;
     overflow: hidden;
   }
 
-  /* Scroll maydon — mahsulotlar ro'yxati */
+  .cashier-layout .receipt-row-wrap {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    overflow: hidden;
+  }
+
+  /* Scrollable mahsulotlar ro'yxati */
   .cashier-layout .receipt-area {
     flex: 1 1 auto !important;
     min-height: 0 !important;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden;
   }
-  .receipt-tape {
+
+  .cashier-layout .receipt-area .receipt-tape {
     height: 100%;
     transform: none;
   }
 
-  /* STICKY BOTTOM BAR — jami + to'lov tugmasi DOIM KO'RINADI */
+  .receipt-tape .receipt-items {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* ===== STICKY BOTTOM ACTION BAR ===== */
   .cashier-layout .pay-zone {
+    flex: 0 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    align-self: auto !important;
     position: sticky;
     bottom: 0;
     z-index: 50;
-    flex: 0 0 auto !important;
-    align-self: stretch !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 12px)) !important;
-    background: rgba(10, 22, 17, 0.94);
-    backdrop-filter: blur(22px);
+    padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 16px)) !important;
+    background: rgba(10, 20, 16, 0.92);
+    backdrop-filter: blur(20px);
     border: 1px solid var(--line);
-    border-radius: 16px;
-    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45);
-    gap: 8px;
+    border-top: none;
+    border-radius: 18px 18px 14px 14px;
+    box-shadow: 0 -14px 40px rgba(0, 0, 0, 0.45);
+    gap: 12px;
+    overflow: visible;
   }
-  .pay-total-display {
+
+  .pay-zone .pay-total-display {
     padding: 0;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: baseline;
+    justify-content: space-between;
     gap: 10px;
-    flex-wrap: wrap;
   }
-  .pay-total-display .label {
-    font-size: 11px;
+  .pay-zone .pay-total-display .label {
+    font-size: 12px;
   }
-  .pay-total-display .amount {
-    font-size: 24px;
+  .pay-zone .pay-total-display .amount {
+    font-size: 30px;
     margin-top: 0;
   }
-  .pay-total-display > :last-child {
-    font-size: 11px;
-    margin-top: 0;
-  }
-  /* To'lov usullari — bitta gorizontal skroll qator (chip'lar) */
-  .pay-row {
+
+  /* To'lov usullari — bitta gorizontal skip-me'noli qator (chip'lar) */
+  .cashier-layout .pay-zone .pay-row {
     display: flex;
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    gap: 6px;
+    gap: 8px;
     margin: 0 -2px;
     padding: 2px;
     scrollbar-width: none;
   }
-  .pay-row::-webkit-scrollbar {
+  .cashier-layout .pay-zone .pay-row::-webkit-scrollbar {
     display: none;
   }
-  .pay-btn {
+  .cashier-layout .pay-zone .pay-btn {
     flex: 0 0 auto;
-    min-height: 38px;
-    padding: 8px 14px;
-    font-size: 13px;
+    min-height: 42px;
+    padding: 8px 16px;
+    font-size: 13.5px;
     border-radius: 999px;
     white-space: nowrap;
   }
-  .pay-zone .btn-lg {
-    min-height: 52px;
-    height: 52px;
-    padding: 12px 18px;
-    font-size: 17px;
+
+  /* Katta, Emerald/primary, full-width checkout tugmasi */
+  .cashier-layout .pay-zone .pay-checkout {
+    margin-top: 6px !important;
+    min-height: 56px;
+    height: 56px;
+    font-size: 16px;
     font-weight: 800;
-    border-radius: 14px;
-    letter-spacing: 0.01em;
+    width: 100%;
+    letter-spacing: 0.02em;
+    background: linear-gradient(135deg, #10b981, #34d399);
+    color: #04231a;
+    box-shadow: 0 12px 34px rgba(16, 185, 129, 0.4);
+    border-radius: 16px;
+    position: relative;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
   }
-  .pay-zone .btn-lg:active {
-    transform: scale(0.985);
-    filter: brightness(1.04);
+  .cashier-layout .pay-zone .pay-checkout::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.55), transparent 60%);
+    opacity: 0;
+    transition: opacity 0.25s;
+    pointer-events: none;
+  }
+  .cashier-layout .pay-zone .pay-checkout:active::after {
+    opacity: 1;
+  }
+  .cashier-layout .pay-zone .pay-checkout:disabled {
+    opacity: 0.5;
+    box-shadow: none;
+    filter: grayscale(0.6);
   }
 
-  /* Bo'sh chek — markazda, chiroyli */
+  /* Empty state markazida */
   .receipt-empty {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 180px;
-    padding: 24px 12px;
+    min-height: 140px;
+    padding: 20px 10px;
   }
-  .receipt-empty .emoji {
-    font-size: 44px;
-    margin-bottom: 8px;
-  }
+}
 
-  /* Mahsulot qatorlari — barmoq uchun qulay */
+/* ---------- Planshet/laptop oraliq (768-1024) overflow fix ---------- */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .cashier-layout .receipt-row-wrap {
+    flex-wrap: nowrap !important;
+  }
+  .cashier-layout .receipt-area,
+  .cashier-layout .pay-zone {
+    min-width: 0;
+  }
+  .receipt-row .row-controls {
+    min-width: 0;
+  }
+  .receipt-row .row-controls .price {
+    min-width: 0;
+    white-space: nowrap;
+  }
+}
+
+/* ---------- Mahsulot qatori mobil qulayligi ---------- */
+@media (max-width: 480px) {
+  .camera-btn .cam-lbl {
+    display: none;
+  }
+  .camera-btn {
+    padding: 16px 14px;
+  }
   .receipt-row {
     grid-template-columns: 28px 1fr auto;
     gap: 6px;
     padding: 10px 0;
   }
+  .receipt-row .row-controls {
+    gap: 5px;
+  }
   .receipt-row .row-btn {
-    width: 30px;
-    height: 30px;
-    font-size: 16px;
+    width: 32px;
+    height: 32px;
   }
   .receipt-row .row-controls .price {
-    min-width: 72px;
+    min-width: 64px;
     font-size: 12px;
   }
-}
-
-@media (max-width: 480px) {
-  /* Kichik ekranda pay bar yanada ixcham */
-  .cashier-page {
-    height: calc(100dvh - var(--mob-header-h) - 24px);
-    max-height: calc(100dvh - var(--mob-header-h) - 24px);
-  }
-  .pay-btn {
-    font-size: 12.5px;
-    padding: 8px 12px;
-  }
-  .camera-btn {
-    padding: 12px 10px;
-    font-size: 0;
-  }
-  .camera-btn .icon,
-  .camera-btn svg {
-    margin: 0;
+  /* Payme/Click/Paynet/Visa/Nasiya tugmalari siqilmaydigan */
+  .pay-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
   }
 }

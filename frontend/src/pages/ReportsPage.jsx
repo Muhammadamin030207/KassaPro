@@ -22,7 +22,7 @@ import { useCountUp } from "../hooks/useCountUp";
 
 const PAY_COLORS = { cash: "#0E7C5A", card: "#29C77D", click: "#FF8A3D", payme: "#5B8DEF" };
 
-function AnimatedStat({ label, value, plain, unit }) {
+function AnimatedStat({ label, value, plain }) {
   const animated = useCountUp(Number(value || 0), { duration: 700 });
   return (
     <motion.div
@@ -34,7 +34,6 @@ function AnimatedStat({ label, value, plain, unit }) {
       <div className="label">{label}</div>
       <div className={`value ${plain ? "plain" : ""}`}>
         {plain ? Math.round(animated) : formatMoney(animated)}
-        {unit && <span className="unit"> {unit}</span>}
       </div>
     </motion.div>
   );
@@ -103,8 +102,8 @@ export function ReportsPage() {
           <div className="stat-grid">
             <AnimatedStat label="Jami savdo" value={data?.total_revenue} />
             <AnimatedStat label="Foyda" value={data?.total_profit} />
-            <AnimatedStat label="Cheklar soni" value={data?.sale_count} plain unit="ta" />
-            <AnimatedStat label="Sotilgan dona" value={data?.items_sold} plain unit="dona" />
+            <AnimatedStat label="Sotuvlar soni" value={data?.sale_count} plain />
+            <AnimatedStat label="Mahsulotlar" value={data?.items_sold} plain />
           </div>
 
           <div className="chart-card">
