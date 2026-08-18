@@ -9,7 +9,7 @@ const LINKS = [
   { to: "/", label: "Kassa", icon: "scan", end: true },
   { to: "/products", label: "Mahsulotlar", icon: "bag" },
   { to: "/reports", label: "Hisobotlar", icon: "chart" },
-  { to: "/debts", label: "Qarzdorlar", icon: "money", ownerOnly: true },
+  { to: "/debts", label: "Qarzdorlar", icon: "money" },
   { to: "/staff", label: "Kassirlar", icon: "users", ownerOnly: true },
   { to: "/settings", label: "Sozlamalar", icon: "settings", ownerOnly: true },
   { to: "/admin", label: "Admin", icon: "shield", superAdminOnly: true },

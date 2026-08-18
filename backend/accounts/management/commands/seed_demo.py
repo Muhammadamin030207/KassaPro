@@ -4,12 +4,15 @@ Ishlatish:
     python manage.py seed_demo --owner admin --password admin123 --shop "My Shop"
 """
 import random
+from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
 from catalog.models import Category, Product
+from customers.models import AuditLog, Customer, Debt
 from shops.models import Shop
 
 User = get_user_model()
@@ -27,6 +30,14 @@ PRODUCTS = [
     ("4607173152264", "Pepsi 0.5L", "7000"),
     ("4607173152271", "Kartoshka 1kg", "6000"),
     ("4607173152288", "Sho'rva to'plami", "25000"),
+]
+
+CUSTOMERS = [
+    ("Asatova Nilufar", "+998 94 003 55 71", "500000", "200000", 5, "active"),
+    ("Karimov Jahongir", "+998 90 123 45 67", "300000", "150000", 12, "partially_paid"),
+    ("Rahimova Malika", "+998 91 777 88 99", "800000", "650000", -2, "overdue"),
+    ("Toshmatov Aziz", "+998 99 456 78 90", "200000", "0", 9, "active"),
+    ("Yusupov Bekzod", "+998 93 222 33 44", "0", "75000", -6, "overdue"),
 ]
 
 
@@ -82,5 +93,60 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"Tayyor! {count} ta mahsulot qo'shildi. Login: {username} / {password}"
+            )
+        )
+
+        # Demo mijozlar va qarzlari
+        if User.objects.filter(username="cashier").exists():
+            cashier = User.objects.get(username="cashier")
+        else:
+            cashier = User.objects.create_user(
+                username="cashier", password="cashier123", role=User.Role.CASHIER
+            )
+        cashier.shop = shop
+        cashier.save(update_fields=["shop"])
+
+        debt_count = 0
+        for name, phone, limit, amount, due_days, status in CUSTOMERS:
+            phone_clean = "".join(c for c in phone if c.isdigit())
+            cust, created = Customer.objects.get_or_create(
+                shop=shop,
+                phone=f"+{phone_clean}",
+                defaults={
+                    "name": name,
+                    "credit_limit": Decimal(limit),
+                    "created_by": user,
+                },
+            )
+            if not created:
+                continue
+            if Decimal(amount) <= 0:
+                continue
+            debt = Debt.objects.create(
+                shop=shop,
+                customer=cust,
+                original_amount=Decimal(amount),
+                remaining_amount=Decimal(amount),
+                due_date=timezone.localdate() + timedelta(days=due_days),
+                status=Debt.Status.ACTIVE
+                if status != "overdue"
+                else Debt.Status.PARTIALLY_PAID,
+                note="Demo qarz",
+                created_by=user,
+            )
+            AuditLog.objects.create(
+                shop=shop,
+                actor=user,
+                action=AuditLog.Action.DEBT_CREATED,
+                entity="Debt",
+                entity_id=debt.pk,
+                detail={"amount": str(debt.original_amount), "demo": True},
+            )
+            debt_count += 1
+
+        self.stdout.write(self.style.SUCCESS(f"{debt_count} ta demo qarz qo'shildi."))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Kassir: cashier / cashier123 · Mijozlar Qarzdorlar sahifasida ko'rinadi."
             )
         )

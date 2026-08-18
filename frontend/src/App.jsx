@@ -141,9 +141,7 @@ export default function App() {
         path="/debts"
         element={
           <Protected>
-            <OwnerOnly>
-              <DebtsPage />
-            </OwnerOnly>
+            <DebtsPage />
           </Protected>
         }
       />

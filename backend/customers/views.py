@@ -163,14 +163,20 @@ class DebtListCreateView(generics.ListCreateAPIView):
                 )
         due = params.get("due", "").strip()
         today = timezone.localdate()
+        settled = [Debt.Status.PAID, Debt.Status.CANCELLED]
+        overdue_q = qs.exclude(status__in=settled).filter(
+            remaining_amount__gt=0, due_date__lt=today
+        )
         if due == "overdue":
-            qs = qs.filter(effective_status=Debt.Status.OVERDUE)
+            qs = overdue_q
         elif due == "today":
-            qs = qs.filter(effective_status__in=LIVE_STATUSES, due_date=today)
+            qs = qs.exclude(status__in=settled).filter(
+                remaining_amount__gt=0, due_date=today
+            )
         elif due == "week":
             week_end = today + timedelta(days=7)
-            qs = qs.filter(
-                effective_status__in=LIVE_STATUSES,
+            qs = qs.exclude(status__in=settled).filter(
+                remaining_amount__gt=0,
                 due_date__gte=today,
                 due_date__lte=week_end,
             )
@@ -181,8 +187,16 @@ class DebtListCreateView(generics.ListCreateAPIView):
                 | Q(customer__phone__icontains=search)
             )
         sort = params.get("sort", "due_date")
-        if sort in ("amount", "-amount", "due_date", "-due_date", "remaining"):
-            qs = qs.order_by(sort)
+        sort_map = {
+            "amount": "original_amount",
+            "-amount": "-original_amount",
+            "due_date": "due_date",
+            "-due_date": "-due_date",
+            "remaining": "remaining_amount",
+            "-remaining": "-remaining_amount",
+        }
+        if sort in sort_map:
+            qs = qs.order_by(sort_map[sort])
         return qs
 
 
