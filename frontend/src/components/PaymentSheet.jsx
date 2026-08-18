@@ -57,6 +57,7 @@ export function PaymentSheet({
   const [searching, setSearching] = useState(false);
   const [nasiyaMode, setNasiyaMode] = useState("search"); // search | create
   const [creating, setCreating] = useState(false);
+  const [dueWeeks, setDueWeeks] = useState(1); // necha haftadan keyin muddat
 
   const user = useAuthStore((s) => s.user);
   const { show } = useToast();
@@ -75,6 +76,21 @@ export function PaymentSheet({
   const cash = Number(given || 0);
   const change = Math.max(0, cash - total);
   const insufficient = method === "cash" && given !== "" && cash < total;
+
+  const dueDateAt = (weeks) => {
+    const d = new Date();
+    d.setDate(d.getDate() + weeks * 7);
+    const off = d.getTimezoneOffset();
+    return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+  };
+  const dueDate = dueDateAt(dueWeeks);
+  const dueDate2 = dueDateAt(2);
+  const dueDate4 = dueDateAt(4);
+
+  // Nasiya rasmiylashtirish xulosasi
+  const afterDebt = found ? Number(found.balance || 0) + total : total;
+  const overLimit =
+    found && Number(found.has_credit_limit) > 0 && afterDebt > Number(found.credit_limit || 0);
 
   const isOnline = ["click", "payme", "paynet"].includes(method);
   const amount = Math.round(total);
@@ -142,7 +158,7 @@ export function PaymentSheet({
           // Yangi mijoz yaratib, shu zahoti davom etamiz
           createCustomer().then((created) => {
             if (created) {
-              onConfirm({ method, customer: created });
+              onConfirm({ method, customer: created, dueDate });
               onClose();
             }
           });
@@ -151,7 +167,7 @@ export function PaymentSheet({
         show("Nasiya uchun mijozni toping yoki yarating", "error");
         return;
       }
-      onConfirm({ method, customer });
+      onConfirm({ method, customer, dueDate });
       onClose();
       return;
     }
@@ -292,13 +308,42 @@ export function PaymentSheet({
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700 }}>{found.name}</div>
                       <div className="mono sub">{found.phone}</div>
-                      <div className="sub" style={{ marginTop: 4 }}>
-                        Joriy qarzi:{" "}
-                        <b className="mono" style={{ color: Number(found.balance) > 0 ? "var(--warn)" : "var(--success)" }}>
-                          {formatMoney(found.balance)}
-                        </b>
-                      </div>
                     </div>
+                  </div>
+                  <div className="nasiya-summary" style={{ marginTop: 12 }}>
+                    <div className="flex spread">
+                      <span className="sub">Joriy qarzi</span>
+                      <b className="mono" style={{ color: Number(found.balance) > 0 ? "var(--warn)" : "var(--success)" }}>
+                        {formatMoney(found.balance)}
+                      </b>
+                    </div>
+                    <div className="flex spread">
+                      <span className="sub">Kredit limiti</span>
+                      <b className="mono">{formatMoney(found.credit_limit)}</b>
+                    </div>
+                    <div className="flex spread">
+                      <span className="sub">Limit bo'sh</span>
+                      <b className="mono" style={{ color: "var(--brand-light)" }}>{formatMoney(found.credit_available)}</b>
+                    </div>
+                    <div className="flex spread">
+                      <span className="sub">Nasiyadan so'ng</span>
+                      <b className="mono" style={{ color: overLimit ? "var(--danger)" : "var(--ink)" }}>
+                        {formatMoney(afterDebt)}
+                      </b>
+                    </div>
+                    {overLimit && (
+                      <div className="sub" style={{ color: "var(--danger)", marginTop: 8 }}>
+                        Diqqat: bu mijoz kredit limitidan oshadi. Owner tasdiqlamasa, nasiya qabul qilinmaydi.
+                      </div>
+                    )}
+                  </div>
+                  <div className="field" style={{ marginTop: 12 }}>
+                    <label>To'lov muddati</label>
+                    <select className="input" value={dueWeeks} onChange={(e) => setDueWeeks(Number(e.target.value))}>
+                      <option value={1}>1 hafta ({dueDate})</option>
+                      <option value={2}>2 hafta ({dueDate2})</option>
+                      <option value={4}>1 oy ({dueDate4})</option>
+                    </select>
                   </div>
                 </div>
               )}

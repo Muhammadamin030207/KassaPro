@@ -60,6 +60,18 @@ class SaleCreateSerializer(serializers.Serializer):
                     {"phone": "Nasiya uchun mijozning telefon raqami talab qilinadi."}
                 )
             attrs["phone"] = phone
+        # Kredit limitini chetlab o'tish faqat egasi/admin uchun
+        if attrs.get("force_credit"):
+            request = self.context.get("request")
+            user = request.user if request else None
+            is_owner_like = bool(
+                user
+                and (user.role_is_owner or user.is_admin)
+            )
+            if not is_owner_like:
+                raise serializers.ValidationError(
+                    {"credit": "Kredit limitini oshirish faqat egasi/admin huquqi."}
+                )
         return attrs
 
     def validate_items(self, value):
@@ -214,6 +226,7 @@ class SaleSerializer(serializers.ModelSerializer):
     cashier_name = serializers.SerializerMethodField()
     customer_name = serializers.CharField(source="customer.name", read_only=True, default="")
     customer_phone = serializers.CharField(source="customer.phone", read_only=True, default="")
+    debt_due_date = serializers.SerializerMethodField()
     payment_method_display = serializers.CharField(
         source="get_payment_method_display", read_only=True
     )
@@ -229,6 +242,7 @@ class SaleSerializer(serializers.ModelSerializer):
             "customer",
             "customer_name",
             "customer_phone",
+            "debt_due_date",
             "total",
             "payment_method",
             "payment_method_display",
@@ -239,6 +253,12 @@ class SaleSerializer(serializers.ModelSerializer):
 
     def get_cashier_name(self, obj):
         return obj.cashier.username if obj.cashier else ""
+
+    def get_debt_due_date(self, obj):
+        debt = obj.debts.exclude(
+            status__in=[Debt.Status.CANCELLED]
+        ).first()
+        return str(debt.due_date) if debt else None
 
     def get_items_count(self, obj):
         return obj.items.count()

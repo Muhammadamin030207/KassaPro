@@ -71,7 +71,7 @@ export function CashierPage() {
   const total = items.reduce((sum, it) => sum + it.price * it.qty, 0);
   const totalAnimated = useCountUp(total, { duration: 450 });
   const hasItems = items.length > 0;
-  const isOwner = user?.role === "owner";
+  const isOwner = user?.role === "owner" || user?.role === "super_admin";
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -197,7 +197,7 @@ export function CashierPage() {
   };
 
   // Bottom-sheet "TASDIQLASH" tugmasi — tanlangan usul bo'yicha davom etamiz.
-  const handleSheetConfirm = ({ method, customer, cashReceived, change }) => {
+  const handleSheetConfirm = ({ method, customer, cashReceived, change, dueDate }) => {
     if (ONLINE_METHODS.includes(method)) {
       setPayment(method);
       setOrderId(Date.now());
@@ -205,11 +205,11 @@ export function CashierPage() {
       return;
     }
     setPayment(method);
-    checkout(customer, method, cashReceived, change);
+    checkout(customer, method, cashReceived, change, dueDate);
   };
 
   // Sotuvni yakunlash (asosiy API chaqiruvi)
-  const checkout = async (customer, method = payment, cashReceived, change) => {
+  const checkout = async (customer, method = payment, cashReceived, change, dueDate, forceCredit = false) => {
     if (!hasItems) return;
     setPaying(true);
     setPayOpen(false);
@@ -227,6 +227,9 @@ export function CashierPage() {
           return;
         }
         payload.phone = phone;
+        if (customer?.name) payload.customer_name = customer.name;
+        if (dueDate) payload.due_date = dueDate;
+        if (forceCredit) payload.force_credit = true;
       }
       const sale = await api.post("sales/", payload);
       setLastSale(sale);
@@ -246,6 +249,20 @@ export function CashierPage() {
       );
       setCelebrate(true);
     } catch (err) {
+      if (
+        method === "nasiya" &&
+        err?.data?.credit &&
+        (isOwner || user?.role === "super_admin")
+      ) {
+        const ok = window.confirm(
+          `${err.data.credit}\n\nLimitdan oshirib, "force_credit" bilan davom etasizmi?`
+        );
+        if (ok) {
+          setPaying(false);
+          checkout(customer, method, cashReceived, change, dueDate, true);
+          return;
+        }
+      }
       show(err.message, "error");
     } finally {
       setPaying(false);

@@ -2,7 +2,7 @@ import { forwardRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { formatMoney } from "../utils/format";
 
-const PAY_NAMES = { cash: "Naqd", card: "Karta", click: "Click", payme: "Payme", visa: "Visa" };
+const PAY_NAMES = { cash: "Naqd", card: "Karta", click: "Click", payme: "Payme", visa: "Visa", nasiya: "Nasiya" };
 
 /** Kodni 1D barcode ko'rinishidagi chiziqlarga aylantiradi (faqat ko'rinish uchun). */
 function barcodeBars(code) {
@@ -84,6 +84,24 @@ export const ReceiptPrint = forwardRef(function ReceiptPrint(
             <span className="pr-label">Qaytim:</span>
             <span>{formatMoney(cash.change)}</span>
           </div>
+        </>
+      )}
+      {sale?.payment_method === "nasiya" && (
+        <>
+          <div className="pr-row">
+            <span className="pr-label">Mijoz:</span>
+            <span>{sale.customer_name || sale.customer_phone}</span>
+          </div>
+          <div className="pr-row">
+            <span className="pr-label">Telefon:</span>
+            <span>{sale.customer_phone}</span>
+          </div>
+          {sale.debt_due_date && (
+            <div className="pr-row">
+              <span className="pr-label">To'lov muddati:</span>
+              <span>{sale.debt_due_date}</span>
+            </div>
+          )}
         </>
       )}
 

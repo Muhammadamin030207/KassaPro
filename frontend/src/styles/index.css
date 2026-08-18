@@ -1904,6 +1904,85 @@ table.data tbody tr:hover {
   }
 }
 
+/* ---------- Qarzdorlar (Debt Management) ---------- */
+.badge-info {
+  background: rgba(99, 102, 241, 0.16);
+  color: #a5b4fc;
+}
+
+.badge-neutral {
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--ink-soft);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-full);
+  background: var(--panel);
+  font-weight: 600;
+}
+
+.mini-stat {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel-inset);
+  padding: 12px 14px;
+  display: grid;
+  gap: 4px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.btn-danger-ghost {
+  background: rgba(255, 93, 93, 0.1);
+  border: 1px solid rgba(255, 93, 93, 0.35);
+  color: var(--danger);
+}
+
+.btn-danger-ghost:hover {
+  background: rgba(255, 93, 93, 0.18);
+}
+
+.debt-cards {
+  display: none;
+}
+
+.debt-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  padding: 14px;
+}
+
+@media (max-width: 720px) {
+  .debt-table-wrap {
+    display: none;
+  }
+
+  .debt-cards {
+    display: grid;
+    gap: 12px;
+  }
+
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .grid-3 {
+    gap: 8px;
+  }
+}
+
 .error-text {
   color: var(--danger);
   font-size: 13px;
@@ -2881,4 +2960,55 @@ html, body, #root {
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
+}
+
+/* ---- Qarzdorlik sahifasi ---- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.stat-value {
+  font-size: 19px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.debt-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+  max-width: 140px;
+}
+
+.debt-progress-fill {
+  height: 100%;
+  width: var(--pct, 0%);
+  border-radius: 999px;
+  background: linear-gradient(90deg, #818cf8, #10b981);
+  transition: width 0.4s ease;
+}
+
+.debt-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.quick-amounts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }

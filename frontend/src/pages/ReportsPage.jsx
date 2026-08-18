@@ -51,6 +51,16 @@ export function ReportsPage() {
     queryFn: () => api.get(`reports/summary/?from=${from}&to=${to}`),
   });
 
+  const { data: debtStats } = useQuery({
+    queryKey: ["debt-stats"],
+    queryFn: () => api.get("debts/stats/"),
+  });
+
+  const { data: topDebtors } = useQuery({
+    queryKey: ["debt-top"],
+    queryFn: () => api.get("debts/top/"),
+  });
+
   const dailySeries = useMemo(
     () => (data?.daily_series || []).map((d) => ({ ...d, day: String(d.day).slice(0, 10) })),
     [data]
@@ -98,6 +108,45 @@ export function ReportsPage() {
             <AnimatedStat label="Sotuvlar soni" value={data?.sale_count} plain />
             <AnimatedStat label="Mahsulotlar" value={data?.items_sold} plain />
           </div>
+
+          {/* Qarzdorlik xulosasi */}
+          {debtStats && (
+            <>
+              <div className="stat-grid">
+                <AnimatedStat label="Qolgan qarzlar" value={debtStats.total_debt} />
+                <AnimatedStat label="Muddati o'tgan" value={debtStats.overdue_debt} />
+                <AnimatedStat label="Yig'ilgan to'lovlar" value={debtStats.collected} />
+                <AnimatedStat label="Qarzdorlar" value={debtStats.debtors_count} plain />
+              </div>
+              {topDebtors && topDebtors.length > 0 && (
+                <div className="chart-card">
+                  <h3>Top qarzdorlar</h3>
+                  <div className="table-wrap">
+                    <table className="data">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Mijoz</th>
+                          <th>Telefon</th>
+                          <th>Balans</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {topDebtors.map((d, i) => (
+                          <tr key={d.id}>
+                            <td className="mono">{i + 1}</td>
+                            <td>{d.name}</td>
+                            <td className="mono">{d.phone}</td>
+                            <td className="mono" style={{ color: "var(--warn)" }}>{formatMoney(d.balance)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
           <div className="chart-card">
             <h3>Kunlik savdo</h3>
