@@ -42,3 +42,13 @@ export function isTokenExpired(token) {
     return true;
   }
 }
+
+/**
+ * Hozirgi sessiya haqiqatan amalga oshganmi?
+ * `user` bor-u lekin access token eskirgan bo'lsa — authed EMAS.
+ * Shu yagona tekshiruv Protected va /login'da bir xil ishlatiladi,
+ * aks holda `/?pwa=true` standalone'da cheksiz redirect loop paydo bo'ladi.
+ */
+export function isAuthed(state) {
+  return !!(state.user && state.access && !isTokenExpired(state.access));
+}

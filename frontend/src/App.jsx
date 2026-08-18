@@ -1,9 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppLayout } from "./components/AppLayout";
 import { apiFetch } from "./api/client";
-import { useAuthStore, isTokenExpired } from "./stores/authStore";
+import { useAuthStore, isAuthed, isTokenExpired } from "./stores/authStore";
 import LoginPage from "./pages/LoginPage";
 import CashierPage from "./pages/CashierPage";
 import ProductsPage from "./pages/ProductsPage";
@@ -13,16 +13,17 @@ import DebtsPage from "./pages/DebtsPage";
 import SettingsPage from "./pages/SettingsPage";
 import AdminPanelPage from "./pages/AdminPanelPage";
 
+const BASE = import.meta.env.VITE_API_URL || "/api";
+
 /**
  * Sahifa himoyasi: login bo'lmagan yo token eskirgan bo'lsa /login'ga.
  *
  * @param {{ children: React.ReactNode }} props
  */
 function Protected({ children }) {
-  const access = useAuthStore((s) => s.access);
-  const user = useAuthStore((s) => s.user);
+  const authed = useAuthStore(isAuthed);
 
-  if (!access || !user || isTokenExpired(access)) {
+  if (!authed) {
     return <Navigate to="/login" replace />;
   }
   return <AppLayout>{children}</AppLayout>;
@@ -45,6 +46,8 @@ function SuperAdminOnly({ children }) {
 
 export default function App() {
   const user = useAuthStore((s) => s.user);
+  const authed = useAuthStore(isAuthed);
+  const [booted, setBooted] = useState(false);
 
   // Keep-alive: har 4 daqiqada backend'ni uyg'otib turamiz (Render sleep mode)
   useEffect(() => {
@@ -56,9 +59,55 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
+  // PWA standalone: access token eskirgan bo'lsa refresh orqali tiklash.
+  // Aks holda / -> /login -> / cheksiz loop (bounce) yuz beradi.
+  useEffect(() => {
+    const boot = async () => {
+      const { access, refresh, setTokens, setUser, logout } = useAuthStore.getState();
+      try {
+        if (isTokenExpired(access) && refresh) {
+          const res = await fetch(`${BASE}/auth/refresh/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setTokens(data);
+            // User ma'lumotini ham yangilaymiz
+            const me = await fetch(`${BASE}/auth/me/`, {
+              headers: { Authorization: `Bearer ${data.access}` },
+            });
+            if (me.ok) {
+              setUser(await me.json());
+            }
+          } else {
+            logout();
+          }
+        } else if (!access) {
+          logout();
+        }
+      } catch {
+        logout();
+      } finally {
+        setBooted(true);
+      }
+    };
+    boot();
+  }, []);
+
+  if (!booted) {
+    return (
+      <div className="boot-screen">
+        <img src="/favicon.svg" alt="KassaPro" />
+        <div className="boot-title">KassaPro</div>
+      </div>
+    );
+  }
+
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
+      <Route path="/login" element={authed ? <Navigate to="/" replace /> : <LoginPage />} />
       <Route path="/" element={<Protected><CashierPage /></Protected>} />
       <Route path="/products" element={<Protected><ProductsPage /></Protected>} />
       <Route path="/reports" element={<Protected><ReportsPage /></Protected>} />

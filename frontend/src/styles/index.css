@@ -1450,6 +1450,34 @@ table.data tbody tr:hover {
   overflow: hidden;
 }
 
+/* PWA ishga tushish ekrani (bootstrap) */
+.boot-screen {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #0f172a;
+  color: #fffdf6;
+}
+.boot-screen img {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  box-shadow: 0 12px 32px rgba(14, 124, 90, 0.4);
+  animation: bootPulse 1.4s ease-in-out infinite;
+}
+.boot-title {
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: #d1fae5;
+}
+@keyframes bootPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
 .login-wrap .scene-3d {
   opacity: 1;
 }
