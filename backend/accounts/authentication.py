@@ -34,7 +34,7 @@ class SessionJWTAuthentication(JWTAuthentication):
                 {"detail": "Sessiya topilmadi. Qayta kiring.", "code": "session_expired"},
                 code="session_expired",
             )
-        if session.status in (DeviceSession.Status.REVOKED, DeviceSession.Status.EXPIRED):
+        if session.status == DeviceSession.Status.REVOKED:
             raise AuthenticationFailed(
                 {
                     "detail": "Ushbu qurilma administrator tomonidan chiqarildi.",
@@ -42,9 +42,15 @@ class SessionJWTAuthentication(JWTAuthentication):
                 },
                 code="session_revoked",
             )
-        if session.status == DeviceSession.Status.ACTIVE:
-            # last_active — 60 sekundda bir marta yangilaymiz (throttle).
-            now = timezone.now()
-            if not session.last_active_at or (now - session.last_active_at).total_seconds() > LAST_ACTIVE_INTERVAL:
-                DeviceSession.objects.filter(pk=session.pk).update(last_active_at=now)
+        if session.status != DeviceSession.Status.ACTIVE:
+            # EXPIRED (chiqish/almashish) yoki ALLOWED (unblock) — eski token
+            # ishlamaydi, qurilma qayta login qilishi kerak.
+            raise AuthenticationFailed(
+                {"detail": "Sessiya tugagan. Qayta kiring.", "code": "session_expired"},
+                code="session_expired",
+            )
+        # active sessiya — last_active ni 60 sekundda bir marta yangilaymiz.
+        now = timezone.now()
+        if not session.last_active_at or (now - session.last_active_at).total_seconds() > LAST_ACTIVE_INTERVAL:
+            DeviceSession.objects.filter(pk=session.pk).update(last_active_at=now)
         return user

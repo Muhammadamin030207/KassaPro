@@ -130,12 +130,11 @@ class DeviceSessionApiTestCase(TestCase):
         self.assertEqual(res.json().get("code"), "session_revoked")
 
     def test_unblock_allows_relogin(self):
-        self._login(device_id=_device_id(3))
-        token = None
+        first = self._login(device_id=_device_id(3))
+        self._old_tokens = {"access": first.json()["access"]}
         session = DeviceSession.objects.get(user=self.user, device_id=_device_id(3))
-        # admin login without device for management ops
-        admin_login = self._login(device_id=_device_id(9))
-        token = admin_login.json()["access"]
+        # admin ctrl token — boshqa qurilma
+        token = self._login(device_id=_device_id(9)).json()["access"]
         self.client.post(
             f"/api/devices/{session.pk}/revoke/",
             **{"HTTP_AUTHORIZATION": f"Bearer {token}"},
@@ -154,6 +153,10 @@ class DeviceSessionApiTestCase(TestCase):
             user=self.user, device_id=_device_id(3)
         ).order_by("-id").first()
         self.assertEqual(rev.status, DeviceSession.Status.ALLOWED)
+        # eski (revoke qilingan) access token hali ham ishlamaydi
+        res = self._auth_get("/api/auth/me/", self._old_tokens["access"])
+        self.assertEqual(res.status_code, 401)
+        self.assertEqual(res.json().get("code"), "session_expired")
 
         # now login works -> new active session
         res = self._login(device_id=_device_id(3))

@@ -148,7 +148,8 @@ class RefreshView(TokenRefreshView):
                 return _error("Sessiya topilmadi.", "session_expired")
             if session.status == DeviceSession.Status.REVOKED:
                 return _error(REVOKED_DETAIL, "session_revoked")
-            if session.status == DeviceSession.Status.EXPIRED:
+            if session.status != DeviceSession.Status.ACTIVE:
+                # EXPIRED (chiqish) yoki ALLOWED (unblock) — refresh ishlamaydi.
                 return _error(EXPIRED_DETAIL, "session_expired")
             # Rotation tekshiruvi — eski (almashtirilgan) refresh ishlamaydi.
             if session.refresh_jti and token.payload.get("jti") != session.refresh_jti:
