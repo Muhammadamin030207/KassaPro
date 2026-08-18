@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 import { api } from "../api/client";
 import { useAuthStore } from "../stores/authStore";
+import { getDeviceId } from "../lib/device";
 import { useToast } from "../components/Toast";
 import { Modal } from "../components/Modal";
 import { Scene3D } from "../components/Scene3D";
@@ -29,14 +30,29 @@ export function LoginPage() {
   const [applyOpen, setApplyOpen] = useState(false);
 
   const login = useAuthStore((s) => s.login);
+  const kickMessage = useAuthStore((s) => s.kickMessage);
+  const setKickMessage = useAuthStore((s) => s.setKickMessage);
   const navigate = useNavigate();
   const { show } = useToast();
+
+  // Sessiya revoke qilingan/bloklangan bo'lsa — xabarni ko'rsatamiz.
+  useEffect(() => {
+    if (kickMessage) {
+      show(kickMessage, "error");
+      setKickMessage(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const data = await api.post("auth/login/", { username, password });
+      const data = await api.post("auth/login/", {
+        username,
+        password,
+        device_id: getDeviceId(),
+      });
       if (!data || !data.access) {
         throw new Error("Serverdan bo'sh javob keldi — qayta urinib ko'ring");
       }

@@ -3149,3 +3149,202 @@ html, body, #root {
     display: none !important;
   }
 }
+
+/* ---- Qurilmalar (Active Sessions) ---- */
+.device-stats {
+  margin: 4px 0 18px;
+}
+
+.revoke-all-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 18px;
+}
+
+.device-section {
+  margin-bottom: 28px;
+}
+
+.device-section-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-faint);
+  font-weight: 700;
+  margin: 0 0 10px;
+}
+
+.device-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 14px;
+}
+
+.device-card {
+  background: var(--panel-solid);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.device-card:hover {
+  transform: translateY(-2px) scale(1.01);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.device-card.device-current {
+  border-color: rgba(99, 102, 241, 0.55);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.35), var(--shadow-md);
+}
+
+.device-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.device-ico {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(56, 189, 248, 0.14));
+  color: var(--brand-light);
+}
+
+.device-name-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.device-name {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 15px;
+  font-family: var(--font-head);
+  cursor: pointer;
+  text-align: left;
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.device-name:hover {
+  color: var(--brand-light);
+}
+
+.device-meta {
+  display: block;
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.device-card-rows {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.device-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.device-row span {
+  color: var(--ink-faint);
+  flex-shrink: 0;
+}
+
+.device-row b {
+  color: var(--ink-soft);
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.device-card-actions {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.device-detail-head {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.device-detail-head h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.device-detail-head .status-pill {
+  margin-top: 6px;
+}
+
+/* status pill — radius to'g'rilashi */
+.status-pill {
+  border-radius: var(--radius-sm);
+}
+
+.status-ok {
+  background: rgba(16, 185, 129, 0.16);
+  color: var(--success);
+}
+
+.status-low {
+  background: rgba(248, 113, 113, 0.16);
+  color: #f87171;
+}
+
+.status-warn {
+  background: rgba(245, 158, 11, 0.16);
+  color: var(--warn);
+}
+
+.status-neutral {
+  background: rgba(165, 170, 184, 0.14);
+  color: var(--ink-soft);
+}
+
+.current-badge {
+  margin-left: 8px;
+  background: linear-gradient(135deg, #6366f1, #818cf8);
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .device-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .revoke-all-wrap {
+    justify-content: stretch;
+  }
+
+  .revoke-all-wrap .btn {
+    width: 100%;
+  }
+}

@@ -12,8 +12,21 @@ import StaffPage from "./pages/StaffPage";
 import DebtsPage from "./pages/DebtsPage";
 import SettingsPage from "./pages/SettingsPage";
 import AdminPanelPage from "./pages/AdminPanelPage";
+import DevicesPage from "./pages/DevicesPage";
 
 const BASE = import.meta.env.VITE_API_URL || "/api";
+
+const KICK_MESSAGES = {
+  session_revoked: "Ushbu qurilma administrator tomonidan chiqarildi.",
+  session_expired: "Session muddati tugagan. Qayta kiring.",
+  device_blocked: "Ushbu qurilma administrator tomonidan bloklangan.",
+};
+
+function applyKick(body) {
+  if (body && body.code && KICK_MESSAGES[body.code]) {
+    useAuthStore.getState().setKickMessage(KICK_MESSAGES[body.code]);
+  }
+}
 
 /**
  * Sahifa himoyasi: login bo'lmagan yo token eskirgan bo'lsa /login'ga.
@@ -90,7 +103,13 @@ export default function App() {
           body: JSON.stringify({ refresh }),
         });
         if (!res.ok) {
-          // Refresh rad etildi (muddat tugagan) — sessiyani tozalab login'ga.
+          // Refresh rad etildi (revoke/block/muddat) — sessiyani tozalab login'ga.
+          try {
+            const rb = await res.json();
+            applyKick(rb);
+          } catch {
+            /* eslint-disable no-empty */
+          }
           logout();
           if (!cancelled) setBooted(true);
           return;
@@ -171,6 +190,16 @@ export default function App() {
           <Protected>
             <SuperAdminOnly>
               <AdminPanelPage />
+            </SuperAdminOnly>
+          </Protected>
+        }
+      />
+      <Route
+        path="/devices"
+        element={
+          <Protected>
+            <SuperAdminOnly>
+              <DevicesPage />
             </SuperAdminOnly>
           </Protected>
         }

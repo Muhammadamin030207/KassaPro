@@ -11,9 +11,12 @@ export const useAuthStore = create(
       user: null,
       access: null,
       refresh: null,
+      sessionId: null,
+      kickMessage: null,
 
       setTokens: ({ access, refresh } = {}) => set({ access, refresh }),
       setUser: (user) => set({ user }),
+      setKickMessage: (msg) => set({ kickMessage: msg || null }),
       login: (data) => {
         if (!data || typeof data !== "object") {
           return false;
@@ -22,10 +25,12 @@ export const useAuthStore = create(
           access: data.access || null,
           refresh: data.refresh || null,
           user: data.user || null,
+          sessionId: data.session_id || null,
+          kickMessage: null,
         });
         return true;
       },
-      logout: () => set({ user: null, access: null, refresh: null }),
+      logout: () => set({ user: null, access: null, refresh: null, sessionId: null }),
     }),
     { name: "smartkassa-auth" }
   )

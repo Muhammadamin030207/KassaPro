@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Icon from "./Icon";
 import { Scene3D } from "./Scene3D";
 import { useAuthStore } from "../stores/authStore";
+import { api } from "../api/client";
 
 const LINKS = [
   { to: "/", label: "Kassa", icon: "scan", end: true },
@@ -11,6 +12,7 @@ const LINKS = [
   { to: "/reports", label: "Hisobotlar", icon: "chart" },
   { to: "/debts", label: "Qarzdorlar", icon: "money" },
   { to: "/staff", label: "Kassirlar", icon: "users", ownerOnly: true },
+  { to: "/devices", label: "Qurilmalar", icon: "devices", superAdminOnly: true },
   { to: "/settings", label: "Sozlamalar", icon: "settings", ownerOnly: true },
   { to: "/admin", label: "Admin", icon: "shield", superAdminOnly: true },
 ];
@@ -45,6 +47,11 @@ export function AppLayout({ children }) {
 
   const onLogout = () => {
     setDrawerOpen(false);
+    // Backend'ga chiqishni xabar qilamiz (sessiyani EXPIRED qiladi).
+    const { refresh } = useAuthStore.getState();
+    if (refresh) {
+      api.post("auth/logout/", { refresh }).catch(() => {});
+    }
     logout();
     navigate("/login");
   };
