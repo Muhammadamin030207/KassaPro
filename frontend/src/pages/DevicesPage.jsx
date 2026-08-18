@@ -34,10 +34,20 @@ function timeAgo(iso) {
   return `${d} kun oldin`;
 }
 
-function deviceIcon(kind) {
-  if (kind === "mobile") return "smartphone";
-  if (kind === "tablet") return "tablet";
+function deviceIcon(d) {
+  const t = d.device_type || (d.device_kind === "mobile" ? "phone" : d.device_kind);
+  if (t === "phone") return "smartphone";
+  if (t === "tablet") return "tablet";
+  if (t === "laptop") return "laptop";
   return "monitor";
+}
+
+function deviceTypeLabel(t) {
+  if (t === "laptop") return "Noutbuk";
+  if (t === "desktop") return "Kompyuter";
+  if (t === "tablet") return "Planshet";
+  if (t === "phone") return "Smartfon";
+  return "—";
 }
 
 function statusInfo(d, now) {
@@ -62,6 +72,7 @@ export function DevicesPage() {
   const { show } = useToast();
   const [confirm, setConfirm] = useState(null); // { type, device }
   const [detail, setDetail] = useState(null);
+  const [edit, setEdit] = useState(null); // { device, name, model }
   const [now, setNow] = useState(Date.now());
 
   const devicesQuery = useQuery({
@@ -103,6 +114,16 @@ export function DevicesPage() {
     onError: (e) => show(e.message, "error"),
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, body }) => api.patch(`devices/${id}/update/`, body),
+    onSuccess: () => {
+      show("Qurilma ma'lumotlari yangilandi.", "success");
+      setEdit(null);
+      refresh();
+    },
+    onError: (e) => show(e.message, "error"),
+  });
+
   const revokeAllMutation = useMutation({
     mutationFn: () => api.post("devices/revoke-all/", {}),
     onSuccess: (d) => {
@@ -139,12 +160,13 @@ export function DevicesPage() {
       >
         <div className="device-card-top">
           <span className="device-ico">
-            <Icon name={deviceIcon(d.device_kind)} size={26} />
+            <Icon name={deviceIcon(d)} size={26} />
           </span>
           <div className="device-name-wrap">
             <button className="device-name" onClick={() => setDetail(d)}>
               {d.device_name || "Noma'lum qurilma"}
             </button>
+            <span className="device-model">{d.device_model || "—"}</span>
             <span className="device-meta">
               {d.browser || "—"}
               {d.browser_version ? ` ${d.browser_version}` : ""}
@@ -185,6 +207,9 @@ export function DevicesPage() {
               <Icon name="check" size={15} /> Qurilmaga qayta ruxsat berish
             </button>
           )}
+          <button className="ghost-btn" onClick={() => setEdit({ device: d, name: d.device_name || "", model: d.device_model || "" })} title="Nom/modelni tahrirlash">
+            <Icon name="edit" size={15} />
+          </button>
           <button className="ghost-btn" onClick={() => setDetail(d)} title="Batafsil">
             <Icon name="chevron" size={15} />
           </button>
@@ -368,15 +393,20 @@ export function DevicesPage() {
           <>
             <div className="device-detail-head">
               <span className="device-ico">
-                <Icon name={deviceIcon(detail.device_kind)} size={30} />
+                <Icon name={deviceIcon(detail)} size={30} />
               </span>
               <div>
                 <h3>{detail.device_name}</h3>
+                <span className="device-model" style={{ marginTop: 2 }}>{detail.device_model || "—"}</span>
                 <span className={`status-pill status-${statusInfo(detail, now).cls}`}>
                   {statusInfo(detail, now).text}
                   {detail.is_current && <span className="current-badge">BU QURILMA</span>}
                 </span>
               </div>
+            </div>
+            <div className="debt-info-row">
+              <div><span>Qurilma turi</span><b>{deviceTypeLabel(detail.device_type)}</b></div>
+              <div><span>Model</span><b style={{ overflowWrap: "anywhere" }}>{detail.device_model || "—"}</b></div>
             </div>
             <div className="debt-info-row">
               <div><span>Device ID</span><b className="mono" style={{ fontSize: 12 }}>{detail.device_id}</b></div>
@@ -411,6 +441,54 @@ export function DevicesPage() {
                 </button>
               </div>
             )}
+          </>
+        )}
+      </Modal>
+
+      {/* Edit device modal */}
+      <Modal open={!!edit} onClose={() => setEdit(null)}>
+        {edit && (
+          <>
+            <h3>Qurilma ma'lumotlari</h3>
+            <p style={{ marginTop: 8, opacity: 0.85, lineHeight: 1.55 }}>
+              Noutbuk modeli brauzer orqali avtomatik aniqlanmaydi — haqiqiy model
+              nomini o'zingiz kiriting. Masalan: <b>Lenovo IdeaPad 3 15IAU7</b>.
+            </p>
+            <div className="field" style={{ marginTop: 16 }}>
+              <label>Qurilma nomi</label>
+              <input
+                className="input"
+                value={edit.name}
+                onChange={(e) => setEdit({ ...edit, name: e.target.value })}
+                maxLength={255}
+                placeholder="Muhammadamin's Laptop"
+              />
+            </div>
+            <div className="field" style={{ marginTop: 14 }}>
+              <label>Model</label>
+              <input
+                className="input"
+                value={edit.model}
+                onChange={(e) => setEdit({ ...edit, model: e.target.value })}
+                maxLength={255}
+                placeholder="Lenovo IdeaPad 3 15IAU7"
+              />
+            </div>
+            <div className="grid-2" style={{ marginTop: 20 }}>
+              <button className="btn btn-ghost" onClick={() => setEdit(null)}>Bekor qilish</button>
+              <button
+                className="btn btn-primary"
+                disabled={updateMutation.isPending}
+                onClick={() =>
+                  updateMutation.mutate({
+                    id: edit.device.id,
+                    body: { device_name: edit.name, device_model: edit.model },
+                  })
+                }
+              >
+                {updateMutation.isPending ? "Saqlanmoqda..." : "Saqlash"}
+              </button>
+            </div>
           </>
         )}
       </Modal>

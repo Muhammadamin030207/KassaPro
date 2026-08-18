@@ -60,6 +60,85 @@ class DeviceSessionApiTestCase(TestCase):
         self.assertNotIn("session_id", res.json())
         self.assertEqual(DeviceSession.objects.count(), 0)
 
+    # ------------------------------------------------ device metadata (model/type)
+
+    def test_login_captures_device_model_and_type(self):
+        res = self._login(
+            device_id=_device_id(1),
+            device_name="Muhammadamin's Laptop",
+            device_model="Lenovo IdeaPad 3 15IAU7",
+            device_type="laptop",
+        )
+        self.assertEqual(res.status_code, 200)
+        s = DeviceSession.objects.get(user=self.user, device_id=_device_id(1))
+        self.assertEqual(s.device_name, "Muhammadamin's Laptop")
+        self.assertEqual(s.device_model, "Lenovo IdeaPad 3 15IAU7")
+        self.assertEqual(s.device_type, "laptop")
+
+    def test_login_falls_back_when_model_and_type_missing(self):
+        # client-parsed type/model missing -> server derives from UA and fills model
+        res = self.client.post(
+            "/api/auth/login/",
+            {
+                "username": "admin",
+                "password": "admin123",
+                "device_id": _device_id(2),
+            },
+            HTTP_USER_AGENT="Mozilla/5.0 (Linux; Android 13; SM-A536B) Mobile",
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        s = DeviceSession.objects.get(user=self.user, device_id=_device_id(2))
+        self.assertEqual(s.device_type, "phone")
+        self.assertEqual(s.device_model, "Qurilma modeli aniqlanmadi")
+
+    def test_devices_list_returns_model_and_type_and_update_endpoint(self):
+        self._login(
+            device_id=_device_id(1),
+            device_name="Muhammadamin's Laptop",
+            device_model="Lenovo IdeaPad 3 15IAU7",
+            device_type="laptop",
+        )
+        token = self._login(device_id=_device_id(2)).json()["access"]
+        res = self.client.get(
+            "/api/devices/", **{"HTTP_AUTHORIZATION": f"Bearer {token}"}
+        )
+        self.assertEqual(res.status_code, 200)
+        target = next(
+            d for d in res.json()["results"] if d["device_id"] == _device_id(1)
+        )
+        self.assertEqual(target["device_name"], "Muhammadamin's Laptop")
+        self.assertEqual(target["device_model"], "Lenovo IdeaPad 3 15IAU7")
+        self.assertEqual(target["device_type"], "laptop")
+
+        # update model across all sessions of the device
+        session = DeviceSession.objects.get(user=self.user, device_id=_device_id(1))
+        res = self.client.patch(
+            f"/api/devices/{session.pk}/update/",
+            {"device_model": "Lenovo IdeaPad Pro 5"},
+            **{"HTTP_AUTHORIZATION": f"Bearer {token}"},
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 200)
+        session.refresh_from_db()
+        self.assertEqual(session.device_model, "Lenovo IdeaPad Pro 5")
+        self.assertTrue(
+            DeviceAuditLog.objects.filter(
+                action=DeviceAuditLog.Action.ADMIN_EDITED_DEVICE
+            ).exists()
+        )
+
+    def test_update_device_blank_body_rejected(self):
+        token = self._login(device_id=_device_id(3)).json()["access"]
+        session = DeviceSession.objects.get(user=self.user, device_id=_device_id(3))
+        res = self.client.patch(
+            f"/api/devices/{session.pk}/update/",
+            {},
+            **{"HTTP_AUTHORIZATION": f"Bearer {token}"},
+            content_type="application/json",
+        )
+        self.assertEqual(res.status_code, 400)
+
     def test_multi_device_multiple_sessions(self):
         self._login(device_id=_device_id(1))
         self._login(device_id=_device_id(2))

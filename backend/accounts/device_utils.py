@@ -94,12 +94,36 @@ def device_kind(user_agent):
     return "desktop"
 
 
-def record_login_event(user, request, result, device_id="", device_name=""):
+DEVICE_TYPES = {"laptop", "desktop", "tablet", "phone"}
+MODEL_UNKNOWN = "Noutbuk modeli aniqlanmadi"
+PHONE_MODEL_UNKNOWN = "Qurilma modeli aniqlanmadi"
+
+
+def device_type_from_ua(user_agent):
+    """User-Agent'dan qurilma turini tahlil qiladi (laptop/desktop/tablet/phone).
+
+    Browser UA laptop bilan desktopni aniq ajrata olmaydi — client tomonidan
+    yuborilgan `device_type` yetakchi, bu faqat fallback.
+    """
+    ua = user_agent or ""
+    if "Tablet" in ua or "iPad" in ua:
+        return "tablet"
+    if "Mobile" in ua:
+        return "phone"
+    return "desktop"
+
+
+def record_login_event(
+    user, request, result,
+    device_id="", device_name="", device_model="", device_type="",
+):
     browser, bv, os, osv = parse_user_agent(request.META.get("HTTP_USER_AGENT", ""))
     LoginEvent.objects.create(
         user=user,
         device_id=device_id,
         device_name=device_name,
+        device_model=device_model,
+        device_type=device_type,
         browser=browser,
         browser_version=bv,
         os=os,

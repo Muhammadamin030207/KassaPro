@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 
 import { api } from "../api/client";
 import { useAuthStore } from "../stores/authStore";
-import { getDeviceId } from "../lib/device";
+import { detectDevice, getDeviceId } from "../lib/device";
 import { useToast } from "../components/Toast";
 import { Modal } from "../components/Modal";
 import { Scene3D } from "../components/Scene3D";
@@ -48,10 +48,14 @@ export function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
+      const d = detectDevice(username);
       const data = await api.post("auth/login/", {
         username,
         password,
         device_id: getDeviceId(),
+        device_name: d.device_name,
+        device_model: d.device_model,
+        device_type: d.device_type,
       });
       if (!data || !data.access) {
         throw new Error("Serverdan bo'sh javob keldi — qayta urinib ko'ring");

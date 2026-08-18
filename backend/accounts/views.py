@@ -11,8 +11,12 @@ from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from accounts.device_utils import (
+    DEVICE_TYPES,
+    MODEL_UNKNOWN,
+    PHONE_MODEL_UNKNOWN,
     device_audit,
     device_kind,
+    device_type_from_ua,
     get_client_ip,
     parse_user_agent,
     record_login_event,
@@ -82,6 +86,14 @@ class LoginView(TokenObtainPairView):
 
         ua = request.META.get("HTTP_USER_AGENT", "")
         browser, bv, os_name, os_ver = parse_user_agent(ua)
+        device_type = (request.data.get("device_type") or "").strip()[:16].lower()
+        if device_type not in DEVICE_TYPES:
+            device_type = device_type_from_ua(ua)
+        device_model = (request.data.get("device_model") or "").strip()[:255]
+        if not device_model:
+            device_model = (
+                PHONE_MODEL_UNKNOWN if device_type in ("phone", "tablet") else MODEL_UNKNOWN
+            )
         device_name = (request.data.get("device_name") or "").strip()[:255]
         if not device_name:
             device_name = f"{browser} — {os_name}".strip(" —")
@@ -96,6 +108,8 @@ class LoginView(TokenObtainPairView):
             device_id=device_id,
             session_id=str(uuid.uuid4()),
             device_name=device_name,
+            device_model=device_model,
+            device_type=device_type,
             browser=browser,
             browser_version=bv,
             os=os_name,
@@ -121,7 +135,10 @@ class LoginView(TokenObtainPairView):
 
         data["session_id"] = session.session_id
         data["device_id"] = device_id
-        record_login_event(user, request, "success", device_id, session.device_name)
+        record_login_event(
+            user, request, "success", device_id, session.device_name,
+            session.device_model, session.device_type,
+        )
         device_audit(
             user, user, ActiveAction.LOGIN,
             device_id=device_id, device_name=session.device_name,
@@ -233,6 +250,12 @@ def _device_list_payload(request, qs):
                 "session_id": s.session_id,
                 "device_id": s.device_id,
                 "device_name": s.device_name,
+                "device_type": s.device_type or device_type_from_ua(s.user_agent),
+                "device_model": s.device_model or (
+                    PHONE_MODEL_UNKNOWN
+                    if (s.device_type or device_type_from_ua(s.user_agent)) in ("phone", "tablet")
+                    else MODEL_UNKNOWN
+                ),
                 "browser": s.browser,
                 "browser_version": s.browser_version,
                 "os": s.os,
@@ -361,6 +384,49 @@ class DeviceUnblockView(APIView):
             session_id=session.session_id, request=request,
         )
         return Response({"detail": "Qurilmaga qayta kirishga ruxsat berildi."})
+
+
+class DeviceUpdateView(APIView):
+    """Qurilma nomi/modelini tahrirlash — bitta qurilmaning barcha sessiyalariga qo'llanadi.
+
+    Model brauzer orqali avtomatik aniqlanmaydi (laptop'lar uchun), shuning
+    uchun egasi haqiqiy model nomini qo'lda kiritishi mumkin.
+    """
+
+    permission_classes = [IsAdmin]
+
+    def patch(self, request, pk):
+        session = (
+            DeviceSession.objects.filter(pk=pk, user=request.user)
+            .select_related("revoked_by")
+            .first()
+        )
+        if not session:
+            return Response({"detail": "Qurilma topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+
+        device_name = (request.data.get("device_name") or "").strip()[:255]
+        device_model = (request.data.get("device_model") or "").strip()[:255]
+        if not device_name and not device_model:
+            return Response(
+                {"detail": "Hech qanday o'zgarish yuborilmadi."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        updates = {}
+        if device_name:
+            updates["device_name"] = device_name
+        if device_model:
+            updates["device_model"] = device_model
+        DeviceSession.objects.filter(user=request.user, device_id=session.device_id).update(**updates)
+
+        device_audit(
+            request.user, request.user, ActiveAction.ADMIN_EDITED_DEVICE,
+            device_id=session.device_id,
+            device_name=updates.get("device_name", session.device_name),
+            session_id=session.session_id, request=request,
+            detail=updates,
+        )
+        return Response({"detail": "Qurilma ma'lumotlari yangilandi."})
 
 
 class DeviceRevokeAllView(APIView):

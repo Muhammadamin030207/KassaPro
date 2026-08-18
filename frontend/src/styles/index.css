@@ -3243,6 +3243,16 @@ html, body, #root {
   color: var(--brand-light);
 }
 
+.device-model {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .device-meta {
   display: block;
   margin-top: 3px;

@@ -150,6 +150,8 @@ class DeviceSessionSerializer(serializers.ModelSerializer):
             "session_id",
             "device_id",
             "device_name",
+            "device_model",
+            "device_type",
             "browser",
             "browser_version",
             "os",
@@ -189,6 +191,8 @@ class DeviceSerializer(serializers.Serializer):
     session_id = serializers.CharField()
     device_id = serializers.CharField()
     device_name = serializers.CharField()
+    device_model = serializers.CharField()
+    device_type = serializers.CharField()
     browser = serializers.CharField()
     browser_version = serializers.CharField()
     os = serializers.CharField()
@@ -212,6 +216,8 @@ class LoginEventSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "device_name",
+            "device_model",
+            "device_type",
             "browser",
             "browser_version",
             "os",

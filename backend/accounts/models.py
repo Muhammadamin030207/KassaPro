@@ -64,6 +64,8 @@ class DeviceSession(models.Model):
     device_id = models.CharField(max_length=64, db_index=True)
     session_id = models.CharField(max_length=64, unique=True, db_index=True)
     device_name = models.CharField(max_length=255, blank=True)
+    device_model = models.CharField(max_length=255, blank=True, default="")
+    device_type = models.CharField(max_length=16, blank=True, default="")
     browser = models.CharField(max_length=64, blank=True)
     browser_version = models.CharField(max_length=32, blank=True)
     os = models.CharField(max_length=64, blank=True)
@@ -113,6 +115,8 @@ class LoginEvent(models.Model):
     )
     device_id = models.CharField(max_length=64, blank=True)
     device_name = models.CharField(max_length=255, blank=True)
+    device_model = models.CharField(max_length=255, blank=True, default="")
+    device_type = models.CharField(max_length=16, blank=True, default="")
     browser = models.CharField(max_length=64, blank=True)
     browser_version = models.CharField(max_length=32, blank=True)
     os = models.CharField(max_length=64, blank=True)
@@ -138,6 +142,7 @@ class DeviceAuditLog(models.Model):
         LOGOUT = "logout", "Chiqish"
         ADMIN_REVOKED_DEVICE = "admin_revoked_device", "Qurilma chiqarildi"
         ADMIN_UNBLOCKED_DEVICE = "admin_unblocked_device", "Qurilmaga ruxsat berildi"
+        ADMIN_EDITED_DEVICE = "admin_edited_device", "Qurilma ma'lumotlari tahrirlandi"
         REVOKE_ALL = "revoke_all", "Barcha qurilmalar chiqarildi"
 
     actor = models.ForeignKey(

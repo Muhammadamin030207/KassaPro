@@ -7,6 +7,7 @@ from accounts.views import (
     DeviceRevokeAllView,
     DeviceRevokeView,
     DeviceUnblockView,
+    DeviceUpdateView,
     LoginView,
     LogoutView,
     MeView,
@@ -28,6 +29,7 @@ urlpatterns = [
     path("devices/revoke-all/", DeviceRevokeAllView.as_view(), name="devices-revoke-all"),
     path("devices/<int:pk>/revoke/", DeviceRevokeView.as_view(), name="device-revoke"),
     path("devices/<int:pk>/unblock/", DeviceUnblockView.as_view(), name="device-unblock"),
+    path("devices/<int:pk>/update/", DeviceUpdateView.as_view(), name="device-update"),
     path("staff/", StaffListCreateView.as_view(), name="staff-list"),
     path("staff/<int:pk>/", StaffDeleteView.as_view(), name="staff-delete"),
 ]
