@@ -26,10 +26,11 @@ function Protected({ children }) {
   return <AppLayout>{children}</AppLayout>;
 }
 
-/** Owner / SuperAdmin sahifalari faqat egasiga. */
+/** Owner / Admin sahifalari faqat egasi yoki platforma adminiga. */
 function OwnerOnly({ children }) {
   const user = useAuthStore((s) => s.user);
-  if (user?.role !== "owner") return <Navigate to="/" replace />;
+  const isAdmin = user?.role === "super_admin" || user?.is_admin;
+  if (user?.role !== "owner" && !isAdmin) return <Navigate to="/" replace />;
   return children;
 }
 

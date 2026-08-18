@@ -39,7 +39,7 @@ export function AppLayout({ children }) {
         : "Kassir";
   const links = LINKS.filter(
     (l) =>
-      (!l.ownerOnly || user?.role === "owner") &&
+      (!l.ownerOnly || user?.role === "owner" || isAdmin) &&
       (!l.superAdminOnly || isAdmin)
   );
 
