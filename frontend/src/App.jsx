@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppLayout } from "./components/AppLayout";
+import { apiFetch } from "./api/client";
 import { useAuthStore, isTokenExpired } from "./stores/authStore";
 import LoginPage from "./pages/LoginPage";
 import CashierPage from "./pages/CashierPage";

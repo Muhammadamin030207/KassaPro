@@ -2635,24 +2635,36 @@ html, body, #root {
     min-height: 0;
   }
 
-  /* ===== STICKY BOTTOM ACTION BAR ===== */
+  /* ===== FIXED BOTTOM ACTION BAR (ekranga yopishtirilgan) ===== */
+  /* overflow-hidden konteynerlar ichida sticky chetga surilib qolardi —
+     endi footer fixed, modal (z100) va drawer (z70) ostida turib qolmaydi */
   .cashier-layout .pay-zone {
     flex: 0 0 auto !important;
     width: 100% !important;
     max-width: 100% !important;
     align-self: auto !important;
-    position: sticky;
-    bottom: 0;
-    z-index: 50;
-    padding: 14px 14px calc(14px + env(safe-area-inset-bottom, 16px)) !important;
-    background: rgba(10, 20, 16, 0.92);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--line);
-    border-top: none;
-    border-radius: 18px 18px 14px 14px;
-    box-shadow: 0 -14px 40px rgba(0, 0, 0, 0.45);
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 55;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 16px)) !important;
+    background: #0f172a;
+    border: 0;
+    border-top: 2px solid #1e293b;
+    border-radius: 0;
+    box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.5);
     gap: 12px;
     overflow: visible;
+  }
+
+  /* Receipt ro'yxati to'liq balandlikni olib, kechek ichida scroll qiladi */
+  .cashier-layout .receipt-row-wrap {
+    padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .cashier-layout .pay-zone .pay-checkout {
+    height: 54px;
   }
 
   .pay-zone .pay-total-display {
