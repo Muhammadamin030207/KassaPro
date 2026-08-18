@@ -121,6 +121,14 @@ class Debt(models.Model):
         blank=True,
         related_name="created_debts",
     )
+    paid_at = models.DateTimeField(null=True, blank=True)
+    paid_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="closed_debts",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -130,6 +138,29 @@ class Debt(models.Model):
             models.Index(fields=["customer", "status"]),
             models.Index(fields=["due_date", "status"]),
         ]
+
+    def save(self, *args, **kwargs):
+        self.sync_debt_status()
+        super().save(*args, **kwargs)
+
+    def sync_debt_status(self):
+        """Yagona status mantig'i — hamma joyda shu ishlatiladi.
+
+        `remaining_amount <= 0` bo'lsa qarz avtomatik PAID bo'ladi.
+        """
+        if self.remaining_amount is None:
+            self.remaining_amount = self.original_amount
+        if self.remaining_amount <= 0:
+            self.remaining_amount = Decimal("0")
+            self.status = Debt.Status.PAID
+        elif self.status in (Debt.Status.PAID, Debt.Status.CANCELLED):
+            pass  # yopilgan qarzlarni qayta ochilmaydi
+        elif self.due_date < timezone.localdate():
+            self.status = Debt.Status.OVERDUE
+        elif self.paid_amount > 0:
+            self.status = Debt.Status.PARTIALLY_PAID
+        else:
+            self.status = Debt.Status.ACTIVE
 
     @property
     def paid_amount(self):

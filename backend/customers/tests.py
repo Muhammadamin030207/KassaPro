@@ -68,6 +68,11 @@ class DebtApiTestCase(TestCase):
         self.assertEqual(resp.status_code, 201, resp.content)
         return resp.json()["id"]
 
+    def _pay(self, debt_id, amount):
+        return self.client.post(
+            f"/api/debts/{debt_id}/payments/", {"amount": amount}, format="json"
+        )
+
     def test_customer_phone_normalized(self):
         cid = self._customer()
         cust = Customer.objects.get(pk=cid)
@@ -76,9 +81,7 @@ class DebtApiTestCase(TestCase):
     def test_overpay_rejected(self):
         cid = self._customer()
         did = self._debt(cid, "200000")
-        resp = self.client.post(
-            f"/api/debts/{did}/pay/", {"amount": "999999"}, format="json"
-        )
+        resp = self._pay(did, "999999")
         self.assertEqual(resp.status_code, 400)
         debt = Debt.objects.get(pk=did)
         self.assertEqual(debt.remaining_amount, Decimal("200000"))
@@ -86,22 +89,79 @@ class DebtApiTestCase(TestCase):
     def test_partial_then_full_payment(self):
         cid = self._customer()
         did = self._debt(cid, "200000")
-        resp = self.client.post(
-            f"/api/debts/{did}/pay/", {"amount": "80000"}, format="json"
-        )
+        resp = self._pay(did, "80000")
         self.assertEqual(resp.status_code, 201, resp.content)
         debt = Debt.objects.get(pk=did)
         self.assertEqual(debt.remaining_amount, Decimal("120000"))
         self.assertEqual(debt.status, Debt.Status.PARTIALLY_PAID)
+        self.assertIsNone(debt.paid_at)
 
-        resp = self.client.post(
-            f"/api/debts/{did}/pay/", {"amount": "120000"}, format="json"
-        )
+        resp = self._pay(did, "120000")
         self.assertEqual(resp.status_code, 201, resp.content)
         debt.refresh_from_db()
         self.assertEqual(debt.remaining_amount, Decimal("0"))
         self.assertEqual(debt.status, Debt.Status.PAID)
+        self.assertIsNotNone(debt.paid_at)
+        self.assertEqual(debt.paid_by, self.owner)
         self.assertEqual(DebtPayment.objects.filter(debt=debt).count(), 2)
+
+    def test_acceptance_full_payment_leaves_active_and_enters_history(self):
+        """Critical acceptance: Muhammadamin 6 000 — to'liq to'lovdan keyin
+        active'da yo'q, history'da bor."""
+        cid = self._customer("Muhammadamin")
+        did = self._debt(cid, "6000")
+
+        # Step 1: active debts — mavjud
+        resp = self.client.get("/api/debts/")
+        self.assertIn(did, [d["id"] for d in resp.json()["results"]])
+
+        # Step 2: 6000 to'lash
+        resp = self._pay(did, "6000")
+        self.assertEqual(resp.status_code, 201, resp.content)
+
+        # Step 3: active debts — YO'Q
+        debt = Debt.objects.get(pk=did)
+        self.assertEqual(debt.remaining_amount, Decimal("0"))
+        self.assertEqual(debt.status, Debt.Status.PAID)
+        resp = self.client.get("/api/debts/")
+        self.assertNotIn(did, [d["id"] for d in resp.json()["results"]])
+
+        # Step 4: history — BOR, status PAID
+        resp = self.client.get("/api/debts/history/")
+        hist = [h for h in (resp.json().get("results") or []) if h["id"] == did]
+        self.assertEqual(len(hist), 1)
+        self.assertEqual(hist[0]["status"], Debt.Status.PAID)
+        self.assertEqual(hist[0]["remaining_amount"], "0.00")
+
+        # Step 6: customer balance — 0
+        cust = Customer.objects.get(pk=cid)
+        self.assertEqual(cust.balance, Decimal("0"))
+
+        # Step 7: stats — debtors count 0
+        stats = self.client.get("/api/debts/stats/").json()
+        self.assertEqual(stats["debtors_count"], 0)
+        self.assertEqual(Decimal(stats["total_debt"]), Decimal("0"))
+
+    def test_active_query_only_open_debts(self):
+        cid = self._customer()
+        did = self._debt(cid, "200000")
+        self._pay(did, "200000")
+        resp = self.client.get("/api/debts/")
+        ids = [d["id"] for d in resp.json()["results"]]
+        self.assertNotIn(did, ids)
+        # boshqa ochiq qarz ham bor bo'lsa status filter faqat active ichida
+        did2 = self._debt(cid, "50000")
+        resp = self.client.get("/api/debts/")
+        self.assertIn(did2, [d["id"] for d in resp.json()["results"]])
+
+    def test_persist_sync_remaining_zero_is_paid(self):
+        """remaining_amount = 0 bo'lgan saqlanganda status avtomatik PAID."""
+        cid = self._customer()
+        did = self._debt(cid, "10000")
+        resp = self._pay(did, "10000")
+        debt = Debt.objects.get(pk=did)
+        self.assertEqual(debt.status, Debt.Status.PAID)
+        self.assertEqual(debt.remaining_amount, Decimal("0"))
 
     def test_overdue_effective_status(self):
         cid = self._customer()
@@ -120,6 +180,14 @@ class DebtApiTestCase(TestCase):
         self.assertEqual(Decimal(resp.json()["total_debt"]), Decimal("200000"))
         self.assertEqual(resp.json()["debtors_count"], 1)
 
+    def test_stats_exclude_paid(self):
+        cid = self._customer()
+        did = self._debt(cid, "300000")
+        self._pay(did, "300000")
+        resp = self.client.get("/api/debts/stats/")
+        self.assertEqual(Decimal(resp.json()["total_debt"]), Decimal("0"))
+        self.assertEqual(resp.json()["debtors_count"], 0)
+
     def test_top_debtors(self):
         cid = self._customer()
         self._debt(cid, "300000")
@@ -127,15 +195,6 @@ class DebtApiTestCase(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()[0]["id"], cid)
         self.assertEqual(Decimal(resp.json()[0]["balance"]), Decimal("300000"))
-
-    def test_cancel_by_owner(self):
-        cid = self._customer()
-        did = self._debt(cid, "200000")
-        resp = self.client.post(f"/api/debts/{did}/cancel/", {}, format="json")
-        self.assertEqual(resp.status_code, 200, resp.content)
-        debt = Debt.objects.get(pk=did)
-        self.assertEqual(debt.status, Debt.Status.CANCELLED)
-        self.assertEqual(debt.remaining_amount, Decimal("0"))
 
     def test_credit_limit_change_logged(self):
         cid = self._customer(limit="100000")
@@ -154,3 +213,14 @@ class DebtApiTestCase(TestCase):
         self.assertEqual(resp.status_code, 200)
         actions = {e["action"] for e in resp.json()["results"]}
         self.assertIn(AuditLog.Action.DEBT_CREATED, actions)
+
+    def test_race_guard_overpayment_rejected_after_full_pay(self):
+        cid = self._customer()
+        did = self._debt(cid, "5000")
+        self._pay(did, "5000")
+        # ikkinchi parallel to'lov rad etiladi — negative bo'lmaydi
+        resp = self._pay(did, "5000")
+        self.assertEqual(resp.status_code, 400)
+        debt = Debt.objects.get(pk=did)
+        self.assertEqual(debt.remaining_amount, Decimal("0"))
+        self.assertEqual(DebtPayment.objects.filter(debt=debt).count(), 1)

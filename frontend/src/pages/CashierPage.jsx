@@ -13,7 +13,6 @@ import { CameraScannerModal } from "../components/CameraScannerModal";
 import { SuccessOverlay } from "../components/SuccessOverlay";
 import { PaymentModal } from "../components/PaymentModal";
 import { PaymentSheet } from "../components/PaymentSheet";
-import { NasiyaCustomerModal } from "../components/NasiyaCustomerModal";
 import Icon from "../components/Icon";
 import { useCountUp } from "../hooks/useCountUp";
 import { formatMoney } from "../utils/format";
@@ -54,8 +53,6 @@ export function CashierPage() {
   const [camOpen, setCamOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [lastCash, setLastCash] = useState(null);
-  const [nasiyaOpen, setNasiyaOpen] = useState(false);
-  const [nasiyaCustomer, setNasiyaCustomer] = useState(null);
 
   const inputRef = useRef(null);
   const quickNameRef = useRef(null);
@@ -213,14 +210,13 @@ export function CashierPage() {
     if (!hasItems) return;
     setPaying(true);
     setPayOpen(false);
-    setNasiyaOpen(false);
     try {
       const payload = {
         payment_method: method,
         items: items.map((it) => ({ product_id: it.product_id, qty: it.qty })),
       };
       if (method === "nasiya") {
-        const phone = customer?.phone || nasiyaCustomer?.phone;
+        const phone = customer?.phone;
         if (!phone) {
           setPaying(false);
           show("Nasiya uchun mijoz telefonini tanlang", "error");
@@ -523,18 +519,6 @@ export function CashierPage() {
         shopName={user?.shop_name}
         onConfirm={checkout}
         onClose={() => setPayOpen(false)}
-      />
-
-      {/* Nasiya — mijoz tanlash/yangi yaratish */}
-      <NasiyaCustomerModal
-        open={nasiyaOpen}
-        total={total}
-        onSelect={(c) => {
-          setNasiyaCustomer(c);
-          setNasiyaOpen(false);
-          checkout(c);
-        }}
-        onClose={() => setNasiyaOpen(false)}
       />
 
       {/* To'lov bottom-sheet — Naqd/Karta/QR/Nasiya bittada */}

@@ -130,8 +130,10 @@ class DebtListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         shop = self.request.user.shop
+        # Asosiy qoida: faqat ochiq (remaining_amount > 0) qarzlar.
+        # PAID/CANCELLED — history endpointida.
         qs = (
-            Debt.objects.filter(shop=shop)
+            Debt.objects.filter(shop=shop, remaining_amount__gt=0)
             .select_related("customer", "sale")
             .order_by("due_date", "-created_at")
         )
@@ -208,39 +210,29 @@ class DebtDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Debt.objects.filter(shop=self.request.user.shop)
 
 
-class DebtCancelView(views.APIView):
-    permission_classes = [IsShopMember]
+class DebtHistoryView(generics.ListAPIView):
+    """Yopilgan qarzlar tarixi — PAID va CANCELLED."""
 
-    def post(self, request, pk):
-        if not (request.user.role_is_owner or request.user.is_admin):
-            return response.Response(
-                {"detail": "Qarzni bekor qilish faqat egasi/admin uchun."},
-                status=status.HTTP_403_FORBIDDEN,
+    permission_classes = [IsShopMember]
+    serializer_class = DebtSerializer
+
+    def get_queryset(self):
+        shop = self.request.user.shop
+        qs = (
+            Debt.objects.filter(
+                shop=shop,
+                status__in=[Debt.Status.PAID, Debt.Status.CANCELLED],
             )
-        debt = Debt.objects.filter(shop=request.user.shop, pk=pk).first()
-        if not debt:
-            return response.Response(
-                {"detail": "Qarz topilmadi."},
-                status=status.HTTP_404_NOT_FOUND,
+            .select_related("customer", "sale", "paid_by")
+            .order_by("-paid_at", "-created_at")
+        )
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            qs = qs.filter(
+                Q(customer__name__icontains=search)
+                | Q(customer__phone__icontains=search)
             )
-        if debt.remaining_amount == 0:
-            return response.Response(
-                {"detail": "Qarz allaqachon to'langan, bekor qilib bo'lmaydi."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        with transaction.atomic():
-            debt.status = Debt.Status.CANCELLED
-            debt.remaining_amount = Decimal("0")
-            debt.save(update_fields=["status", "remaining_amount"])
-            _log(
-                shop=request.user.shop,
-                actor=request.user,
-                action=AuditLog.Action.DEBT_CANCELLED,
-                entity="Debt",
-                entity_id=debt.pk,
-                detail={"amount_left": str(debt.remaining_amount)},
-            )
-        return response.Response(DebtSerializer(debt).data)
+        return qs
 
 
 class DebtPaymentView(views.APIView):
@@ -248,49 +240,60 @@ class DebtPaymentView(views.APIView):
     serializer_class = DebtPaymentCreateSerializer
 
     def post(self, request, pk):
-        debt = (
-            Debt.objects.filter(shop=request.user.shop, pk=pk)
-            .select_related("customer")
-            .first()
-        )
-        if not debt:
-            return response.Response(
-                {"detail": "Qarz topilmadi."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        if debt.remaining_amount <= 0:
-            return response.Response(
-                {"detail": "Qarz allaqachon to'langan."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
         serializer = DebtPaymentCreateSerializer(data=request.data)
         if not serializer.is_valid():
             return response.Response(
                 serializer.errors, status=status.HTTP_400_BAD_REQUEST
             )
         amount = serializer.validated_data["amount"]
-        if amount > debt.remaining_amount:
-            return response.Response(
-                {
-                    "detail": (
-                        "To'lov summasi qolgan qarzdan oshib ketdi. "
-                        f"Qolgan qarz: {debt.remaining_amount} so'm."
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        # To'lov atomik va row-lock bilan — race condition oldi olinadi.
+        # Ikki parallel to'lov ham qarzni salbiy qila olmaydi.
         with transaction.atomic():
+            debt = (
+                Debt.objects.select_for_update()
+                .filter(shop=request.user.shop, pk=pk)
+                .select_related("customer")
+                .first()
+            )
+            if not debt:
+                return response.Response(
+                    {"detail": "Qarz topilmadi."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            if debt.remaining_amount <= 0:
+                return response.Response(
+                    {"detail": "Qarz allaqachon to'langan."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if amount > debt.remaining_amount:
+                return response.Response(
+                    {
+                        "detail": (
+                            "To'lov summasi qolgan qarzdan oshib ketdi. "
+                            f"Qolgan qarz: {debt.remaining_amount} so'm."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             paid = debt.paid_amount + amount
             if paid >= debt.original_amount:
                 new_status = Debt.Status.PAID
                 new_remaining = Decimal("0")
+                paid_at = timezone.now()
             else:
                 new_status = Debt.Status.PARTIALLY_PAID
                 new_remaining = debt.original_amount - paid
+                paid_at = None
+
             debt.paid_amount = paid
             debt.remaining_amount = new_remaining
             debt.status = new_status
+            if paid_at:
+                debt.paid_at = paid_at
+                debt.paid_by = request.user
             debt.save()
+
             payment = DebtPayment.objects.create(
                 shop=request.user.shop,
                 debt=debt,

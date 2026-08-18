@@ -18,6 +18,7 @@ class DebtSerializer(serializers.ModelSerializer):
     is_overdue = serializers.SerializerMethodField()
     status_display = serializers.SerializerMethodField()
     sale_total = serializers.SerializerMethodField()
+    paid_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Debt
@@ -37,6 +38,9 @@ class DebtSerializer(serializers.ModelSerializer):
             "status_display",
             "note",
             "sale_total",
+            "paid_at",
+            "paid_by",
+            "paid_by_name",
             "created_at",
         ]
 
@@ -56,6 +60,11 @@ class DebtSerializer(serializers.ModelSerializer):
         if obj.sale_id:
             return str(obj.sale.total)
         return None
+
+    def get_paid_by_name(self, obj):
+        if obj.paid_by:
+            return obj.paid_by.get_full_name() or obj.paid_by.username
+        return ""
 
 
 class DebtPaymentSerializer(serializers.ModelSerializer):
