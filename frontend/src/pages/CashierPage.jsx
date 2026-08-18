@@ -12,6 +12,7 @@ import { ReceiptPrint } from "../components/ReceiptPrint";
 import { CameraScannerModal } from "../components/CameraScannerModal";
 import { SuccessOverlay } from "../components/SuccessOverlay";
 import { PaymentModal } from "../components/PaymentModal";
+import { PaymentSheet } from "../components/PaymentSheet";
 import { NasiyaCustomerModal } from "../components/NasiyaCustomerModal";
 import Icon from "../components/Icon";
 import { useCountUp } from "../hooks/useCountUp";
@@ -51,6 +52,8 @@ export function CashierPage() {
   const [printOpen, setPrintOpen] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const [camOpen, setCamOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [lastCash, setLastCash] = useState(null);
   const [nasiyaOpen, setNasiyaOpen] = useState(false);
   const [nasiyaCustomer, setNasiyaCustomer] = useState(null);
 
@@ -186,34 +189,37 @@ export function CashierPage() {
     setTimeout(() => quickNameRef.current?.focus(), 80);
   };
 
-  // To'lov: Click/Payme/Visa bo'lsa QR+karta modali avval ko'rsatiladi;
-  // Nasiya bo'lsa mijozni tanlash modali ochiladi.
+  // To'lov: asosan "TO'LOVGA O'TISH" tugmasi PaymentSheet (bottom-sheet) ochadi —
+  // usullar, naqd qaytim va nasiya mijozini tanlash shu yerda hal qilinadi.
   const onPay = () => {
     if (!hasItems) return;
-    if (payment === "nasiya") {
-      setNasiyaOpen(true);
-      return;
-    }
-    if (ONLINE_METHODS.includes(payment)) {
+    setSheetOpen(true);
+  };
+
+  // Bottom-sheet "TASDIQLASH" tugmasi — tanlangan usul bo'yicha davom etamiz.
+  const handleSheetConfirm = ({ method, customer, cashReceived, change }) => {
+    if (ONLINE_METHODS.includes(method)) {
+      setPayment(method);
       setOrderId(Date.now());
       setPayOpen(true);
       return;
     }
-    checkout();
+    setPayment(method);
+    checkout(customer, method, cashReceived, change);
   };
 
   // Sotuvni yakunlash (asosiy API chaqiruvi)
-  const checkout = async (customer) => {
+  const checkout = async (customer, method = payment, cashReceived, change) => {
     if (!hasItems) return;
     setPaying(true);
     setPayOpen(false);
     setNasiyaOpen(false);
     try {
       const payload = {
-        payment_method: payment,
+        payment_method: method,
         items: items.map((it) => ({ product_id: it.product_id, qty: it.qty })),
       };
-      if (payment === "nasiya") {
+      if (method === "nasiya") {
         const phone = customer?.phone || nasiyaCustomer?.phone;
         if (!phone) {
           setPaying(false);
@@ -224,10 +230,15 @@ export function CashierPage() {
       }
       const sale = await api.post("sales/", payload);
       setLastSale(sale);
+      setLastCash(
+        method === "cash" && cashReceived != null
+          ? { received: cashReceived, change: change ?? Math.max(0, cashReceived - sale.total) }
+          : null
+      );
       clearCart();
       setNasiyaCustomer(null);
       show(
-        payment === "nasiya"
+        method === "nasiya"
           ? `Nasiya saqlandi: ${formatMoney(sale.total)}`
           : `Sotuv saqlandi: ${formatMoney(sale.total)}`,
         "success",
@@ -509,6 +520,16 @@ export function CashierPage() {
         onClose={() => setNasiyaOpen(false)}
       />
 
+      {/* To'lov bottom-sheet — Naqd/Karta/QR/Nasiya bittada */}
+      <PaymentSheet
+        open={sheetOpen}
+        total={total}
+        settings={settings || {}}
+        initialMethod={payment}
+        onConfirm={handleSheetConfirm}
+        onClose={() => setSheetOpen(false)}
+      />
+
       {/* Chop etish modali */}
       <Modal open={printOpen} onClose={() => { setPrintOpen(false); focusInput(); }}>
         <div style={{ textAlign: "center" }}>
@@ -549,6 +570,7 @@ export function CashierPage() {
           sale={lastSale}
           shopName={user?.shop_name}
           cashierName={user?.username}
+          cash={lastCash}
         />
       )}
     </motion.div>

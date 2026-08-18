@@ -19,10 +19,10 @@ function barcodeBars(code) {
  * Chop etiladigan chek — termal printerga ideal chiqadigan dizayn.
  * `window.print()` bilan chop etiladi (CSS `@media print` qoidalariga tayanadi).
  *
- * @param {{ sale: object, shopName?: string, cashierName?: string }} props
+ * @param {{ sale: object, shopName?: string, cashierName?: string, cash?: {received:number, change:number} }} props
  */
 export const ReceiptPrint = forwardRef(function ReceiptPrint(
-  { sale, shopName = "KassaPro", cashierName = "" },
+  { sale, shopName = "KassaPro", cashierName = "", cash = null },
   ref
 ) {
   const payName = PAY_NAMES[sale?.payment_method] || sale?.payment_method;
@@ -74,6 +74,18 @@ export const ReceiptPrint = forwardRef(function ReceiptPrint(
         <span className="pr-label">To'lov:</span>
         <span>{payName}</span>
       </div>
+      {sale?.payment_method === "cash" && cash && (
+        <>
+          <div className="pr-row">
+            <span className="pr-label">Berildi:</span>
+            <span>{formatMoney(cash.received)}</span>
+          </div>
+          <div className="pr-row">
+            <span className="pr-label">Qaytim:</span>
+            <span>{formatMoney(cash.change)}</span>
+          </div>
+        </>
+      )}
 
       <div className="pr-divider" />
       <div className="pr-code-bars" style={{ backgroundImage: `repeating-linear-gradient(90deg, ${barcodeBars(itemsFingerprint)}#000 0 0.7mm, transparent 0.7mm 1.6mm)` }} />

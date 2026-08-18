@@ -4,9 +4,9 @@ import { AnimatePresence, motion } from "framer-motion";
 /**
  * Modal oyna. Esc bilan yopiladi.
  *
- * @param {{ open: boolean, onClose: function, children: React.ReactNode, size?: string }} props
+ * @param {{ open: boolean, onClose: function, children: React.ReactNode, size?: string, sheet?: boolean }} props
  */
-export function Modal({ open, onClose, children, size }) {
+export function Modal({ open, onClose, children, size, sheet }) {
   useEffect(() => {
     if (!open) return undefined;
     const handler = (e) => e.key === "Escape" && onClose?.();
@@ -18,14 +18,14 @@ export function Modal({ open, onClose, children, size }) {
     <AnimatePresence>
       {open && (
         <motion.div
-          className="modal-overlay"
+          className={`modal-overlay${sheet ? " modal-sheet-overlay" : ""}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
         >
           <motion.div
-            className={`modal ${size === "lg" ? "modal-lg" : ""}`}
+            className={`modal ${size === "lg" ? "modal-lg" : ""}${sheet ? " modal-sheet" : ""}`}
             initial={{ y: 24, scale: 0.96, opacity: 0 }}
             animate={{ y: 0, scale: 1, opacity: 1 }}
             exit={{ y: 12, scale: 0.97, opacity: 0 }}

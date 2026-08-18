@@ -2343,6 +2343,56 @@ table.data tbody tr:hover {
   }
 }
 
+/* ---------- PaymentSheet bottom-sheet ---------- */
+.sheet-block {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.pay-confirm {
+  width: 100%;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  box-shadow: 0 10px 26px rgba(16, 185, 129, 0.35);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.pay-confirm:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(16, 185, 129, 0.45);
+}
+
+.pay-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mobil: modal pastki sheet ko'rinishiga o'tsin */
+@media (max-width: 640px) {
+  .modal-sheet-overlay {
+    align-items: flex-end;
+  }
+  .modal-sheet {
+    width: 100%;
+    max-width: 100%;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    padding: 22px 18px calc(22px + env(safe-area-inset-bottom));
+    max-height: 92dvh;
+    overflow-y: auto;
+  }
+}
+
 /* ---------- Telefon/planshet uchun responsive mustahkamlash ---------- */
 @media (max-width: 900px) {
   .receipt-tape {
