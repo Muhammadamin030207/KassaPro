@@ -76,6 +76,19 @@ class OwnerRegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError("Bu login band.")
         return value
 
+    def validate(self, attrs):
+        phone = attrs.get("phone", "")
+        if phone:
+            from customers.utils import normalize_phone
+
+            normalized = normalize_phone(phone)
+            if not normalized:
+                raise serializers.ValidationError(
+                    {"phone": "Telefon raqam noto'g'ri formatda."}
+                )
+            attrs["phone"] = normalized
+        return attrs
+
     @transaction.atomic
     def create(self, validated_data):
         user = UserModel.objects.create_user(

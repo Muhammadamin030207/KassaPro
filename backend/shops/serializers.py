@@ -100,15 +100,35 @@ class StoreCreateSerializer(serializers.Serializer):
         return "".join(secrets.choice(alphabet) for _ in range(8))
 
     def validate(self, attrs):
+        from customers.utils import normalize_phone
+
+        phone = attrs.get("phone", "")
+        if phone:
+            normalized = normalize_phone(phone)
+            if not normalized:
+                raise serializers.ValidationError(
+                    {"phone": "Telefon raqam noto'g'ri formatda."}
+                )
+            attrs["phone"] = normalized
         attrs["username"] = self._gen_username(attrs["store_name"])
         attrs["password"] = self._gen_password()
         return attrs
 
     @transaction.atomic
     def create(self, validated_data):
-        from customers.utils import normalize_phone
+        application_id = validated_data.get("application_id")
+        if application_id:
+            app = StoreApplication.objects.filter(id=application_id).first()
+            if not app:
+                raise serializers.ValidationError(
+                    {"application_id": "Ariza topilmadi."}
+                )
+            if app.status != StoreApplication.Status.PENDING:
+                raise serializers.ValidationError(
+                    {"application_id": "Bu ariza allaqachon ko'rib chiqilgan."}
+                )
 
-        phone = normalize_phone(validated_data.get("phone", ""))
+        phone = validated_data.get("phone", "")
         user = User.objects.create_user(
             username=validated_data["username"],
             password=validated_data["password"],
@@ -125,7 +145,6 @@ class StoreCreateSerializer(serializers.Serializer):
         user.save(update_fields=["shop"])
         user._generated_password = validated_data["password"]
 
-        application_id = validated_data.get("application_id")
         if application_id:
             StoreApplication.objects.filter(id=application_id).update(
                 status=StoreApplication.Status.APPROVED,

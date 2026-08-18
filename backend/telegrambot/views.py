@@ -49,7 +49,7 @@ class TelegramWebhookView(APIView):
         chat_id = chat.get("id")
         text = (message.get("text") or "").strip()
 
-        if not chat_id or not message.get("text") is not None:
+        if not chat_id or "text" not in message:
             return Response(status=status.HTTP_200_OK)
 
         username = ((chat.get("username") or "")[:255])
@@ -119,9 +119,15 @@ class TelegramWebhookView(APIView):
             return
 
         step = session.step
-        setattr(session, step, text[:255])
+        field_max = {
+            "store_name": 150,
+            "owner_name": 255,
+            "phone": 20,
+            "address": 255,
+        }
+        setattr(session, step, text[: field_max.get(step, 255)])
         if step == "phone":
-            session.phone = self._normalize_phone(text)
+            session.phone = self._normalize_phone(text) or session.phone
 
         next_index = STEPS.index(step) + 1
         if next_index < len(STEPS):

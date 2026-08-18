@@ -31,6 +31,12 @@ export function AppLayout({ children }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const isAdmin = user?.role === "super_admin" || user?.is_admin;
+  const roleLabel =
+    user?.role === "owner"
+      ? "Do'kon egasi"
+      : isAdmin
+        ? "Admin"
+        : "Kassir";
   const links = LINKS.filter(
     (l) =>
       (!l.ownerOnly || user?.role === "owner") &&
@@ -142,7 +148,7 @@ export function AppLayout({ children }) {
                     {user?.shop_name ? `— ${user.shop_name}` : ""}
                   </span>
                   <span className="role">
-                    {user?.role === "owner" ? "Do'kon egasi" : "Kassir"}
+                    {roleLabel}
                   </span>
                   <button className="logout-btn" onClick={onLogout}>
                     <Icon name="logOut" /> Chiqish
@@ -191,7 +197,7 @@ export function AppLayout({ children }) {
           <span>
             <b>{user?.username}</b> {user?.shop_name ? `— ${user.shop_name}` : ""}
           </span>
-          <span className="role">{user?.role === "owner" ? "Do'kon egasi" : "Kassir"}</span>
+          <span className="role">{roleLabel}</span>
           <button className="logout-btn" onClick={onLogout}>
             <Icon name="logOut" /> Chiqish
           </button>

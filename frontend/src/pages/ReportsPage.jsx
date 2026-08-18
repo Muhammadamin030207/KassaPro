@@ -69,13 +69,6 @@ export function ReportsPage() {
 
   const byCashier = useMemo(() => (data?.by_cashier || []).map((c) => ({ name: c.cashier__username || "Noma'lum", total: Number(c.total || 0), count: c.count })), [data]);
 
-  const byPayment = useMemo(() => {
-    if (!data) return [];
-    // summary'da by_payment yo'q — kunlik hisobotdan olamiz. Shu yerda oddiy variant:
-    const total = Number(data.total_revenue || 0);
-    return total ? [{ name: "Sotuvlar", value: total }] : [];
-  }, [data]);
-
   return (
     <div>
       <div className="page-head">
@@ -115,7 +108,7 @@ export function ReportsPage() {
                 <YAxis tick={{ fontSize: 12 }} width={70} tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)} />
                 <Tooltip formatter={(v) => formatMoney(v)} />
                 <Bar dataKey="total" fill="#29C77D" radius={[6, 6, 0, 0]} name="Savdo" />
-                <Line dataKey="total" type="monotone" stroke="#FF8A3D" strokeWidth={2} dot={false} name="Trend" />
+                <Line dataKey="count" type="monotone" stroke="#FF8A3D" strokeWidth={2} dot={false} name="Cheklar" />
               </ComposedChart>
             </ResponsiveContainer>
           </div>

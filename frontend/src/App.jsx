@@ -49,7 +49,16 @@ export default function App() {
       <Route path="/" element={<Protected><CashierPage /></Protected>} />
       <Route path="/products" element={<Protected><ProductsPage /></Protected>} />
       <Route path="/reports" element={<Protected><ReportsPage /></Protected>} />
-      <Route path="/debts" element={<Protected><DebtsPage /></Protected>} />
+      <Route
+        path="/debts"
+        element={
+          <Protected>
+            <OwnerOnly>
+              <DebtsPage />
+            </OwnerOnly>
+          </Protected>
+        }
+      />
       <Route
         path="/staff"
         element={

@@ -11,6 +11,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source="category.name", read_only=True)
+    category = serializers.PrimaryKeyRelatedField(read_only=True)
     category_id = serializers.PrimaryKeyRelatedField(
         queryset=Category.objects.none(),
         source="category",
@@ -81,6 +82,10 @@ class ProductSerializer(serializers.ModelSerializer):
 class ProductUpsertSerializer(serializers.ModelSerializer):
     """Shtrix kod bo'yicha create-or-update (upsert)."""
 
+    category = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.none(), required=False, allow_null=True
+    )
+
     class Meta:
         model = Product
         fields = [
@@ -94,6 +99,14 @@ class ProductUpsertSerializer(serializers.ModelSerializer):
             "is_active",
         ]
         read_only_fields = ["id"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if request:
+            self.fields["category"].queryset = Category.objects.filter(
+                shop=request.user.shop
+            )
 
     def validate_barcode(self, value):
         value = str(value).strip()

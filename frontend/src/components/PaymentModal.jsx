@@ -48,11 +48,13 @@ export function PaymentModal({ open, method, total = 0, saleId, orderId, setting
   // Dinamik QR (agar merchant ID sozlangan bo'lsa)
   let qrValue = "";
   if (method === "payme" && settings.payme_merchant_id) {
-    qrValue = `https://checkout.paycom.uz/${settings.payme_merchant_id}?amount=${amount}00&order_id=${ord}`;
+    // Payme rasmiy deep-link: base64("m=merchant_id;ac.order_id=X;a=summa_tiyin")
+    const paymePayload = `m=${settings.payme_merchant_id};ac.order_id=${ord};a=${amount}00`;
+    qrValue = `https://checkout.paycom.uz/${btoa(paymePayload)}`;
   } else if (method === "click" && settings.click_merchant_id && settings.click_service_id) {
-    qrValue = `https://my.click.uz/services/pay?merchant_id=${settings.click_merchant_id}&service_id=${settings.click_service_id}&amount=${amount}`;
+    qrValue = `https://my.click.uz/services/pay?merchant_id=${settings.click_merchant_id}&service_id=${settings.click_service_id}&amount=${amount}&transaction_param=${ord}`;
   } else if (method === "paynet" && settings.paynet_merchant_id) {
-    qrValue = `https://paynet.uz/pay/${settings.paynet_merchant_id}?amount=${amount}`;
+    qrValue = `https://paynet.uz/pay/${settings.paynet_merchant_id}?amount=${amount}&order_id=${ord}`;
   }
 
   // Agar merchant yo'q bo'lsa — karta raqamiga QR

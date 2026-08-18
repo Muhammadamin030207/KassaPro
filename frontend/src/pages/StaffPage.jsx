@@ -21,14 +21,14 @@ export function StaffPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["staff"],
-    queryFn: () => api.list("staff/"),
+    queryFn: () => api.list("staff/", { page_size: 100 }),
   });
   const staff = data?.results || [];
 
   const createMutation = useMutation({
     mutationFn: (payload) => api.post("staff/", payload),
     onSuccess: (res) => {
-      qc.invalidateQueries(["staff"]);
+      qc.invalidateQueries({ queryKey: ["staff"] });
       setCreated(res);
       setForm({ username: "", password: "", phone: "" });
       show("Kassir qo'shildi", "success");
@@ -39,7 +39,7 @@ export function StaffPage() {
   const deleteMutation = useMutation({
     mutationFn: (id) => api.del(`staff/${id}/`),
     onSuccess: () => {
-      qc.invalidateQueries(["staff"]);
+      qc.invalidateQueries({ queryKey: ["staff"] });
       show("Kassir o'chirildi", "success");
     },
     onError: (e) => show(e.message, "error"),
@@ -99,7 +99,14 @@ export function StaffPage() {
                   <td className="mono">{s.phone || "—"}</td>
                   <td><span className="badge badge-ok">Kassir</span></td>
                   <td style={{ textAlign: "right" }}>
-                    <button className="ghost-btn" onClick={() => deleteMutation.mutate(s.id)}>
+                    <button
+                      className="ghost-btn"
+                      onClick={() => {
+                        if (window.confirm(`"${s.username}" kassirini o'chirishni tasdiqlaysizmi?`)) {
+                          deleteMutation.mutate(s.id);
+                        }
+                      }}
+                    >
                       <Icon name="trash" />
                     </button>
                   </td>
@@ -164,7 +171,7 @@ export function StaffPage() {
             </div>
             <div className="flex spread" style={{ marginTop: 8 }}>
               <span>Parol</span>
-              <b className="mono">{created?.password}</b>
+              <b className="mono">{created?.generated_password}</b>
             </div>
           </div>
             <button className="btn btn-primary btn-block" onClick={() => setCreated(null)}>

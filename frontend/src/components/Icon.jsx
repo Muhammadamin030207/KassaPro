@@ -1,5 +1,3 @@
-import { AnimatePresence, motion } from "framer-motion";
-
 const ICONS = {
   scan: (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -126,7 +124,5 @@ export function Icon({ name, size = 22 }) {
     </span>
   );
 }
-
-const ICON_LIST = Object.keys(ICONS);
 
 export default Icon;

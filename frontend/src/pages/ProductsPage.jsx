@@ -48,14 +48,14 @@ export function ProductsPage() {
 
   const { data: productsData, isLoading } = useQuery({
     queryKey: ["products", debounced],
-    queryFn: () => api.list("products/", { search: debounced }),
+    queryFn: () => api.list("products/", { search: debounced, page_size: 200 }),
   });
   const products = productsData?.results || [];
 
   const deleteMutation = useMutation({
     mutationFn: (id) => api.del(`products/${id}/`),
     onSuccess: () => {
-      qc.invalidateQueries(["products"]);
+      qc.invalidateQueries({ queryKey: ["products"] });
       show("Mahsulot o'chirildi", "success");
     },
     onError: (e) => show(e.message, "error"),
@@ -106,7 +106,7 @@ export function ProductsPage() {
     try {
       await api.put(`products/upsert-by-barcode/`, payload);
       show(editingId ? "Mahsulot yangilandi" : "Mahsulot qo'shildi", "success", 1500);
-      qc.invalidateQueries(["products"]);
+      qc.invalidateQueries({ queryKey: ["products"] });
       setFormOpen(false);
       setForm({ barcode: "", name: "", price: "", cost_price: "", stock_qty: "" });
       setEditingId(null);
@@ -322,7 +322,11 @@ export function ProductsPage() {
                           </button>
                           <button
                             className="ghost-btn"
-                            onClick={() => deleteMutation.mutate(p.id)}
+                            onClick={() => {
+                              if (window.confirm(`"${p.name}" mahsulotini o'chirishni tasdiqlaysizmi?`)) {
+                                deleteMutation.mutate(p.id);
+                              }
+                            }}
                             title="O'chirish"
                           >
                             <Icon name="trash" />

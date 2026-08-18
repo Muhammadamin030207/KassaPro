@@ -37,8 +37,6 @@ class IsShopMember(BasePermission):
 
     def has_object_permission(self, request, view, obj):
         user = request.user
-        if user.is_owner:
-            return getattr(obj, "shop", None) == user.shop
         return getattr(obj, "shop", None) == user.shop
 
 

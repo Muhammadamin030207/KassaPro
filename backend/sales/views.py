@@ -5,6 +5,7 @@ from django.db.models import Count, DecimalField, F, Sum
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 from rest_framework import generics, response, status, views
+from rest_framework.exceptions import ValidationError
 from rest_framework.throttling import ScopedRateThrottle
 
 from accounts.permissions import IsShopMember
@@ -41,16 +42,28 @@ class SaleListCreateView(generics.ListCreateAPIView):
         to_param = self.request.query_params.get("to")
         cashier_id = self.request.query_params.get("cashier")
 
+        if cashier_id and not cashier_id.isdigit():
+            raise ValidationError({"cashier": "Kassir ID son bo'lishi kerak."})
+
         if date_param:
-            qs = qs.filter(created_at__date=date_param)
+            qs = qs.filter(created_at__date=self._parse_date(date_param))
         if from_param:
-            qs = qs.filter(created_at__date__gte=from_param)
+            qs = qs.filter(created_at__date__gte=self._parse_date(from_param))
         if to_param:
-            qs = qs.filter(created_at__date__lte=to_param)
+            qs = qs.filter(created_at__date__lte=self._parse_date(to_param))
         if cashier_id:
             qs = qs.filter(cashier_id=cashier_id)
 
         return qs
+
+    @staticmethod
+    def _parse_date(value):
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            raise ValidationError(
+                {"date": "Sana format noto'g'ri. ISO (YYYY-MM-DD) bo'lishi kerak."}
+            )
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -76,6 +89,12 @@ class DailyReportView(views.APIView):
 
     def get(self, request):
         day = request.query_params.get("date") or timezone.localdate().isoformat()
+        try:
+            date.fromisoformat(day)
+        except ValueError:
+            raise ValidationError(
+                {"date": "Sana format noto'g'ri. ISO (YYYY-MM-DD) bo'lishi kerak."}
+            )
         sales = Sale.objects.filter(shop=request.user.shop, created_at__date=day)
         items = SaleItem.objects.filter(sale__shop=request.user.shop, sale__created_at__date=day)
 
@@ -135,8 +154,13 @@ class SummaryReportView(views.APIView):
         today = timezone.localdate()
         from_param = request.query_params.get("from") or (today - timedelta(days=30))
         to_param = request.query_params.get("to") or today.isoformat()
-        # ISO sana bo'lmasa — sanani pars qilish/boshlang'ich sanaga tortish yo'q.
-        # Xavfsiz: string bo'lsa o'zinicha filterlanadi.
+        for name, value in (("from", from_param), ("to", to_param)):
+            try:
+                date.fromisoformat(str(value))
+            except ValueError:
+                raise ValidationError(
+                    {name: "Sana format noto'g'ri. ISO (YYYY-MM-DD) bo'lishi kerak."}
+                )
 
         sales = Sale.objects.filter(
             shop=request.user.shop, created_at__date__gte=from_param, created_at__date__lte=to_param

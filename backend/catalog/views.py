@@ -1,7 +1,7 @@
 from django.db import IntegrityError
 from django.db.models import Q
 from rest_framework import generics, response, status, views
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import NotFound, ValidationError
 
 from accounts.permissions import IsShopOwnerOrCashierReadOnly, IsShopMember
 from catalog.models import Category, Product
@@ -76,8 +76,6 @@ class ProductByBarcodeView(generics.RetrieveAPIView):
         try:
             return qs.get(barcode__iexact=code)
         except Product.DoesNotExist:
-            from rest_framework.exceptions import NotFound
-
             raise NotFound({"detail": "Bunday mahsulot bazada topilmadi"})
 
 
@@ -109,8 +107,11 @@ class ProductUpsertByBarcodeView(views.APIView):
         try:
             serializer.save(shop=request.user.shop)
         except IntegrityError:
-            # Shu daqiqada shu barcode.sh topilsa (race condition)
-            product = Product.objects.get(shop=request.user.shop, barcode__iexact=barcode)
+            # Shu daqiqada shu barcode topilsa (race condition) — mavjudni yangilaymiz
+            product = Product.objects.get(
+                shop=request.user.shop, barcode__iexact=barcode
+            )
+            is_new = False
             serializer = ProductUpsertSerializer(
                 product, data=data, context={"request": request}
             )

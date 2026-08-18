@@ -45,7 +45,7 @@ export function NasiyaCustomerModal({ open, total, onSelect, onClose }) {
     setSearching(true);
     setFound(null);
     try {
-      const data = await api.get(`customers/by-phone/${phone}/`);
+      const data = await api.get(`customers/by-phone/${encodeURIComponent(phone)}/`);
       setFound(data);
       setMode("search");
     } catch {

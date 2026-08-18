@@ -30,18 +30,22 @@ class Customer(models.Model):
 
     @property
     def balance(self):
-        """Qarz = (Jami DEBT) - (Jami PAYMENT) — real-time hisob. Hardcode qilinmaydi."""
+        """Qarz = (Jami DEBT + Jami ADJUSTMENT) - (Jami PAYMENT) — real-time hisob. Hardcode qilinmaydi."""
         from django.db.models import Sum
 
         from customers.models import DebtTransaction
 
         agg = DebtTransaction.objects.filter(customer=self).aggregate(
             debt=Sum("amount", filter=models.Q(type=DebtTransaction.Type.DEBT)),
+            adjust=Sum(
+                "amount", filter=models.Q(type=DebtTransaction.Type.ADJUSTMENT)
+            ),
             paid=Sum("amount", filter=models.Q(type=DebtTransaction.Type.PAYMENT)),
         )
         debt = agg["debt"] or 0
+        adjust = agg["adjust"] or 0
         paid = agg["paid"] or 0
-        return debt - paid
+        return (debt + adjust) - paid
 
     @property
     def is_settled(self):
@@ -54,8 +58,8 @@ class Customer(models.Model):
 class DebtTransaction(models.Model):
     """Qarzdorlik harakati. Qarz summasi shu tablitsa orqali yuritiladi.
 
-    Balance (formula): Jami DEBT - Jami PAYMENT. Customer.balance property orqali
-    real-time hisoblanadi, hardcode qilinmaydi.
+    Balance (formula): (Jami DEBT + Jami ADJUSTMENT) - (Jami PAYMENT).
+    Customer.balance property orqali real-time hisoblanadi, hardcode qilinmaydi.
     """
 
     class Type(models.TextChoices):

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 const ToastContext = createContext({ show: () => {} });
@@ -9,11 +9,24 @@ export function useToast() {
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
+  const timers = useRef(new Map());
+
+  useEffect(() => {
+    const map = timers.current;
+    return () => {
+      map.forEach((t) => clearTimeout(t));
+      map.clear();
+    };
+  }, []);
 
   const show = useCallback((message, type = "info", timeout = 3500) => {
     const id = Date.now() + Math.random();
     setToasts((t) => [...t, { id, message, type }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), timeout);
+    const timer = setTimeout(() => {
+      setToasts((t) => t.filter((x) => x.id !== id));
+      timers.current.delete(id);
+    }, timeout);
+    timers.current.set(id, timer);
   }, []);
 
   return (

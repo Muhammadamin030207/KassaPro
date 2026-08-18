@@ -1,7 +1,6 @@
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Sum
 from rest_framework import serializers
 
 from customers.models import Customer, DebtTransaction
@@ -47,27 +46,33 @@ class CustomerSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at"]
 
+    def _txn_totals(self, obj):
+        """Prefetch cache'dan bitta pass'da (debt+adjust, paid) yig'indilarni qaytaradi."""
+        debt = adjust = paid = Decimal("0")
+        for t in obj.transactions.all():
+            amt = t.amount or Decimal("0")
+            if t.type == DebtTransaction.Type.DEBT:
+                debt += amt
+            elif t.type == DebtTransaction.Type.ADJUSTMENT:
+                adjust += amt
+            elif t.type == DebtTransaction.Type.PAYMENT:
+                paid += amt
+        return debt + adjust, paid
+
     def get_balance(self, obj):
-        return obj.balance
+        debt, paid = self._txn_totals(obj)
+        return debt - paid
 
     def get_debt_total(self, obj):
-        return (
-            obj.transactions.filter(type=DebtTransaction.Type.DEBT).aggregate(
-                total=Sum("amount")
-            )["total"]
-            or Decimal("0")
-        )
+        debt, _ = self._txn_totals(obj)
+        return debt
 
     def get_paid_total(self, obj):
-        return (
-            obj.transactions.filter(type=DebtTransaction.Type.PAYMENT).aggregate(
-                total=Sum("amount")
-            )["total"]
-            or Decimal("0")
-        )
+        _, paid = self._txn_totals(obj)
+        return paid
 
     def get_is_settled(self, obj):
-        return obj.is_settled
+        return self.get_balance(obj) <= 0
 
     def validate_phone(self, value):
         normalized = normalize_phone(value)

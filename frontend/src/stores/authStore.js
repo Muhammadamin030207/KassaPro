@@ -16,7 +16,6 @@ export const useAuthStore = create(
       setUser: (user) => set({ user }),
       login: (data) => {
         if (!data || typeof data !== "object") {
-          console.error("LOGIN DATA NULL:", data);
           return false;
         }
         set({

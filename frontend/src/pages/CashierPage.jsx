@@ -490,7 +490,6 @@ export function CashierPage() {
         open={payOpen}
         method={payment}
         total={total}
-        saleId={items.length}
         orderId={orderId}
         settings={settings || {}}
         shopName={user?.shop_name}

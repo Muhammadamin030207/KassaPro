@@ -21,7 +21,7 @@ class LoginView(TokenObtainPairView):
 
 
 class RefreshView(TokenRefreshView):
-    pass
+    """JWT refresh token almashtirish (standart SimpleJWT)."""
 
 
 class RegisterOwnerView(APIView):

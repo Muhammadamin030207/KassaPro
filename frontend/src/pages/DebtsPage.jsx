@@ -31,7 +31,7 @@ export function DebtsPage() {
     try {
       setLoading(true);
       const q = search.trim();
-      const res = await api.get(`customers/?search=${encodeURIComponent(q)}`);
+      const res = await api.get(`customers/?search=${encodeURIComponent(q)}&page_size=200`);
       setCustomers(res.results || res);
     } catch (err) {
       show(err.message, "error");

@@ -45,7 +45,6 @@ class ApplicationListView(generics.ListAPIView):
 
     permission_classes = [IsAdmin]
     serializer_class = StoreApplicationSerializer
-    ordering = ["-created_at"]
 
     def get_queryset(self):
         qs = StoreApplication.objects.all()
@@ -99,6 +98,15 @@ class StoreCreateView(views.APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         vd = serializer.validated_data
+
+        # Arizadan tasdiqlanganda chat_id avtomatik olinadi (admin ko'rsatmasa)
+        chat_id = vd.get("telegram_chat_id")
+        application_id = vd.get("application_id")
+        if not chat_id and application_id:
+            app = StoreApplication.objects.filter(id=application_id).first()
+            if app:
+                chat_id = app.telegram_chat_id
+
         data = {
             "store_name": vd["store_name"],
             "owner_name": vd["owner_name"],
@@ -110,7 +118,6 @@ class StoreCreateView(views.APIView):
             "shop_id": user.shop.id,
         }
 
-        chat_id = vd.get("telegram_chat_id")
         sent = False
         if chat_id:
             sent = send_message(
