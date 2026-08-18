@@ -10,7 +10,8 @@ import { Scene3D } from "../components/Scene3D";
 
 // Telegram bot URL — VITE_TELEGRAM_BOT_URL env orqali, yo'q bo'lsa default bot.
 const BOT_URL =
-  import.meta.env.VITE_TELEGRAM_BOT_URL || "https://t.me/KassaProBot";
+  import.meta.env.VITE_TELEGRAM_BOT_URL || "https://t.me/KassaPro_001_bot";
+const BOT_USERNAME = BOT_URL.split("/").filter(Boolean).pop() || "KassaPro";
 
 const fieldBase = {
   initial: { opacity: 0, y: 14 },
@@ -144,8 +145,8 @@ export function LoginPage() {
         </motion.button>
 
         <p className="login-bot-hint">
-          Do'kon arizangizni @KassaProBot ga yuboring — admin tasdiqlagach login va
-          parol Telegram chat'ga keladi.
+          Do'kon arizangizni @{BOT_USERNAME} ga yuboring — admin tasdiqlagach
+          login va parol Telegram chat'ga keladi.
         </p>
 
         <div className="barcode-deco" />
