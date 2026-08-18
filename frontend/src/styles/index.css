@@ -2675,7 +2675,8 @@ body {
     position: sticky;
     bottom: 0;
     z-index: 50;
-    flex: 0 0 auto;
+    flex: 0 0 auto !important;
+    align-self: stretch !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0;
