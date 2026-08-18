@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { api } from "../api/client";
@@ -13,6 +12,7 @@ import { CameraScannerModal } from "../components/CameraScannerModal";
 import { SuccessOverlay } from "../components/SuccessOverlay";
 import { PaymentModal } from "../components/PaymentModal";
 import { PaymentSheet } from "../components/PaymentSheet";
+import { ProductPickerSheet } from "../components/ProductPickerSheet";
 import Icon from "../components/Icon";
 import { useCountUp } from "../hooks/useCountUp";
 import { formatMoney } from "../utils/format";
@@ -52,6 +52,8 @@ export function CashierPage() {
   const [celebrate, setCelebrate] = useState(false);
   const [camOpen, setCamOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
   const [lastCash, setLastCash] = useState(null);
 
   const inputRef = useRef(null);
@@ -59,7 +61,6 @@ export function CashierPage() {
   const quickPriceRef = useRef(null);
   const user = useAuthStore((s) => s.user);
   const { show } = useToast();
-  const navigate = useNavigate();
 
   const items = useCartStore((s) => s.items);
   const addItem = useCartStore((s) => s.addItem);
@@ -88,18 +89,30 @@ export function CashierPage() {
 
   const focusInput = useCallback(() => inputRef.current?.focus(), []);
 
+  // Mahsulotni chekka qo'shish — stock limitidan oshsa rad etiladi.
+  const addToCart = (product) => {
+    const res = addItem({
+      product_id: product.id,
+      barcode: product.barcode,
+      name: product.name,
+      price: Number(product.price),
+      stock_qty: product.stock_qty,
+    });
+    if (!res.ok) {
+      show(`Qoldiq yetarli emas (${Number(product.stock_qty)} dona)`, "error");
+      return false;
+    }
+    return true;
+  };
+
   // Shtrix kodni bazadan qidirib chekka qo'shish (fizik skaner / kamera / qo'lda)
   const processBarcode = async (barcode) => {
     if (!barcode) return;
     try {
       const product = await api.get(`products/by-barcode/${encodeURIComponent(barcode)}/`);
-      addItem({
-        product_id: product.id,
-        barcode: product.barcode,
-        name: product.name,
-        price: Number(product.price),
-      });
-      show(`Qo'shildi: ${product.name}`, "success", 1200);
+      if (addToCart(product)) {
+        show(`Qo'shildi: ${product.name}`, "success", 1200);
+      }
     } catch (err) {
       // 404 (topilmadi), tarmoq xatosi yoki server 5xx xatosi — hammasida
       // "Bunday mahsulot yo'q + Shu mahsulotni qo'shamiz" panelini ochamiz.
@@ -156,13 +169,9 @@ export function CashierPage() {
         name: quickName.trim(),
         price: Number(quickPrice),
       });
-      addItem({
-        product_id: product.id,
-        barcode: product.barcode,
-        name: product.name,
-        price: Number(product.price),
-      });
-      show(`Qo'shildi: ${product.name}`, "success", 1500);
+      if (addToCart(product)) {
+        show(`Qo'shildi: ${product.name}`, "success", 1500);
+      }
       setQuickBarcode("");
       setQuickStep("confirm");
       setQuickName("");
@@ -235,7 +244,6 @@ export function CashierPage() {
           : null
       );
       clearCart();
-      setNasiyaCustomer(null);
       show(
         method === "nasiya"
           ? `Nasiya saqlandi: ${formatMoney(sale.total)}`
@@ -284,14 +292,12 @@ export function CashierPage() {
             Kassa
           </motion.h1>
           <div className="sub">
-            <span className="listening-dot" /> Shtrix kodni skanerlang yoki maydonga kiriting
-          </div>
+          <span className="listening-dot" /> Shtrix kodni skanerlang yoki maydonga kiriting
         </div>
-        {isOwner && (
-          <button className="btn btn-ghost" onClick={() => navigate("/products")}>
-            <Icon name="bag" /> Mahsulotlar
-          </button>
-        )}
+      </div>
+        <button className="btn btn-ghost cashier-products-btn" onClick={() => { setPickerOpen(true); }}>
+          <Icon name="bag" /> <span className="cashier-products-lbl">Mahsulotlar</span>
+        </button>
       </div>
 
       <div className="cashier-layout">
@@ -420,14 +426,14 @@ export function CashierPage() {
             <div className="flex spread" style={{ marginBottom: 14 }}>
               <h3>Chek</h3>
               {hasItems && (
-                <button className="ghost-btn" onClick={() => clearCart()}>
+                <button className="ghost-btn" onClick={() => setClearOpen(true)} aria-label="Chekni tozalash">
                   Tozalash
                 </button>
               )}
             </div>
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap", flex: 1 }} className="receipt-row-wrap">
               <div style={{ flex: "1 1 300px", minHeight: 340 }} className="receipt-area">
-                <ReceiptTape />
+                <ReceiptTape onEmptyAction={() => setPickerOpen(true)} />
               </div>
 
               {/* Jami va to'lov */}
@@ -530,6 +536,37 @@ export function CashierPage() {
         onConfirm={handleSheetConfirm}
         onClose={() => setSheetOpen(false)}
       />
+
+      {/* Mahsulot tanlash (qidiruv/barcode/kategoriya) — savatga qo'shish */}
+      <ProductPickerSheet
+        open={pickerOpen}
+        onClose={() => { setPickerOpen(false); focusInput(); }}
+        onPick={(product) => addToCart(product)}
+      />
+
+      {/* Chekni tozalash — tasdiqlash */}
+      <Modal open={clearOpen} onClose={() => setClearOpen(false)}>
+        <h3>Chekni tozalamoqchimisiz?</h3>
+        <p style={{ marginTop: 10, opacity: 0.85, lineHeight: 1.55 }}>
+          Savatdagi barcha mahsulotlar o'chiriladi va to'lov turi qayta
+          o'rnatiladi. Bu amalni qaytarib bo'lmaydi.
+        </p>
+        <div className="grid-2" style={{ marginTop: 20 }}>
+          <button className="btn btn-ghost" onClick={() => setClearOpen(false)}>Bekor qilish</button>
+          <button
+            className="btn btn-danger"
+            onClick={() => {
+              clearCart();
+              setPayment("cash");
+              setClearOpen(false);
+              show("Chek tozalandi", "info", 1500);
+              focusInput();
+            }}
+          >
+            Tozalash
+          </button>
+        </div>
+      </Modal>
 
       {/* Chop etish modali */}
       <Modal open={printOpen} onClose={() => { setPrintOpen(false); focusInput(); }}>

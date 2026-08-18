@@ -6,11 +6,11 @@ import { api } from "../api/client";
 import { useAuthStore } from "../stores/authStore";
 import { detectDeviceType, getDeviceId, getDeviceModel, getDeviceName } from "../lib/device";
 import { useToast } from "../components/Toast";
-import { Modal } from "../components/Modal";
 import { Scene3D } from "../components/Scene3D";
 
-const BOT_USERNAME = "KassaProBot";
-const BOT_URL = `https://t.me/${BOT_USERNAME}`;
+// Telegram bot URL — VITE_TELEGRAM_BOT_URL env orqali, yo'q bo'lsa default bot.
+const BOT_URL =
+  import.meta.env.VITE_TELEGRAM_BOT_URL || "https://t.me/KassaProBot";
 
 const fieldBase = {
   initial: { opacity: 0, y: 14 },
@@ -27,7 +27,6 @@ export function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [applyOpen, setApplyOpen] = useState(false);
 
   const login = useAuthStore((s) => s.login);
   const kickMessage = useAuthStore((s) => s.kickMessage);
@@ -43,6 +42,15 @@ export function LoginPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Telegram botga ariza qoldirish (yangi do'kon ochish).
+  const openBot = () => {
+    if (!BOT_URL || !/^https?:\/\//.test(BOT_URL)) {
+      show("Telegram bot sozlanmagan — VITE_TELEGRAM_BOT_URL env'ni tekshiring", "error");
+      return;
+    }
+    window.open(BOT_URL, "_blank", "noopener,noreferrer");
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -117,47 +125,31 @@ export function LoginPage() {
             <button className="btn btn-primary btn-block btn-lg" disabled={loading}>
               {loading ? "Kirmoqda..." : "Kirish"}
             </button>
-            <button
-              type="button"
-              className="btn btn-ghost btn-block"
-              style={{ marginTop: 12 }}
-              onClick={() => setApplyOpen(true)}
-            >
-              Yangi do'kon ochish
-            </button>
           </motion.div>
         </form>
 
+        <div className="login-divider">
+          <span>yoki</span>
+        </div>
+
+        <motion.button
+          type="button"
+          className="btn btn-telegram btn-block"
+          onClick={openBot}
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 220, damping: 22, delay: 0.34 }}
+        >
+          ✈ Telegram orqali yangi do'kon ochish
+        </motion.button>
+
+        <p className="login-bot-hint">
+          Do'kon arizangizni @KassaProBot ga yuboring — admin tasdiqlagach login va
+          parol Telegram chat'ga keladi.
+        </p>
+
         <div className="barcode-deco" />
       </motion.div>
-
-      <Modal open={applyOpen} onClose={() => setApplyOpen(false)}>
-        <h3>Yangi do'kon ochish</h3>
-        <p style={{ marginTop: 8, opacity: 0.85 }}>
-          Ro'yxatdan o'tish endi <b>Telegram bot</b> orqali amalga oshiriladi.
-          Bot'ga ariza qoldiring — admin tasdiqlagach, login va parol shu
-          Telegram chat'ga yuboriladi.
-        </p>
-        <ol className="apply-steps">
-          <li><span>1</span> Telegram'ni oching</li>
-          <li><span>2</span> @{BOT_USERNAME} bot'ga <code>/start</code> yuboring</li>
-          <li><span>3</span> Do'kon ma'lumotlarini to'ldiring</li>
-          <li><span>4</span> Tasdiqlashni kuting</li>
-        </ol>
-        <div className="grid-2" style={{ marginTop: 18 }}>
-          <a
-            className="btn btn-ghost"
-            href={BOT_URL}
-            target="_blank"
-            rel="noreferrer"
-          >
-            @{BOT_USERNAME}
-          </a>
-          <button className="btn btn-primary" type="button" onClick={() => setApplyOpen(false)}>
-            Tushunarli
-          </button>
-        </div>
-      </Modal>
     </div>
   );
 }

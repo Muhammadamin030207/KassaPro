@@ -508,6 +508,46 @@ select {
   width: 100%;
 }
 
+/* Telegram orqali ariza tugmasi (login sahifasi) */
+.btn-telegram {
+  background: linear-gradient(135deg, #2aabee, #229ed9);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(42, 171, 238, 0.35);
+}
+
+.btn-telegram:hover {
+  box-shadow: 0 14px 40px rgba(42, 171, 238, 0.45);
+}
+
+/* ---------- Login sahifasi ---------- */
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 16px;
+  color: var(--ink-faint);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.login-bot-hint {
+  margin-top: 14px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-faint);
+  text-align: center;
+}
+
 /* ---------- Glass cards ---------- */
 .card {
   background: var(--panel);
@@ -736,6 +776,126 @@ table.data tbody tr:hover {
 
 .modal h3 {
   margin-bottom: 18px;
+}
+
+/* ---------- Mahsulot tanlash (ProductPickerSheet) ---------- */
+.picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.picker-head h3 {
+  margin-bottom: 0;
+}
+
+.picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 60dvh;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.picker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.picker-row-info {
+  min-width: 0;
+}
+
+.picker-row-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.picker-barcode {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+
+.picker-row .btn-sm {
+  flex: 0 0 auto;
+  min-height: 48px;
+}
+
+/* Barcode tezkor qo'shish + kamera (ProductPickerSheet) */
+.picker-scan-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.picker-scan-row .input {
+  flex: 1;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  min-width: 0;
+}
+
+.pick-scan-ico {
+  display: inline-flex;
+  color: var(--brand-light);
+  flex: 0 0 auto;
+}
+
+.pick-cam-btn {
+  flex: 0 0 auto;
+  min-height: 46px;
+  padding: 10px 14px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Kategoriya chiplari */
+.picker-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.picker-cat {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink-soft);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 38px;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.picker-cat:hover {
+  border-color: var(--brand-light);
+  color: var(--ink);
+}
+
+.picker-cat.active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
 }
 
 /* ---------- Forms ---------- */
@@ -977,23 +1137,20 @@ table.data tbody tr:hover {
 }
 
 .receipt-row {
-  display: grid;
-  grid-template-columns: 34px 1fr auto;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   padding: 9px 0;
   border-bottom: 1px dotted #d8d2be;
   font-size: 12.5px;
-  align-items: center;
 }
 
-.receipt-row .qty {
-  color: var(--brand);
-  font-weight: 700;
-  font-size: 13px;
-  text-align: center;
-  background: rgba(99, 102, 241, 0.1);
-  border-radius: 8px;
-  padding: 2px 0;
+.receipt-row .row-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
 }
 
 .receipt-row .name {
@@ -1002,52 +1159,78 @@ table.data tbody tr:hover {
   white-space: nowrap;
   font-weight: 600;
   color: #222;
+  min-width: 0;
 }
 
-.receipt-row .row-controls {
-  display: grid;
-  grid-template-columns: auto auto auto 1fr;
-  align-items: center;
-  gap: 4px;
-  justify-content: flex-end;
-}
-
-.receipt-row .row-controls .price {
+.receipt-row .row-total {
   font-weight: 700;
-  min-width: 84px;
-  text-align: right;
-  margin-left: 4px;
+  color: #222;
+  white-space: nowrap;
   font-size: 12.5px;
 }
 
-.receipt-row .sub-line {
-  grid-column: 2 / -1;
-  font-size: 11px;
+.receipt-row .row-sub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.receipt-row .barcode {
+  font-size: 10.5px;
   color: #8a8371;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.receipt-row .row-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.receipt-row .row-qty {
+  font-weight: 700;
+  color: var(--brand);
+  min-width: 22px;
+  text-align: center;
+  font-size: 13px;
   font-family: var(--font-mono);
 }
 
 .receipt-row .row-btn {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   border: 1px solid #d8d2be;
   background: #f5f0e0;
   color: var(--brand);
-  font-size: 15px;
+  font-size: 20px;
   line-height: 1;
   font-weight: 700;
   display: grid;
   place-items: center;
   transition: all 0.15s;
   cursor: pointer;
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .receipt-row .row-btn:hover {
   background: var(--brand);
   color: #fff;
   border-color: var(--brand);
-  transform: scale(1.08);
+  transform: scale(1.04);
+}
+
+.receipt-row .row-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .receipt-row .row-btn.remove {
@@ -2820,9 +3003,9 @@ html, body, #root {
     overflow: visible;
   }
 
-  /* Receipt ro'yxati to'liq balandlikni olib, kechek ichida scroll qiladi */
+  /* Receipt ro'yxati to'liq balandlikni olib, chek ichida scroll qiladi */
   .cashier-layout .receipt-row-wrap {
-    padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(250px + env(safe-area-inset-bottom, 0px));
   }
 
   .cashier-layout .pay-zone .pay-checkout {
@@ -2844,26 +3027,23 @@ html, body, #root {
     margin-top: 0;
   }
 
-  /* To'lov usullari — bitta gorizontal skip-me'noli qator (chip'lar) */
+  /* To'lov usullari — 2x2 grid (mobil POS), chap tugma to'liq kenglikda */
   .cashier-layout .pay-zone .pay-row {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
-    margin: 0 -2px;
-    padding: 2px;
-    scrollbar-width: none;
+    margin: 0;
+    padding: 0;
   }
   .cashier-layout .pay-zone .pay-row::-webkit-scrollbar {
     display: none;
   }
   .cashier-layout .pay-zone .pay-btn {
-    flex: 0 0 auto;
-    min-height: 42px;
-    padding: 8px 16px;
-    font-size: 13.5px;
-    border-radius: 999px;
+    flex: 1 1 auto;
+    min-height: 48px;
+    padding: 10px 8px;
+    font-size: 14px;
+    border-radius: 14px;
     white-space: nowrap;
   }
 
@@ -2925,7 +3105,7 @@ html, body, #root {
   .receipt-row .row-controls {
     min-width: 0;
   }
-  .receipt-row .row-controls .price {
+  .receipt-row .row-total {
     min-width: 0;
     white-space: nowrap;
   }
@@ -2940,25 +3120,52 @@ html, body, #root {
     padding: 16px 14px;
   }
   .receipt-row {
-    grid-template-columns: 28px 1fr auto;
-    gap: 6px;
     padding: 10px 0;
   }
   .receipt-row .row-controls {
-    gap: 5px;
+    gap: 6px;
   }
   .receipt-row .row-btn {
-    width: 32px;
-    height: 32px;
+    width: 48px;
+    height: 48px;
+    font-size: 22px;
   }
-  .receipt-row .row-controls .price {
-    min-width: 64px;
-    font-size: 12px;
+  .receipt-row .row-btn.remove svg {
+    width: 20px;
+    height: 20px;
   }
   /* Payme/Click/Paynet/Visa/Nasiya tugmalari siqilmaydigan */
   .pay-row {
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
+  }
+}
+
+/* ---------- Kassa sahifasi: Mahsulotlar tugmasi (mobil'da ixcham) ---------- */
+.cashier-products-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 768px) {
+  .cashier-products-btn {
+    padding: 8px 12px;
+    min-height: 40px;
+    font-size: 13px;
+    border-radius: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cashier-products-btn .cashier-products-lbl {
+    display: none;
+  }
+  .cashier-products-btn {
+    padding: 10px;
   }
 }
 

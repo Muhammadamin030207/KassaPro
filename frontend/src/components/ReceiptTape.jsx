@@ -1,15 +1,21 @@
 import { AnimatePresence, motion } from "framer-motion";
+
 import { formatMoney } from "../utils/format";
 import { useCartStore } from "../stores/cartStore";
 import { useAuthStore } from "../stores/authStore";
+import { useToast } from "./Toast";
+import Icon from "./Icon";
 
-const EMPTY_NOTE = window.innerWidth > 768
-  ? "Shtrix kodni skanerlang yoki maydonga yozing"
-  : "Kodni skanerlang";
+const EMPTY_NOTE =
+  window.innerWidth > 768
+    ? "Shtrix kodni skanerlang yoki maydonga yozing"
+    : "Kodni skanerlang";
 
 /**
  * "Chek lentasi" — kassadagi savat, qog'oz chekka o'xshash chizilgan.
- * Qog'oz qirrasi (sawtooth) + mahsulot qo'shilganda slide-in + qty stepper + bekor tugmasi.
+ * Qog'oz qirrasi (sawtooth) + mahsulot qo'shilganda slide-in + qty stepper
+ * (doim ko'rinadigan − / qty / +) + o'chirish tugmasi + qator summasi.
+ * Bo'sh chekda onEmptyAction - mahsulot tanlovini ochadi.
  *
  * @param {{ onEmptyAction?: function }} props
  */
@@ -20,6 +26,15 @@ export function ReceiptTape({ onEmptyAction }) {
   const total = useCartStore((s) => s.items.reduce((sum, it) => sum + it.price * it.qty, 0));
   const shopName = useAuthStore((s) => s.user?.shop_name);
   const cashier = useAuthStore((s) => s.user?.username);
+  const { show } = useToast();
+
+  /** Qator miqdorini o'zgartirish — stock limitdan oshsa ogohlantiramiz. */
+  const adjust = (it, delta) => {
+    const res = setQty(it.product_id, it.qty + delta);
+    if (!res.ok && res.reason === "stock") {
+      show(`Qoldiq yetarli emas (${it.stock_qty ?? 0} dona)`, "error");
+    }
+  };
 
   return (
     <div className="receipt-tape">
@@ -37,13 +52,14 @@ export function ReceiptTape({ onEmptyAction }) {
         {items.length === 0 && (
           <div className="receipt-empty">
             <span className="emoji">🧾</span>
-            {EMPTY_NOTE}
-            <br />
-            <span style={{ fontSize: 12 }}>— chek hali bo'sh —</span>
+            <div className="empty-note">{EMPTY_NOTE}</div>
+            <span className="sub" style={{ fontSize: 12 }}>
+              — chek hali bo'sh —
+            </span>
             {onEmptyAction && (
               <div style={{ marginTop: 14 }}>
                 <button className="btn btn-ghost" onClick={onEmptyAction}>
-                  + Tezkor qo'shish
+                  + Mahsulot qo'shish
                 </button>
               </div>
             )}
@@ -55,9 +71,8 @@ export function ReceiptTape({ onEmptyAction }) {
             <ReceiptRow
               key={it.product_id}
               item={it}
-              bump={it.qty > 1}
-              onDec={() => setQty(it.product_id, it.qty - 1)}
-              onInc={() => setQty(it.product_id, it.qty + 1)}
+              onDec={() => adjust(it, -1)}
+              onInc={() => adjust(it, 1)}
               onRemove={() => removeItem(it.product_id)}
             />
           ))}
@@ -86,7 +101,9 @@ export function ReceiptTape({ onEmptyAction }) {
   );
 }
 
-function ReceiptRow({ item, bump, onDec, onInc, onRemove }) {
+function ReceiptRow({ item, onDec, onInc, onRemove }) {
+  const atMax = item.stock_qty != null && item.qty >= Number(item.stock_qty);
+
   return (
     <motion.div
       className="receipt-row"
@@ -96,25 +113,45 @@ function ReceiptRow({ item, bump, onDec, onInc, onRemove }) {
       transition={{ type: "spring", stiffness: 380, damping: 28 }}
       layout
     >
-      <motion.span
-        className="qty"
-        key={item.qty}
-        initial={{ scale: 1.6, color: "#FF8A3D" }}
-        animate={{ scale: 1, color: "#0E7C5A" }}
-        transition={{ type: "spring", stiffness: 520, damping: 20 }}
-      >
-        ×{item.qty}
-      </motion.span>
-      <span className="name">{item.name}</span>
-      <div className="row-controls">
-        <button className="row-btn minus" onClick={onDec} title="Kamaytirish" aria-label="Kamaytirish">−</button>
-        <button className="row-btn plus" onClick={onInc} title="Oshirish" aria-label="Oshirish">+</button>
-        <button className="row-btn remove" onClick={onRemove} title="Bekor qilish" aria-label="Bekor qilish">✕</button>
-        <span className="price mono">{formatMoney(item.price * item.qty)}</span>
+      <div className="row-top">
+        <span className="name">{item.name}</span>
+        <span className="row-total mono">{formatMoney(item.price * item.qty)}</span>
       </div>
-      <span className="sub-line">
-        {item.barcode} · {formatMoney(item.price)} × {item.qty}
-      </span>
+      <div className="row-sub">
+        <span className="barcode mono">
+          {item.barcode} · {formatMoney(item.price)} × {item.qty}
+        </span>
+        <div className="row-controls">
+          <button
+            className="row-btn minus"
+            onClick={onDec}
+            title="Kamaytirish"
+            aria-label="Kamaytirish"
+          >
+            −
+          </button>
+          <span className="row-qty mono" aria-label={`Miqdor ${item.qty}`}>
+            {item.qty}
+          </span>
+          <button
+            className="row-btn plus"
+            onClick={onInc}
+            title="Oshirish"
+            aria-label="Oshirish"
+            disabled={atMax}
+          >
+            +
+          </button>
+          <button
+            className="row-btn remove"
+            onClick={onRemove}
+            title="O'chirish"
+            aria-label={`${item.name} ni o'chirish`}
+          >
+            <Icon name="trash" size={16} />
+          </button>
+        </div>
+      </div>
     </motion.div>
   );
 }
