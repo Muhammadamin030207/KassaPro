@@ -14,18 +14,21 @@ const queryClient = new QueryClient({
 });
 
 // PWA: service worker'ni faqat production'da ro'yxatdan o'tkazamiz.
-// Yangi SW o'rnatilganda sahifani bir marta yangilaymiz (eski cache'larni
-// ortda qoldirmaslik uchun) — lekin faqat allaqachon controller bo'lgan bo'lsa,
-// aks holda birinchi o'rnatishda cheksiz yangilanish loop'i yuz beradi.
+// controllerchange => reload faqat "haqiqiy yangilanish" bo'lganda amalga
+// oshadi (eski SW kontrolni yangi SW'ga uzatganda). Birinchi o'rnatishda
+// (controller mavjud emas) reload qilmaymiz — aks holda PWA standalone
+// birinchi ochilishda o'zini "otib yuborib" yangilanardi.
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+    const wasControlled = !!navigator.serviceWorker.controller;
     let refreshing = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (refreshing) return;
+      if (refreshing || !wasControlled) return;
       refreshing = true;
+      // Yangi SW o'rnatilganini ko'rsatib, sahifani boshqarishni yangilaymiz.
       window.location.reload();
     });
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
   });
 }
 

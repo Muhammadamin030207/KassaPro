@@ -1,0 +1,3 @@
+# SPA fallback — Render static host. Barcha yo'llar index.html'ga boradi,
+# PWA standalone chuqur yo'llarda 404 bo'lib "otib yubormasligi" uchun.
+/* /index.html 200

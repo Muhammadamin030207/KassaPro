@@ -76,6 +76,13 @@ export default function App() {
         if (!cancelled) setBooted(true);
         return;
       }
+
+      // Umumiy kutish limiti: backend uyqusiz/hanging bo'lsa ham ilova
+      // DOIM ochilishi kafolatlanadi (cheksiz boot ekranida qolmaydi).
+      const deadline = setTimeout(() => {
+        if (!cancelled) setBooted(true);
+      }, 15000);
+
       try {
         const res = await fetch(`${BASE}/auth/refresh/`, {
           method: "POST",
@@ -98,12 +105,14 @@ export default function App() {
         }
         if (!cancelled) setBooted(true);
       } catch {
-        // Tarmoq xatosi — backend uyqudan uyg'onayotgan yoki aloqa yo'q.
-        // Sessiyani O'CHIRMAYMIZ: 5 soniyadan keyin qayta urinamiz,
-        // aks holda ilova "otib yuborib" login'ga tashlab qo'ygan bo'lardi.
+        // Tarmoq xatosi — backend uyqudan uyg'onayotgan bo'lishi mumkin.
+        // Sessiyani O'CHIRMAYMIZ va 3 soniyadan keyin qayta urinamiz,
+        // lekin umumiy limitdan oshmaydi (yuqoridagi deadline).
         if (!cancelled) {
-          setTimeout(boot, 5000);
+          setTimeout(boot, 3000);
         }
+      } finally {
+        clearTimeout(deadline);
       }
     };
     boot();
