@@ -1,6 +1,7 @@
 import uuid
 
 from django.contrib.auth import get_user_model
+from django.db.models import Count, OuterRef, Q, Subquery
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -16,12 +17,13 @@ from accounts.device_utils import (
     PHONE_MODEL_UNKNOWN,
     device_audit,
     device_kind,
+    device_name_for,
     device_type_from_ua,
     get_client_ip,
     parse_user_agent,
     record_login_event,
 )
-from accounts.models import DeviceAuditLog, DeviceSession, LoginEvent
+from accounts.models import Device, DeviceAuditLog, DeviceSession, LoginEvent
 from accounts.permissions import IsAdmin, IsOwner
 from accounts.serializers import (
     DeviceSerializer,
@@ -57,6 +59,19 @@ def _current_session_id(request):
     return auth.get("session_id") or ""
 
 
+def _current_device_id(request):
+    auth = getattr(request, "auth", None)
+    if auth is None or not callable(getattr(auth, "get", None)):
+        return ""
+    return auth.get("device_id") or ""
+
+
+def _model_display(device_type, device_model):
+    if device_model:
+        return device_model
+    return PHONE_MODEL_UNKNOWN if (device_type or "") in ("phone", "tablet") else MODEL_UNKNOWN
+
+
 class LoginView(TokenObtainPairView):
     serializer_class = UserTokenObtainPairSerializer
     throttle_classes = [ScopedRateThrottle]
@@ -73,75 +88,106 @@ class LoginView(TokenObtainPairView):
             # Legacy client — device bindingsiz login (session nazorati yo'q).
             return Response(data)
 
-        # REVOKED device — parol to'g'ri bo'lsa ham login rad etiladi.
-        if DeviceSession.objects.filter(
-            user=user, device_id=device_id, status=DeviceSession.Status.REVOKED
-        ).exists():
-            record_login_event(user, request, "blocked", device_id)
-            device_audit(
-                None, user, ActiveAction.LOGIN_BLOCKED,
-                device_id=device_id, request=request,
-            )
-            return _error(BLOCKED_DETAIL, "device_blocked", status.HTTP_403_FORBIDDEN)
-
         ua = request.META.get("HTTP_USER_AGENT", "")
         browser, bv, os_name, os_ver = parse_user_agent(ua)
         device_type = (request.data.get("device_type") or "").strip()[:16].lower()
         if device_type not in DEVICE_TYPES:
             device_type = device_type_from_ua(ua)
         device_model = (request.data.get("device_model") or "").strip()[:255]
-        if not device_model:
-            device_model = (
-                PHONE_MODEL_UNKNOWN if device_type in ("phone", "tablet") else MODEL_UNKNOWN
-            )
         device_name = (request.data.get("device_name") or "").strip()[:255]
         if not device_name:
-            device_name = f"{browser} — {os_name}".strip(" —")
+            device_name = device_name_for(user.get_username(), device_type)
 
-        # Bitta qurilmada eski active sessiyani almashtiramiz (duplicate oldini).
+        device = (
+            Device.objects.select_related("blocked_by")
+            .filter(user=user, device_id=device_id)
+            .first()
+        )
+
+        # BLOCKED device — parol to'g'ri bo'lsa ham login rad etiladi.
+        if device and device.status == Device.Status.BLOCKED:
+            record_login_event(
+                user, request, "blocked", device_id,
+                device.device_name, device.device_model, device.device_type,
+            )
+            device_audit(
+                None, user, ActiveAction.LOGIN_BLOCKED,
+                device_id=device_id, device_name=device.device_name, request=request,
+            )
+            return _error(BLOCKED_DETAIL, "device_blocked", status.HTTP_403_FORBIDDEN)
+
+        now = timezone.now()
+        auto_model = _model_display(device_type, device_model or "")
+        if device is None:
+            device = Device.objects.create(
+                user=user,
+                device_id=device_id,
+                device_name=device_name,
+                device_model=auto_model,
+                device_type=device_type,
+                browser=browser,
+                browser_version=bv,
+                os=os_name,
+                os_version=os_ver,
+                ip_address=get_client_ip(request),
+                user_agent=ua,
+                last_login_at=now,
+            )
+        else:
+            updates = {
+                "browser": browser,
+                "browser_version": bv,
+                "os": os_name,
+                "os_version": os_ver,
+                "ip_address": get_client_ip(request),
+                "user_agent": ua,
+                "last_login_at": now,
+                "last_seen_at": now,
+            }
+            # Birinchi marta aniqlangan nom/model — keyingi loginlarda ustiga
+            # yozilmaydi (egasi qo'lda tahrirlagan bo'lsa ham saqlanadi).
+            if not device.is_name_manual and not device.device_name:
+                updates["device_name"] = device_name
+            if not device.is_model_manual and not device.device_model:
+                updates["device_model"] = auto_model
+            Device.objects.filter(pk=device.pk).update(**updates)
+
+        # Bitta qurilmada eski active sessiyani almashtiramiz (bir vaqtda faqat bitta active).
         DeviceSession.objects.filter(
-            user=user, device_id=device_id, status=DeviceSession.Status.ACTIVE
+            device=device, status=DeviceSession.Status.ACTIVE
         ).update(status=DeviceSession.Status.EXPIRED)
 
         session = DeviceSession.objects.create(
-            user=user,
-            device_id=device_id,
+            device=device,
             session_id=str(uuid.uuid4()),
-            device_name=device_name,
-            device_model=device_model,
-            device_type=device_type,
-            browser=browser,
-            browser_version=bv,
-            os=os_name,
-            os_version=os_ver,
             ip_address=get_client_ip(request),
             user_agent=ua,
+            expires_at=timezone.now() + timezone.timedelta(days=7),
         )
 
         # Tokenlarga session claim'larini qo'shamiz.
         access = AccessToken(data["access"])
         access["session_id"] = session.session_id
-        if device_id:
-            access["device_id"] = device_id
+        access["device_id"] = device_id
         data["access"] = str(access)
         refresh = RefreshToken(data["refresh"])
         refresh["session_id"] = session.session_id
-        if device_id:
-            refresh["device_id"] = device_id
+        refresh["device_id"] = device_id
         data["refresh"] = str(refresh)
 
         session.refresh_jti = refresh.payload.get("jti", "")
         session.save(update_fields=["refresh_jti"])
+        Device.objects.filter(pk=device.pk).update(last_seen_at=now)
 
         data["session_id"] = session.session_id
         data["device_id"] = device_id
         record_login_event(
-            user, request, "success", device_id, session.device_name,
-            session.device_model, session.device_type,
+            user, request, "success", device_id,
+            device.device_name, device.device_model, device.device_type,
         )
         device_audit(
             user, user, ActiveAction.LOGIN,
-            device_id=device_id, device_name=session.device_name,
+            device_id=device_id, device_name=device.device_name,
             session_id=session.session_id, request=request,
         )
         return Response(data)
@@ -160,13 +206,20 @@ class RefreshView(TokenRefreshView):
         session_id = token.payload.get("session_id")
         session = None
         if session_id:
-            session = DeviceSession.objects.filter(session_id=session_id).first()
+            session = (
+                DeviceSession.objects.select_related("device")
+                .filter(session_id=session_id)
+                .first()
+            )
             if not session:
                 return _error("Sessiya topilmadi.", "session_expired")
-            if session.status == DeviceSession.Status.REVOKED:
+            if (
+                session.status == DeviceSession.Status.REVOKED
+                or session.device.status == Device.Status.BLOCKED
+            ):
                 return _error(REVOKED_DETAIL, "session_revoked")
             if session.status != DeviceSession.Status.ACTIVE:
-                # EXPIRED (chiqish) yoki ALLOWED (unblock) — refresh ishlamaydi.
+                # EXPIRED (chiqish/almashtirilgan) — refresh ishlamaydi.
                 return _error(EXPIRED_DETAIL, "session_expired")
             # Rotation tekshiruvi — eski (almashtirilgan) refresh ishlamaydi.
             if session.refresh_jti and token.payload.get("jti") != session.refresh_jti:
@@ -178,11 +231,13 @@ class RefreshView(TokenRefreshView):
                 new_refresh = RefreshToken(response.data["refresh"])
             except Exception:
                 new_refresh = None
+            now = timezone.now()
             DeviceSession.objects.filter(pk=session.pk).update(
                 refresh_jti=new_refresh.payload.get("jti", "") if new_refresh else "",
-                last_active_at=timezone.now(),
-                last_login_at=timezone.now(),
+                last_active_at=now,
+                last_login_at=now,
             )
+            Device.objects.filter(pk=session.device_id).update(last_seen_at=now)
         return response
 
 
@@ -199,85 +254,88 @@ class LogoutView(APIView):
             session_id = _current_session_id(request)
 
         if session_id:
-            session = DeviceSession.objects.filter(session_id=session_id).first()
+            session = (
+                DeviceSession.objects.select_related("device")
+                .filter(session_id=session_id)
+                .first()
+            )
             if session and session.status == DeviceSession.Status.ACTIVE:
                 session.status = DeviceSession.Status.EXPIRED
                 session.save(update_fields=["status"])
-                user = session.user
-                record_login_event(user, request, "logout", session.device_id, session.device_name)
+                dev = session.device
+                record_login_event(
+                    dev.user, request, "logout", dev.device_id,
+                    dev.device_name, dev.device_model, dev.device_type,
+                )
                 device_audit(
-                    user, user, ActiveAction.LOGOUT,
-                    device_id=session.device_id, device_name=session.device_name,
+                    dev.user, dev.user, ActiveAction.LOGOUT,
+                    device_id=dev.device_id, device_name=dev.device_name,
                     session_id=session_id, request=request,
                 )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-def _device_list_payload(request, qs):
-    """device_id bo'yicha guruhlangan qurilmalar ro'yxati."""
-    current = _current_session_id(request)
-    groups = {}
-    for s in qs:
-        group = groups.setdefault(
-            s.device_id,
-            {
-                "created_at": s.created_at,
-                "last_login_at": s.last_login_at,
-                "last_active_at": s.last_active_at,
-                "last": s,
-                "active_sessions": 0,
-            },
+def _devices_queryset(user):
+    """Unique Device row'lar + sessiya agregatsiyalari (bitta query)."""
+    latest = DeviceSession.objects.filter(device_id=OuterRef("pk"))
+    return (
+        Device.objects.filter(user=user)
+        .select_related("blocked_by")
+        .annotate(
+            active_count=Count(
+                "sessions", filter=Q(sessions__status=DeviceSession.Status.ACTIVE)
+            ),
+            sessions_count=Count("sessions", distinct=True),
+            latest_session_id=Subquery(
+                latest.order_by("-last_active_at").values("session_id")[:1]
+            ),
+            latest_active_at=Subquery(
+                latest.order_by("-last_active_at").values("last_active_at")[:1]
+            ),
         )
-        if s.created_at < group["created_at"]:
-            group["created_at"] = s.created_at
-        if s.last_login_at > group["last_login_at"]:
-            group["last_login_at"] = s.last_login_at
-        if s.last_active_at > group["last_active_at"]:
-            group["last_active_at"] = s.last_active_at
-        if s.status == DeviceSession.Status.ACTIVE:
-            group["active_sessions"] += 1
+    )
 
-    devices = []
-    for device_id, g in groups.items():
-        s = g["last"]
-        sessions = [sess for sess in qs if sess.device_id == device_id]
-        is_current = bool(current) and any(
-            sess.session_id == current for sess in sessions
-        )
-        devices.append(
-            {
-                "id": s.id,
-                "session_id": s.session_id,
-                "device_id": s.device_id,
-                "device_name": s.device_name,
-                "device_type": s.device_type or device_type_from_ua(s.user_agent),
-                "device_model": s.device_model or (
-                    PHONE_MODEL_UNKNOWN
-                    if (s.device_type or device_type_from_ua(s.user_agent)) in ("phone", "tablet")
-                    else MODEL_UNKNOWN
-                ),
-                "browser": s.browser,
-                "browser_version": s.browser_version,
-                "os": s.os,
-                "os_version": s.os_version,
-                "device_kind": device_kind(s.user_agent),
-                "ip_address": s.ip_address or "",
-                "location": "Noma'lum joylashuv",
-                "status": s.status,
-                "created_at": g["created_at"],
-                "last_login_at": g["last_login_at"],
-                "last_active_at": g["last_active_at"],
-                "revoked_at": s.revoked_at,
-                "revoked_by_name": s.revoked_by.username if s.revoked_by_id else "",
-                "is_current": is_current,
-                "active_sessions": g["active_sessions"],
-            }
-        )
+
+def _device_dict(d, current_device_id):
+    """Bitta Device uchun API kartasi (unique — bir qurilma = bitta karta)."""
+    dtype = d.device_type or device_type_from_ua(d.user_agent)
+    latest_active = getattr(d, "latest_active_at", None) or d.last_seen_at
+    return {
+        "id": d.id,
+        "session_id": getattr(d, "latest_session_id", "") or "",
+        "device_id": d.device_id,
+        "device_name": d.device_name or "",
+        "device_model": _model_display(dtype, d.device_model),
+        "device_type": dtype,
+        "browser": d.browser,
+        "browser_version": d.browser_version,
+        "os": d.os,
+        "os_version": d.os_version,
+        "device_kind": device_kind(d.user_agent),
+        "ip_address": d.ip_address or "",
+        "location": d.location or "Noma'lum joylashuv",
+        "status": d.status,
+        "is_name_manual": d.is_name_manual,
+        "is_model_manual": d.is_model_manual,
+        "created_at": d.first_seen_at,
+        "last_login_at": d.last_login_at or d.first_seen_at,
+        "last_active_at": latest_active,
+        "revoked_at": d.blocked_at,
+        "revoked_by_name": d.blocked_by.username if d.blocked_by_id else "",
+        "is_current": bool(current_device_id) and d.device_id == current_device_id,
+        "active_sessions": getattr(d, "active_count", 0),
+        "sessions_count": getattr(d, "sessions_count", 1),
+    }
+
+
+def _device_list_payload(request):
+    """Unique canonical Device kartalari ro'yxati (sessiyalar alohida)."""
+    qs = _devices_queryset(request.user)
+    devices = [_device_dict(d, _current_device_id(request)) for d in qs]
     devices.sort(
         key=lambda d: (
             not d["is_current"],
-            d["status"] == "expired",
-            d["status"] == "allowed",
+            d["status"] == "blocked",
             -d["last_active_at"].timestamp(),
         )
     )
@@ -287,36 +345,55 @@ def _device_list_payload(request, qs):
 
 
 class DeviceListView(APIView):
-    """Admin uchun o'z hisobidagi barcha qurilmalar."""
+    """Admin uchun o'z hisobidagi unique qurilmalar (bitasi = bitta device)."""
 
     permission_classes = [IsAdmin]
 
     def get(self, request):
-        qs = (
-            DeviceSession.objects.filter(user=request.user)
-            .select_related("revoked_by")
-            .order_by("-last_active_at")
-        )
-        return _device_list_payload(request, qs)
+        return _device_list_payload(request)
 
 
 class DeviceCurrentView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
-        current = _current_session_id(request)
-        if not current:
-            return _error("Faol sessiya topilmadi.", "session_expired")
-        session = (
-            DeviceSession.objects.filter(session_id=current, user=request.user)
-            .select_related("revoked_by")
-            .first()
+        current_device_id = _current_device_id(request)
+        if not current_device_id:
+            return _error("Faol qurilma topilmadi.", "session_expired")
+        d = Device.objects.filter(
+            user=request.user, device_id=current_device_id
+        ).first()
+        if not d:
+            return _error("Faol qurilma topilmadi.", "session_expired")
+        return Response(_device_dict(d, current_device_id))
+
+
+class DeviceSessionsView(generics.ListAPIView):
+    """Bitta qurilmaning session tarixi (login/logout/revoke).
+
+    Device card bitta, tarix shu yerda — har sessionni alohida device
+    deb ko'rsatmaymiz.
+    """
+
+    serializer_class = DeviceSessionSerializer
+    permission_classes = [IsAdmin]
+
+    def get_queryset(self):
+        device = Device.objects.filter(
+            pk=self.kwargs["pk"], user=self.request.user
+        ).first()
+        if not device:
+            return DeviceSession.objects.none()
+        return (
+            DeviceSession.objects.filter(device=device)
+            .select_related("device", "revoked_by")
+            .order_by("-last_active_at")
         )
-        if not session:
-            return _error("Faol sessiya topilmadi.", "session_expired")
-        return Response(
-            DeviceSessionSerializer(session, context={"current_session_id": current}).data
-        )
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx["current_session_id"] = _current_session_id(self.request)
+        return ctx
 
 
 class DeviceHistoryView(generics.ListAPIView):
@@ -330,78 +407,114 @@ class DeviceHistoryView(generics.ListAPIView):
         return LoginEvent.objects.filter(user=self.request.user).order_by("-created_at")[:limit]
 
 
-class DeviceRevokeView(APIView):
-    """Qurilmani chiqarish — unga tegishli barcha sessiyalar REVOKED."""
+def _get_own_device(request, pk):
+    return Device.objects.filter(pk=pk, user=request.user).first()
+
+
+class DeviceBlockView(APIView):
+    """Qurilmani bloklash — unga tegishli active sessiyalar REVOKED.
+
+    BLOCKED device'dan keyingi loginlar (parol to'g'ri bo'lsa ham) rad
+    etiladi. Device record o'chirilmaydi — tarix saqlanib qoladi.
+    """
 
     permission_classes = [IsAdmin]
 
     def post(self, request, pk):
-        session = (
-            DeviceSession.objects.filter(pk=pk, user=request.user)
-            .select_related("revoked_by")
-            .first()
+        device = _get_own_device(request, pk)
+        if not device:
+            return Response({"detail": "Qurilma topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+        now = timezone.now()
+        DeviceSession.objects.filter(
+            device=device, status=DeviceSession.Status.ACTIVE
+        ).update(
+            status=DeviceSession.Status.REVOKED,
+            revoked_at=now,
+            revoked_by=request.user,
         )
-        if not session:
+        Device.objects.filter(pk=device.pk).update(
+            status=Device.Status.BLOCKED,
+            blocked_at=now,
+            blocked_by=request.user,
+        )
+        device_audit(
+            request.user, request.user, ActiveAction.ADMIN_REVOKED_DEVICE,
+            device_id=device.device_id, device_name=device.device_name,
+            request=request,
+        )
+        return Response({"detail": "Qurilma bloklandi va chiqarildi."})
+
+
+class DeviceRevokeSessionView(APIView):
+    """Faqat sessiyani tugatish — Device o'zi ACTIVE qoladi.
+
+    Revoke SESSION va BLOCK DEVICE farqi shu: bu yerda faqat joriy login
+    tugaydi, qurilma keyingi loginlarga ochiq bo'ladi.
+    """
+
+    permission_classes = [IsAdmin]
+
+    def post(self, request, pk):
+        device = _get_own_device(request, pk)
+        if not device:
             return Response({"detail": "Qurilma topilmadi."}, status=status.HTTP_404_NOT_FOUND)
         current = _current_session_id(request)
         now = timezone.now()
-        qs = DeviceSession.objects.filter(user=request.user, device_id=session.device_id)
-        qs.exclude(session_id=current).update(
+        qs = DeviceSession.objects.filter(
+            device=device, status=DeviceSession.Status.ACTIVE
+        )
+        if current:
+            qs = qs.exclude(session_id=current)
+        count = qs.update(
             status=DeviceSession.Status.REVOKED,
             revoked_at=now,
             revoked_by=request.user,
         )
         device_audit(
-            request.user, request.user, ActiveAction.ADMIN_REVOKED_DEVICE,
-            device_id=session.device_id, device_name=session.device_name,
-            session_id=session.session_id, request=request,
+            request.user, request.user, ActiveAction.REVOKE_ALL,
+            device_id=device.device_id, device_name=device.device_name,
+            request=request, detail={"revoked_sessions": count},
         )
-        return Response({"detail": "Qurilma chiqarildi."})
+        msg = "Sessiya tugatildi."
+        if count:
+            msg = f"{count} ta sessiya tugatildi."
+        return Response({"detail": msg})
 
 
 class DeviceUnblockView(APIView):
-    """Bloklangan qurilmaga qayta ruxsat berish (REVOKED → ALLOWED)."""
+    """Bloklangan qurilmaga qayta ruxsat berish (BLOCKED → ACTIVE)."""
 
     permission_classes = [IsAdmin]
 
     def post(self, request, pk):
-        session = (
-            DeviceSession.objects.filter(pk=pk, user=request.user)
-            .select_related("revoked_by")
-            .first()
-        )
-        if not session:
+        device = _get_own_device(request, pk)
+        if not device:
             return Response({"detail": "Qurilma topilmadi."}, status=status.HTTP_404_NOT_FOUND)
-        qs = DeviceSession.objects.filter(user=request.user, device_id=session.device_id)
-        qs.filter(status=DeviceSession.Status.REVOKED).update(
-            status=DeviceSession.Status.ALLOWED,
-            revoked_at=None,
-            revoked_by=None,
+        Device.objects.filter(pk=device.pk).update(
+            status=Device.Status.ACTIVE,
+            blocked_at=None,
+            blocked_by=None,
         )
         device_audit(
             request.user, request.user, ActiveAction.ADMIN_UNBLOCKED_DEVICE,
-            device_id=session.device_id, device_name=session.device_name,
-            session_id=session.session_id, request=request,
+            device_id=device.device_id, device_name=device.device_name,
+            request=request,
         )
         return Response({"detail": "Qurilmaga qayta kirishga ruxsat berildi."})
 
 
 class DeviceUpdateView(APIView):
-    """Qurilma nomi/modelini tahrirlash — bitta qurilmaning barcha sessiyalariga qo'llanadi.
+    """Qurilma nomi/modelini qo'lda tahrirlash.
 
-    Model brauzer orqali avtomatik aniqlanmaydi (laptop'lar uchun), shuning
-    uchun egasi haqiqiy model nomini qo'lda kiritishi mumkin.
+    Tahrirlangan qiymat keyingi loginlarda avtomatik aniqlash bilan
+    ustidan yozilmaydi (is_*_manual flag saqlanadi).
     """
 
     permission_classes = [IsAdmin]
 
     def patch(self, request, pk):
-        session = (
-            DeviceSession.objects.filter(pk=pk, user=request.user)
-            .select_related("revoked_by")
-            .first()
-        )
-        if not session:
+        device = _get_own_device(request, pk)
+        if not device:
             return Response({"detail": "Qurilma topilmadi."}, status=status.HTTP_404_NOT_FOUND)
 
         device_name = (request.data.get("device_name") or "").strip()[:255]
@@ -415,44 +528,56 @@ class DeviceUpdateView(APIView):
         updates = {}
         if device_name:
             updates["device_name"] = device_name
+            updates["is_name_manual"] = True
         if device_model:
             updates["device_model"] = device_model
-        DeviceSession.objects.filter(user=request.user, device_id=session.device_id).update(**updates)
+            updates["is_model_manual"] = True
+        Device.objects.filter(pk=device.pk).update(**updates)
 
         device_audit(
             request.user, request.user, ActiveAction.ADMIN_EDITED_DEVICE,
-            device_id=session.device_id,
-            device_name=updates.get("device_name", session.device_name),
-            session_id=session.session_id, request=request,
+            device_id=device.device_id,
+            device_name=updates.get("device_name", device.device_name),
+            request=request,
             detail=updates,
         )
         return Response({"detail": "Qurilma ma'lumotlari yangilandi."})
 
 
-class DeviceRevokeAllView(APIView):
-    """Boshqa barcha (joriydan tashqari) active sessiyalarni chiqarish."""
+class DeviceBlockOthersView(APIView):
+    """Boshqa barcha (joriydan tashqari) active qurilmalarni bloklash.
+
+    Faqat active sessiyaga ega qurilmalar bloklanadi va ularning sessiyalari
+    REVOKED bo'ladi. Device recordlar o'chirilmaydi.
+    """
 
     permission_classes = [IsAdmin]
 
     def post(self, request):
         current = _current_session_id(request)
-        qs = DeviceSession.objects.filter(
-            user=request.user, status=DeviceSession.Status.ACTIVE
+        active_qs = DeviceSession.objects.filter(
+            device__user=request.user, status=DeviceSession.Status.ACTIVE
         )
         if current:
-            qs = qs.exclude(session_id=current)
+            active_qs = active_qs.exclude(session_id=current)
+        device_ids = list(active_qs.values_list("device_id", flat=True).distinct())
         now = timezone.now()
-        count = qs.count()
-        qs.update(
+        count_sessions = active_qs.update(
             status=DeviceSession.Status.REVOKED,
             revoked_at=now,
             revoked_by=request.user,
         )
+        count_devices = Device.objects.filter(pk__in=device_ids).update(
+            status=Device.Status.BLOCKED,
+            blocked_at=now,
+            blocked_by=request.user,
+        )
         device_audit(
             request.user, request.user, ActiveAction.REVOKE_ALL,
-            request=request, detail={"revoked_sessions": count},
+            request=request,
+            detail={"devices": count_devices, "sessions": count_sessions},
         )
-        return Response({"detail": f"{count} ta qurilma chiqarildi."})
+        return Response({"detail": f"{count_devices} ta qurilma chiqarildi."})
 
 
 class RegisterOwnerView(APIView):

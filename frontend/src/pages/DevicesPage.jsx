@@ -34,30 +34,37 @@ function timeAgo(iso) {
   return `${d} kun oldin`;
 }
 
+const TYPE_LABEL = {
+  laptop: "Noutbuk",
+  desktop: "Desktop",
+  tablet: "Planşet",
+  phone: "Telefon",
+};
+
 function deviceIcon(d) {
-  const t = d.device_type || (d.device_kind === "mobile" ? "phone" : d.device_kind);
+  const t = d?.device_type;
   if (t === "phone") return "smartphone";
   if (t === "tablet") return "tablet";
   if (t === "laptop") return "laptop";
+  if (t === "desktop") return "monitor";
+  const k = d?.device_kind;
+  if (k === "mobile") return "smartphone";
+  if (k === "tablet") return "tablet";
   return "monitor";
 }
 
-function deviceTypeLabel(t) {
-  if (t === "laptop") return "Noutbuk";
-  if (t === "desktop") return "Kompyuter";
-  if (t === "tablet") return "Planshet";
-  if (t === "phone") return "Smartfon";
-  return "—";
+function statusInfo(d) {
+  if (d.is_current) return { text: "Hozir faol", cls: "ok" };
+  if (d.status === "blocked") return { text: "Bloklangan", cls: "low" };
+  if (d.active_sessions > 0) return { text: "Faol", cls: "ok" };
+  return { text: "Muddati tugagan", cls: "neutral" };
 }
 
-function statusInfo(d, now) {
-  if (d.is_current) return { text: "Hozir faol", cls: "ok" };
-  if (d.status === "revoked") return { text: "Bloklangan", cls: "low" };
-  if (d.status === "allowed") return { text: "Ruxsat berilgan", cls: "warn" };
-  if (d.status === "expired") return { text: "Muddati tugagan", cls: "neutral" };
-  const mins = Math.floor((now - new Date(d.last_active_at).getTime()) / 60000);
-  if (mins < 5) return { text: "Hozir faol", cls: "ok" };
-  return { text: timeAgo(d.last_active_at), cls: "ok" };
+function editBadge(manual) {
+  return {
+    text: manual ? "Qo'lda kiritilgan" : "Avtomatik aniqlangan",
+    cls: manual ? "warn" : "auto",
+  };
 }
 
 function resultInfo(result) {
@@ -72,7 +79,9 @@ export function DevicesPage() {
   const { show } = useToast();
   const [confirm, setConfirm] = useState(null); // { type, device }
   const [detail, setDetail] = useState(null);
-  const [edit, setEdit] = useState(null); // { device, name, model }
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editModel, setEditModel] = useState("");
   const [now, setNow] = useState(Date.now());
 
   const devicesQuery = useQuery({
@@ -84,6 +93,11 @@ export function DevicesPage() {
     queryKey: ["device-history"],
     queryFn: () => api.list("devices/history/", { page_size: 50 }),
   });
+  const sessionsQuery = useQuery({
+    queryKey: ["device-sessions", detail?.id],
+    queryFn: () => api.list(`devices/${detail.id}/sessions/`, { page_size: 50 }),
+    enabled: Boolean(detail?.id),
+  });
 
   // last-active "hozir faol" ko'rsatkichini jonli ushlab turish
   useEffect(() => {
@@ -94,12 +108,22 @@ export function DevicesPage() {
   const refresh = () => {
     queryClient.invalidateQueries(["devices"]);
     queryClient.invalidateQueries(["device-history"]);
+    queryClient.invalidateQueries(["device-sessions"]);
   };
 
   const revokeMutation = useMutation({
-    mutationFn: (id) => api.post(`devices/${id}/revoke/`, {}),
+    mutationFn: (id) => api.post(`devices/${id}/revoke-session/`, {}),
     onSuccess: () => {
-      show("Qurilma chiqarildi.", "success");
+      show("Sessiya tugatildi. Qurilma keyingi loginlarga ochiq.", "success");
+      refresh();
+    },
+    onError: (e) => show(e.message, "error"),
+  });
+
+  const blockMutation = useMutation({
+    mutationFn: (id) => api.post(`devices/${id}/block/`, {}),
+    onSuccess: (d) => {
+      show(d?.detail || "Qurilma bloklandi.", "success");
       refresh();
     },
     onError: (e) => show(e.message, "error"),
@@ -107,8 +131,8 @@ export function DevicesPage() {
 
   const unblockMutation = useMutation({
     mutationFn: (id) => api.post(`devices/${id}/unblock/`, {}),
-    onSuccess: () => {
-      show("Qurilmaga qayta kirishga ruxsat berildi.", "success");
+    onSuccess: (d) => {
+      show(d?.detail || "Qurilmaga qayta kirishga ruxsat berildi.", "success");
       refresh();
     },
     onError: (e) => show(e.message, "error"),
@@ -118,16 +142,16 @@ export function DevicesPage() {
     mutationFn: ({ id, body }) => api.patch(`devices/${id}/update/`, body),
     onSuccess: () => {
       show("Qurilma ma'lumotlari yangilandi.", "success");
-      setEdit(null);
+      setEditing(false);
       refresh();
     },
     onError: (e) => show(e.message, "error"),
   });
 
-  const revokeAllMutation = useMutation({
-    mutationFn: () => api.post("devices/revoke-all/", {}),
+  const blockOthersMutation = useMutation({
+    mutationFn: () => api.post("devices/block-others/", {}),
     onSuccess: (d) => {
-      show(d?.detail || "Boshqa qurilmalar chiqarildi.", "success");
+      show(d?.detail || "Boshqa qurilmalar bloklandi.", "success");
       refresh();
     },
     onError: (e) => show(e.message, "error"),
@@ -135,24 +159,39 @@ export function DevicesPage() {
 
   const devices = devicesQuery.data?.results || [];
   const current = devices.find((d) => d.is_current) || null;
-  const others = devices.filter((d) => !d.is_current && d.status === "active");
-  const blocked = devices.filter((d) => !d.is_current && (d.status === "revoked" || d.status === "allowed"));
+  const others = devices.filter((d) => !d.is_current && d.status !== "blocked");
+  const blocked = devices.filter((d) => !d.is_current && d.status === "blocked");
   const history = historyQuery.data?.results || [];
 
-  const activeCount = devices.filter((d) => d.status === "active").length;
-  const blockedCount = devices.filter((d) => d.status === "revoked").length;
+  const activeCount = devices.filter((d) => d.active_sessions > 0 || d.is_current).length;
+  const blockedCount = devices.filter((d) => d.status === "blocked").length;
 
   const runConfirm = () => {
     if (!confirm) return;
     if (confirm.type === "revoke") revokeMutation.mutate(confirm.device.id);
+    else if (confirm.type === "block") blockMutation.mutate(confirm.device.id);
     else if (confirm.type === "unblock") unblockMutation.mutate(confirm.device.id);
-    else revokeAllMutation.mutate();
+    else blockOthersMutation.mutate();
     setConfirm(null);
   };
 
+  const openDetail = (d) => {
+    setDetail(d);
+    setEditing(false);
+    setEditName(d.device_name || "");
+    setEditModel(d.device_model || "");
+  };
+
+  const saveEdit = () => {
+    if (!detail) return;
+    updateMutation.mutate({
+      id: detail.id,
+      body: { device_name: editName, device_model: editModel },
+    });
+  };
+
   const renderDevice = (d) => {
-    const st = statusInfo(d, now);
-    const busy = revokeMutation.isPending || unblockMutation.isPending;
+    const st = statusInfo(d);
     return (
       <div
         className={`device-card ${d.is_current ? "device-current" : ""}`}
@@ -163,16 +202,14 @@ export function DevicesPage() {
             <Icon name={deviceIcon(d)} size={26} />
           </span>
           <div className="device-name-wrap">
-            <button className="device-name" onClick={() => setDetail(d)}>
+            <button className="device-name" onClick={() => openDetail(d)}>
               {d.device_name || "Noma'lum qurilma"}
             </button>
-            <span className="device-model">{d.device_model || "—"}</span>
+            <span className="device-model">{d.device_model || "Model aniqlanmadi"}</span>
             <span className="device-meta">
-              {d.browser || "—"}
-              {d.browser_version ? ` ${d.browser_version}` : ""}
-              {" · "}
               {d.os || "—"}
-              {d.os_version ? ` ${d.os_version}` : ""}
+              {d.os_version ? ` ${d.os_version}` : ""} · {d.browser || "—"}
+              {d.browser_version ? ` ${d.browser_version}` : ""}
             </span>
           </div>
           <span className={`status-pill status-${st.cls}`}>
@@ -187,30 +224,39 @@ export function DevicesPage() {
             <b className="mono">{d.ip_address || "—"}</b>
           </div>
           <div className="device-row">
-            <span>Kirilgan</span>
+            <span>Birinchi kirish</span>
             <b>{fmtDateTime(d.created_at)}</b>
           </div>
           <div className="device-row">
             <span>Oxirgi faollik</span>
             <b>{timeAgo(d.last_active_at)}</b>
           </div>
+          <div className="device-row">
+            <span>Sessiyalar</span>
+            <b>{d.sessions_count} ta login</b>
+          </div>
         </div>
 
         <div className="device-card-actions">
           {d.status === "active" && !d.is_current && (
-            <button className="btn btn-danger-ghost btn-sm" disabled={busy} onClick={() => setConfirm({ type: "revoke", device: d })}>
-              <Icon name="logOut" size={15} /> Qurilmani chiqarish
+            <button
+              className="btn btn-danger-ghost btn-sm"
+              disabled={revokeMutation.isPending || blockMutation.isPending}
+              onClick={() => setConfirm({ type: "revoke", device: d })}
+            >
+              <Icon name="logOut" size={15} /> Sessiyani chiqarish
             </button>
           )}
-          {d.status === "revoked" && (
-            <button className="btn btn-primary btn-sm" disabled={busy} onClick={() => setConfirm({ type: "unblock", device: d })}>
-              <Icon name="check" size={15} /> Qurilmaga qayta ruxsat berish
+          {d.status === "blocked" && (
+            <button
+              className="btn btn-primary btn-sm"
+              disabled={unblockMutation.isPending}
+              onClick={() => setConfirm({ type: "unblock", device: d })}
+            >
+              <Icon name="check" size={15} /> Qurilmaga ruxsat berish
             </button>
           )}
-          <button className="ghost-btn" onClick={() => setEdit({ device: d, name: d.device_name || "", model: d.device_model || "" })} title="Nom/modelni tahrirlash">
-            <Icon name="edit" size={15} />
-          </button>
-          <button className="ghost-btn" onClick={() => setDetail(d)} title="Batafsil">
+          <button className="ghost-btn" onClick={() => openDetail(d)} title="Batafsil">
             <Icon name="chevron" size={15} />
           </button>
         </div>
@@ -246,8 +292,8 @@ export function DevicesPage() {
 
       {others.length > 0 && (
         <div className="revoke-all-wrap">
-          <button className="btn btn-danger-ghost" onClick={() => setConfirm({ type: "revokeAll" })}>
-            <Icon name="logOut" size={16} /> Boshqa barcha qurilmalardan chiqish
+          <button className="btn btn-danger-ghost" onClick={() => setConfirm({ type: "blockOthers" })}>
+            <Icon name="logOut" size={16} /> Boshqa barcha qurilmalarni bloklash
           </button>
         </div>
       )}
@@ -329,13 +375,12 @@ export function DevicesPage() {
         </div>
       </section>
 
-      {/* Revoke confirm */}
+      {/* Revoke-session confirm */}
       <Modal open={confirm?.type === "revoke"} onClose={() => setConfirm(null)}>
-        <h3>Qurilmani chiqaramizmi?</h3>
+        <h3>Sessiyani chiqaramizmi?</h3>
         <p style={{ marginTop: 10, opacity: 0.85, lineHeight: 1.55 }}>
-          <b>{confirm?.device?.device_name}</b> KassaPro hisobidan chiqariladi va uning joriy
-          sessioni bekor qilinadi. Bu qurilmadan qayta kirish uchun{" "}
-          <b>Qurilmaga qayta ruxsat berish</b> kerak bo'ladi.
+          <b>{confirm?.device?.device_name}</b> qurilmasidagi joriy login tugatiladi.
+          Qurilmaning o'zi <b>ochiq</b> qoladi — keyingi loginlarga ruxsat bor.
         </p>
         <div className="grid-2" style={{ marginTop: 20 }}>
           <button className="btn btn-ghost" onClick={() => setConfirm(null)}>Bekor qilish</button>
@@ -344,7 +389,27 @@ export function DevicesPage() {
             disabled={revokeMutation.isPending}
             onClick={runConfirm}
           >
-            {revokeMutation.isPending ? "Chiqarilmoqda..." : "Qurilmani chiqarish"}
+            {revokeMutation.isPending ? "Chiqarilmoqda..." : "Sessiyani chiqarish"}
+          </button>
+        </div>
+      </Modal>
+
+      {/* Block confirm */}
+      <Modal open={confirm?.type === "block"} onClose={() => setConfirm(null)}>
+        <h3>Qurilmani bloklansinmi?</h3>
+        <p style={{ marginTop: 10, opacity: 0.85, lineHeight: 1.55 }}>
+          <b>{confirm?.device?.device_name}</b> to'liq bloklanadi: joriy sessiyalar
+          tugaydi va bu qurilmadan parol to'g'ri bo'lsa ham<b> qayta kirish taqiqlanadi</b>.
+          Faqat "Qurilmaga ruxsat berish" orqali ochiladi.
+        </p>
+        <div className="grid-2" style={{ marginTop: 20 }}>
+          <button className="btn btn-ghost" onClick={() => setConfirm(null)}>Bekor qilish</button>
+          <button
+            className="btn btn-danger"
+            disabled={blockMutation.isPending}
+            onClick={runConfirm}
+          >
+            {blockMutation.isPending ? "Bloklanmoqda..." : "Qurilmani bloklash"}
           </button>
         </div>
       </Modal>
@@ -368,126 +433,176 @@ export function DevicesPage() {
         </div>
       </Modal>
 
-      {/* Revoke-all confirm */}
-      <Modal open={confirm?.type === "revokeAll"} onClose={() => setConfirm(null)}>
-        <h3>Boshqa barcha qurilmalardan chiqish</h3>
+      {/* Block-others confirm */}
+      <Modal open={confirm?.type === "blockOthers"} onClose={() => setConfirm(null)}>
+        <h3>Boshqa barcha qurilmalarni bloklash</h3>
         <p style={{ marginTop: 10, opacity: 0.85, lineHeight: 1.55 }}>
-          Bu qurilmadan tashqari barcha active sessiyalar chiqariladi. Chiqarilgan qurilmalardan
-          qayta kirish <b>bloklanadi</b>.
+          Bu qurilma bundan mustasno — boshqa barcha qurilmalar bloklanadi va ularning
+          sessiyalari tugatiladi. Qayta kirish uchun har biriga alohida ruxsat beriladi.
         </p>
         <div className="grid-2" style={{ marginTop: 20 }}>
           <button className="btn btn-ghost" onClick={() => setConfirm(null)}>Bekor qilish</button>
           <button
             className="btn btn-danger"
-            disabled={revokeAllMutation.isPending}
+            disabled={blockOthersMutation.isPending}
             onClick={runConfirm}
           >
-            {revokeAllMutation.isPending ? "Chiqarilmoqda..." : "Barchasidan chiqish"}
+            {blockOthersMutation.isPending ? "Bloklanmoqda..." : "Barchasini bloklash"}
           </button>
         </div>
       </Modal>
 
       {/* Detail modal */}
-      <Modal open={!!detail} onClose={() => setDetail(null)}>
+      <Modal open={!!detail} onClose={() => setDetail(null)} size="lg">
         {detail && (
           <>
             <div className="device-detail-head">
               <span className="device-ico">
                 <Icon name={deviceIcon(detail)} size={30} />
               </span>
-              <div>
-                <h3>{detail.device_name}</h3>
-                <span className="device-model" style={{ marginTop: 2 }}>{detail.device_model || "—"}</span>
-                <span className={`status-pill status-${statusInfo(detail, now).cls}`}>
-                  {statusInfo(detail, now).text}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="device-detail-name-row">
+                  <h3>{detail.device_name}</h3>
+                  <span className={`badge ${detail.is_name_manual ? "badge-warn" : "badge-ok"}`}>
+                    {editBadge(detail.is_name_manual).text}
+                  </span>
+                </div>
+                <span className={`status-pill status-${statusInfo(detail).cls}`}>
+                  {statusInfo(detail).text}
                   {detail.is_current && <span className="current-badge">BU QURILMA</span>}
                 </span>
               </div>
+              <button className="ghost-btn" onClick={() => setEditing(!editing)} title="Tahrirlash">
+                <Icon name="edit" size={16} /> <span>Tahrirlash</span>
+              </button>
             </div>
-            <div className="debt-info-row">
-              <div><span>Qurilma turi</span><b>{deviceTypeLabel(detail.device_type)}</b></div>
-              <div><span>Model</span><b style={{ overflowWrap: "anywhere" }}>{detail.device_model || "—"}</b></div>
-            </div>
-            <div className="debt-info-row">
-              <div><span>Device ID</span><b className="mono" style={{ fontSize: 12 }}>{detail.device_id}</b></div>
-              <div><span>Session ID</span><b className="mono" style={{ fontSize: 12 }}>{detail.session_id}</b></div>
-            </div>
-            <div className="debt-info-row">
-              <div><span>Browser</span><b>{detail.browser || "—"}{detail.browser_version ? ` ${detail.browser_version}` : ""}</b></div>
-              <div><span>OS</span><b>{detail.os || "—"}{detail.os_version ? ` ${detail.os_version}` : ""}</b></div>
-            </div>
-            <div className="debt-info-row">
-              <div><span>IP</span><b className="mono">{detail.ip_address || "—"}</b></div>
-              <div><span>Joylashuv</span><b>{detail.location || "Noma'lum joylashuv"}</b></div>
-            </div>
-            <div className="debt-info-row">
-              <div><span>Birinchi kirish</span><b>{fmtDateTime(detail.created_at)}</b></div>
-              <div><span>Oxirgi login</span><b>{fmtDateTime(detail.last_login_at)}</b></div>
-            </div>
-            <div className="debt-info-row">
-              <div><span>Oxirgi faollik</span><b>{timeAgo(detail.last_active_at)}</b></div>
-              <div><span>Status</span><b>{detail.status}</b></div>
-            </div>
-            {detail.revoked_at && (
-              <div className="debt-info-row">
-                <div><span>Chiqarilgan</span><b>{fmtDateTime(detail.revoked_at)}</b></div>
-                <div><span>Kim tomonidan</span><b>{detail.revoked_by_name || "—"}</b></div>
+
+            {editing ? (
+              <div className="device-edit-form">
+                <div className="field">
+                  <label>Qurilma nomi</label>
+                  <input
+                    className="input"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Masalan: Muhammadamin's Laptop"
+                  />
+                </div>
+                <div className="field" style={{ marginTop: 10 }}>
+                  <label>Qurilma modeli</label>
+                  <input
+                    className="input"
+                    value={editModel}
+                    onChange={(e) => setEditModel(e.target.value)}
+                    placeholder="Masalan: Lenovo IdeaPad 3 15IAU7"
+                  />
+                </div>
+                <div className="grid-2" style={{ marginTop: 14 }}>
+                  <button className="btn btn-ghost" onClick={() => setEditing(false)}>Bekor qilish</button>
+                  <button
+                    className="btn btn-primary"
+                    disabled={updateMutation.isPending}
+                    onClick={saveEdit}
+                  >
+                    {updateMutation.isPending ? "Saqlanmoqda..." : "Saqlash"}
+                  </button>
+                </div>
               </div>
+            ) : (
+              <>
+                <div className="debt-info-row">
+                  <div><span>Model</span><b>{detail.device_model || "Model aniqlanmadi"}</b></div>
+                  <div><span>Turi</span><b>{TYPE_LABEL[detail.device_type] || detail.device_type || "—"}</b></div>
+                </div>
+                <div className="debt-info-row">
+                  <div><span>Browser</span><b>{detail.browser || "—"}{detail.browser_version ? ` ${detail.browser_version}` : ""}</b></div>
+                  <div><span>OS</span><b>{detail.os || "—"}{detail.os_version ? ` ${detail.os_version}` : ""}</b></div>
+                </div>
+                <div className="debt-info-row">
+                  <div><span>IP</span><b className="mono">{detail.ip_address || "—"}</b></div>
+                  <div><span>Joylashuv</span><b>{detail.location || "Noma'lum joylashuv"}</b></div>
+                </div>
+                <div className="debt-info-row">
+                  <div><span>Birinchi kirish</span><b>{fmtDateTime(detail.created_at)}</b></div>
+                  <div><span>Oxirgi login</span><b>{fmtDateTime(detail.last_login_at)}</b></div>
+                </div>
+                <div className="debt-info-row">
+                  <div><span>Oxirgi faollik</span><b>{timeAgo(detail.last_active_at)}</b></div>
+                  <div><span>Status</span><b>{detail.status === "blocked" ? "Bloklangan" : "Faol"}</b></div>
+                </div>
+                <div className="debt-info-row">
+                  <div><span>Model ma'lumoti</span><b>
+                    <span className={`badge ${detail.is_model_manual ? "badge-warn" : "badge-ok"}`}>
+                      {editBadge(detail.is_model_manual).text}
+                    </span>
+                  </b></div>
+                  <div><span>Sessiyalar</span><b>{detail.sessions_count} ta login</b></div>
+                </div>
+                {detail.revoked_at && (
+                  <div className="debt-info-row">
+                    <div><span>Bloklangan</span><b>{fmtDateTime(detail.revoked_at)}</b></div>
+                    <div><span>Kim tomonidan</span><b>{detail.revoked_by_name || "—"}</b></div>
+                  </div>
+                )}
+              </>
             )}
+
             {detail.status === "active" && !detail.is_current && (
               <div className="grid-2" style={{ marginTop: 18 }}>
-                <button className="btn btn-danger" onClick={() => { setConfirm({ type: "revoke", device: detail }); setDetail(null); }}>
-                  Qurilmani chiqarish
+                <button
+                  className="btn btn-danger"
+                  onClick={() => { setConfirm({ type: "revoke", device: detail }); setDetail(null); }}
+                >
+                  Sessiyani chiqarish
+                </button>
+                <button
+                  className="btn btn-danger"
+                  onClick={() => { setConfirm({ type: "block", device: detail }); setDetail(null); }}
+                >
+                  Qurilmani bloklash
                 </button>
               </div>
             )}
-          </>
-        )}
-      </Modal>
+            {detail.status === "blocked" && (
+              <div className="grid-2" style={{ marginTop: 18 }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => { setConfirm({ type: "unblock", device: detail }); setDetail(null); }}
+                >
+                  Qurilmaga ruxsat berish
+                </button>
+              </div>
+            )}
 
-      {/* Edit device modal */}
-      <Modal open={!!edit} onClose={() => setEdit(null)}>
-        {edit && (
-          <>
-            <h3>Qurilma ma'lumotlari</h3>
-            <p style={{ marginTop: 8, opacity: 0.85, lineHeight: 1.55 }}>
-              Noutbuk modeli brauzer orqali avtomatik aniqlanmaydi — haqiqiy model
-              nomini o'zingiz kiriting. Masalan: <b>Lenovo IdeaPad 3 15IAU7</b>.
-            </p>
-            <div className="field" style={{ marginTop: 16 }}>
-              <label>Qurilma nomi</label>
-              <input
-                className="input"
-                value={edit.name}
-                onChange={(e) => setEdit({ ...edit, name: e.target.value })}
-                maxLength={255}
-                placeholder="Muhammadamin's Laptop"
-              />
-            </div>
-            <div className="field" style={{ marginTop: 14 }}>
-              <label>Model</label>
-              <input
-                className="input"
-                value={edit.model}
-                onChange={(e) => setEdit({ ...edit, model: e.target.value })}
-                maxLength={255}
-                placeholder="Lenovo IdeaPad 3 15IAU7"
-              />
-            </div>
-            <div className="grid-2" style={{ marginTop: 20 }}>
-              <button className="btn btn-ghost" onClick={() => setEdit(null)}>Bekor qilish</button>
-              <button
-                className="btn btn-primary"
-                disabled={updateMutation.isPending}
-                onClick={() =>
-                  updateMutation.mutate({
-                    id: edit.device.id,
-                    body: { device_name: edit.name, device_model: edit.model },
-                  })
-                }
-              >
-                {updateMutation.isPending ? "Saqlanmoqda..." : "Saqlash"}
-              </button>
+            <div className="device-sessions-block">
+              <h4>Kirish tarixi (sessionlar)</h4>
+              {sessionsQuery.isLoading ? (
+                <div className="empty-state" style={{ padding: 10 }}>Yuklanmoqda...</div>
+              ) : sessionsQuery.data?.results?.length === 0 ? (
+                <div className="empty-state" style={{ padding: 10 }}>Sessiya topilmadi.</div>
+              ) : (
+                <ul className="session-list">
+                  {(sessionsQuery.data?.results || []).map((s) => {
+                    const st = s.is_current
+                      ? { text: "Hozir faol", cls: "ok" }
+                      : s.status === "revoked"
+                        ? { text: "Chiqarilgan", cls: "low" }
+                        : s.status === "active"
+                          ? { text: "Faol", cls: "ok" }
+                          : { text: "Muddati tugagan", cls: "neutral" };
+                    return (
+                      <li key={s.id} className="session-item">
+                        <span className={`status-pill status-${st.cls}`}>{st.text}</span>
+                        <div className="session-meta">
+                          <b className="mono">{s.session_id.slice(0, 12)}…</b>
+                          <span>{fmtDateTime(s.last_active_at)}</span>
+                          <span className="mono">{s.ip_address || "—"}</span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           </>
         )}

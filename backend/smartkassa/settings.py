@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 
 import environ
@@ -111,6 +112,13 @@ REST_FRAMEWORK = {
         "login": "60/min",
     },
 }
+
+# Test ishlaganda global throttle budjeti (60/min) tugab qolmasligi uchun.
+if len(sys.argv) > 1 and sys.argv[1] == "test":
+    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
+        "sales": "100000/min",
+        "login": "100000/min",
+    }
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(hours=12),

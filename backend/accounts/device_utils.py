@@ -113,6 +113,28 @@ def device_type_from_ua(user_agent):
     return "desktop"
 
 
+DEVICE_TYPE_LABELS = {
+    "laptop": "Laptop",
+    "desktop": "Desktop",
+    "tablet": "Tablet",
+    "phone": "Smartphone",
+}
+
+
+def device_name_for(username, device_type=""):
+    """Avtomatik qurilma nomi fallback: "Muhammadamin's Laptop".
+
+    Client haqiqiy nom yubormagan bo'lsa ishlatiladi. HOSTNAME brauzer orqali
+    olinmaydi — username + tur kombinatsiyasi eng aniq haqiqiy nom.
+    """
+    label = DEVICE_TYPE_LABELS.get((device_type or "").strip().lower(), "Qurilma")
+    base = (username or "Foydalanuvchi").strip()
+    if not base:
+        base = "Foydalanuvchi"
+    name = f"{base[0].upper()}{base[1:]}'s {label}"
+    return name[:255]
+
+
 def record_login_event(
     user, request, result,
     device_id="", device_name="", device_model="", device_type="",

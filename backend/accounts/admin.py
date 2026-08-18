@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from accounts.models import DeviceAuditLog, DeviceSession, LoginEvent, User
+from accounts.models import Device, DeviceAuditLog, DeviceSession, LoginEvent, User
 
 
 @admin.register(User)
@@ -16,11 +16,33 @@ class CustomUserAdmin(UserAdmin):
     )
 
 
+@admin.register(Device)
+class DeviceAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "device_name",
+        "device_model",
+        "device_type",
+        "status",
+        "last_login_at",
+        "last_seen_at",
+    )
+    list_filter = ("status", "device_type", "is_name_manual", "is_model_manual")
+    search_fields = ("user__username", "device_id", "device_name", "device_model")
+
+
 @admin.register(DeviceSession)
 class DeviceSessionAdmin(admin.ModelAdmin):
-    list_display = ("user", "device_name", "status", "ip_address", "last_active_at")
+    list_display = (
+        "device",
+        "status",
+        "ip_address",
+        "created_at",
+        "last_active_at",
+        "revoked_at",
+    )
     list_filter = ("status",)
-    search_fields = ("user__username", "device_id", "device_name")
+    search_fields = ("session_id", "device__user__username", "device__device_id")
 
 
 @admin.register(LoginEvent)
