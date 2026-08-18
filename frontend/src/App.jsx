@@ -1,8 +1,6 @@
-import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppLayout } from "./components/AppLayout";
-import { apiFetch } from "./api/client";
 import { useAuthStore, isTokenExpired } from "./stores/authStore";
 import LoginPage from "./pages/LoginPage";
 import CashierPage from "./pages/CashierPage";
@@ -45,6 +43,16 @@ function SuperAdminOnly({ children }) {
 
 export default function App() {
   const user = useAuthStore((s) => s.user);
+
+  // Keep-alive: har 4 daqiqada backend'ni uyg'otib turamiz (Render sleep mode)
+  useEffect(() => {
+    const ping = () => {
+      apiFetch("health/").catch(() => {});
+    };
+    ping();
+    const t = setInterval(ping, 4 * 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
 
   return (
     <Routes>
