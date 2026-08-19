@@ -74,12 +74,14 @@ class IsShopMemberOrAdmin(BasePermission):
 
 
 class IsShopOwnerOrCashierReadOnly(BasePermission):
-    """Owner to'liq huquq, kassir faqat o'qish."""
+    """Owner (yoki o'z do'koniga birikkan platforma admini) to'liq huquq,
+    kassir faqat o'qish."""
 
     def has_permission(self, request, view):
         user = request.user
         if not (user and user.is_authenticated):
             return False
-        if user.is_owner:
+        # Do'konga biriktirilgan super_admin ham o'z do'konini boshqara oladi
+        if user.is_owner or user.is_admin:
             return True
         return request.method in SAFE_METHODS

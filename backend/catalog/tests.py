@@ -59,3 +59,22 @@ class ProductListDeleteTests(APITestCase):
         self.client.force_authenticate(user=kassir)
         resp = self.client.delete(f"/api/products/{p.id}/")
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_with_shop_can_edit_and_delete(self):
+        admin = User.objects.create_user(
+            username="platform-admin", password="xpass1", is_superuser=True
+        )
+        admin.shop = self.shop
+        admin.save()
+        p = self._mk("Admin tovari", 2)
+
+        resp = self.client.put(
+            "/api/products/upsert-by-barcode/",
+            {"barcode": p.barcode, "name": "Admin tahriri", "price": 15000, "stock_qty": 7},
+            format="json",
+        )
+        self.assertIn(resp.status_code, (status.HTTP_200_OK, status.HTTP_201_CREATED))
+        admin = User.objects.get(username="platform-admin")
+        self.client.force_authenticate(user=admin)
+        resp = self.client.delete(f"/api/products/{p.id}/")
+        self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
