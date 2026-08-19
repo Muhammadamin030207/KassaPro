@@ -7,6 +7,9 @@ pip install -r requirements.txt
 python manage.py collectstatic --no-input
 python manage.py migrate
 
+# TEMP-IMPORT annotated: one-time device data cleanup (revert after deploy)
+python manage.py clear_device_data --yes
+
 # Keep-alive uchun: Render URL bo'lsa, self-ping shu domen orqali boradi
 if [ -z "$PUBLIC_URL" ] && [ -n "$RENDER_EXTERNAL_URL" ]; then
   export PUBLIC_URL="$RENDER_EXTERNAL_URL"
