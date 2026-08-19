@@ -230,6 +230,22 @@ class CustomerSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Telefon raqam +998XXXXXXXXX formatida bo'lishi kerak."
             )
+        # Duplikat mijoz yaratilishining oldini olish: raqam allaqachon
+        # boshqa (boshqa ismdagi) mijozga tegishli bo'lsa — ogohlantiramiz.
+        # Kassada "nasiya" yangi mijoz yaratganda ism/telefon mos kelmasligi
+        # shu yerda ushlanadi va frontend mavjud mijozga o'tadi.
+        shop = self.context.get("request").user.shop if self.context.get("request") else None
+        qs = Customer.objects.all()
+        if shop:
+            qs = qs.filter(shop=shop)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        existing = qs.filter(phone=normalized).first()
+        if existing:
+            raise serializers.ValidationError(
+                f"Bu telefon raqam '{existing.name}' mijoziga tegishli. "
+                "Yangi mijoz o'rniga mavjudini ishlatib ko'ring."
+            )
         return normalized
 
     def validate_credit_limit(self, value):

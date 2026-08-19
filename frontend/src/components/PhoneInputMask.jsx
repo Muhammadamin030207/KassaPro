@@ -6,8 +6,9 @@ const PREFIX = "+998";
 /**
  * O'zbekiston telefon raqami maskali input.
  *
- * Masalan: +998 94 003 55 71  →  +998 (94) 003-55-71
- * Har doim faqat raqamlar saqlanadi (normalize: +998940035571).
+ * Masalan: +998 94 003 55 71  →  +998 94 003 55 71
+ * +998 prefixi har doim ko'rinadi va o'chirib bo'lmaydi.
+ * Har doim faqat raqamlar saqlanadi (normalize: +998940035571, + belgisiz 998940035571).
  *
  * @param {{
  *   value: string,
@@ -26,7 +27,7 @@ export function PhoneInputMask({
   name,
   required,
   autoFocus,
-  placeholder = "+998 (__) ___-__-__",
+  placeholder = "+998 90 123 45 67",
   className = "input",
   id,
 }) {
@@ -35,20 +36,16 @@ export function PhoneInputMask({
   // value dan raqamlarni chiqaramiz
   const digits = String(value || "").replace(/\D/g, "");
 
-  // Raqamlarni maskaga joylashtiramiz: +998 (XX) XXX-XX-XX
+  // Raqamlarni maskaga joylashtiramiz: +998 XX XXX XX XX
   // backend format: +998XXXXXXXXX (13 belgi: 1 + 12 raqam)
   const local = digits.startsWith("998") ? digits.slice(3) : digits.startsWith("8") ? digits.slice(1) : digits;
   const limited = local.slice(0, 9);
 
   let masked = PREFIX;
-  if (limited.length > 0) masked += " (";
-  if (limited.length > 0) masked += limited.slice(0, 2);
-  if (limited.length > 2) masked += ") ";
-  if (limited.length > 2) masked += limited.slice(2, 5);
-  if (limited.length > 5) masked += "-";
-  if (limited.length > 5) masked += limited.slice(5, 7);
-  if (limited.length > 7) masked += "-";
-  if (limited.length > 7) masked += limited.slice(7, 9);
+  if (limited.length > 0) masked += " " + limited.slice(0, 2);
+  if (limited.length > 2) masked += " " + limited.slice(2, 5);
+  if (limited.length > 5) masked += " " + limited.slice(5, 7);
+  if (limited.length > 7) masked += " " + limited.slice(7, 9);
 
   // Backend kutgan formatga tyuring: +998 + 9 raqam
   const handleChange = (e) => {

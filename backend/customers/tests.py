@@ -78,6 +78,17 @@ class DebtApiTestCase(TestCase):
         cust = Customer.objects.get(pk=cid)
         self.assertEqual(cust.phone, "+998940003551")
 
+    def test_duplicate_phone_create_warns_with_existing_name(self):
+        self._customer(name="Ali")
+        resp = self.client.post(
+            "/api/customers/",
+            {"name": "Boshqa ism", "phone": "+998 94 000 35 51"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("Ali", str(resp.data.get("phone", "")))
+        self.assertEqual(Customer.objects.count(), 1)
+
     def test_overpay_rejected(self):
         cid = self._customer()
         did = self._debt(cid, "200000")

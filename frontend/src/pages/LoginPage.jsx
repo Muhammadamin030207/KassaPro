@@ -7,6 +7,7 @@ import { useAuthStore } from "../stores/authStore";
 import { detectDeviceType, getDeviceId, getDeviceModel, getDeviceName } from "../lib/device";
 import { useToast } from "../components/Toast";
 import { Scene3D } from "../components/Scene3D";
+import { PhoneInputMask } from "../components/PhoneInputMask";
 
 // Telegram bot URL — VITE_TELEGRAM_BOT_URL env orqali, yo'q bo'lsa default bot.
 const BOT_URL =
@@ -211,7 +212,7 @@ export function LoginPage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
         >
-          {applyOpen ? "— Formani yopish" : "Ariza formasini to'ldirish"}
+          {applyOpen ? "— Formani yopish" : "Ariza qoldirish"}
         </motion.button>
 
         {applyOpen && (
@@ -250,14 +251,11 @@ export function LoginPage() {
 
             <div className="field">
               <label>Telefon raqami</label>
-              <input
+              <PhoneInputMask
                 className="input input-mono"
-                type="tel"
                 value={apply.phone}
-                onChange={applyField("phone")}
+                onChange={(v) => setApply((s) => ({ ...s, phone: v }))}
                 placeholder="+998 90 123 45 67"
-                inputMode="tel"
-                maxLength={20}
               />
               {applyErrors.phone && <div className="field-error">{applyErrors.phone}</div>}
             </div>

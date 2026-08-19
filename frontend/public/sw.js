@@ -2,7 +2,7 @@
  * Navigatsiyalar: network-first (serverdan so'raydi, ishlamasa cache'dan).
  * Assetlar: stale-while-revalidate. /api/ hech qachon cache'lanmaydi.
  */
-const CACHE = "kassapro-v1";
+const CACHE = "kassapro-v2";
 const PRECACHE = ["/", "/index.html", "/manifest.json", "/favicon.svg", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {

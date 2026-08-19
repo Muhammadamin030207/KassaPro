@@ -51,6 +51,17 @@ export function ProductsPage() {
   });
   const products = productsData?.results || [];
 
+  // Barcode maydonida allaqachon mavjud mahsulot kodi yozilsa ogohlantirish
+  const barcodeDup = (() => {
+    const code = (form?.barcode || "").trim().toLowerCase();
+    if (!code) return null;
+    return products.find(
+      (p) =>
+        p.id !== editingId &&
+        String(p.barcode || "").trim().toLowerCase() === code
+    );
+  })();
+
   const deleteMutation = useMutation({
     mutationFn: (id) => api.del(`products/${id}/`),
     onSuccess: () => {
@@ -315,6 +326,11 @@ export function ProductsPage() {
                 ref={barcodeRef}
                 placeholder="Skanerlang yoki kiriting"
               />
+              {barcodeDup && (
+                <div className="field-warn">
+                  Bu shtrix kod "{barcodeDup.name}" mahsulotiga tegishli
+                </div>
+              )}
             </div>
             <div className="field">
               <label>Nomi</label>

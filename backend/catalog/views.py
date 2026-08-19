@@ -12,6 +12,15 @@ from catalog.serializers import (
 )
 
 
+def _auto_delete_zero_stock(product):
+    """Zahirasi 0 ga tushgan mahsulotni avtomatik o'chiradi.
+
+    Savdo tarixi saqlanadi (SaleItem SET_NULL + snapshotlar).
+    """
+    if product is not None and product.stock_qty <= 0:
+        product.delete()
+
+
 class ProductListCreateView(generics.ListCreateAPIView):
     """Mahsulotlar ro'yxati + yangi mahsulot qo'shish (faqat owner)."""
 
@@ -51,6 +60,11 @@ class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return Product.objects.filter(shop=self.request.user.shop)
+
+    def perform_update(self, serializer):
+        product = serializer.save()
+        # Zahirasini 0 qilib qo'yish = mahsulot tugadi → avtomatik o'chadi.
+        _auto_delete_zero_stock(product)
 
 
 class ProductByBarcodeView(generics.RetrieveAPIView):
@@ -119,6 +133,8 @@ class ProductUpsertByBarcodeView(views.APIView):
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
+
+        _auto_delete_zero_stock(serializer.instance)
 
         status_code = status.HTTP_201_CREATED if is_new else status.HTTP_200_OK
         resp_data = serializer.data

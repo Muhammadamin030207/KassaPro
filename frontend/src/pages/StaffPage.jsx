@@ -6,6 +6,7 @@ import { api } from "../api/client";
 import { useToast } from "../components/Toast";
 import Icon from "../components/Icon";
 import { Modal } from "../components/Modal";
+import { PhoneInputMask } from "../components/PhoneInputMask";
 
 /**
  * Kassirlar sahifasi — faqat owner uchun.
@@ -140,11 +141,10 @@ export function StaffPage() {
           </div>
           <div className="field">
             <label>Telefon (ixtiyoriy)</label>
-            <input
+            <PhoneInputMask
               className="input mono"
               value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              placeholder="+99890..."
+              onChange={(v) => setForm({ ...form, phone: v })}
             />
           </div>
           <div className="grid-2">

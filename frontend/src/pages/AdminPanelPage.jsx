@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { api } from "../api/client";
 import { useToast } from "../components/Toast";
 import { Modal } from "../components/Modal";
+import { PhoneInputMask } from "../components/PhoneInputMask";
 
 const STATUS_LABEL = {
   pending: "Kutilmoqda",
@@ -225,11 +226,10 @@ export function AdminPanelPage() {
               </div>
               <div className="field">
                 <label>Telefon (ixtiyoriy)</label>
-                <input
+                <PhoneInputMask
                   className="input"
                   value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="+998 90 123 45 67"
+                  onChange={(v) => setForm({ ...form, phone: v })}
                 />
               </div>
               <div className="field">

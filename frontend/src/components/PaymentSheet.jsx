@@ -139,6 +139,12 @@ export function PaymentSheet({
       setNasiyaMode("search");
       return data;
     } catch (err) {
+      // Telefon allaqachon boshqa ismli mijozga tegishli — duplikat yaratmaymiz,
+      // mavjud mijozni qayta qidirib ko'rsatamiz.
+      if (typeof err.message === "string" && err.message.includes("tegishli")) {
+        show(err.message, "info");
+        return lookup().then(() => null);
+      }
       show(err.message || "Mijoz yaratishda xatolik", "error");
       return false;
     } finally {

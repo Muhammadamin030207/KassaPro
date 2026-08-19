@@ -78,3 +78,33 @@ class ProductListDeleteTests(APITestCase):
         self.client.force_authenticate(user=admin)
         resp = self.client.delete(f"/api/products/{p.id}/")
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_zero_stock_via_update_auto_deleted(self):
+        p = self._mk("Tugayotgan tovar", 2)
+        resp = self.client.put(
+            f"/api/products/{p.id}/",
+            {"barcode": p.barcode, "name": p.name, "price": 10000, "stock_qty": 0},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertFalse(Product.objects.filter(id=p.id).exists())
+
+    def test_zero_stock_via_upsert_auto_deleted(self):
+        p = self._mk("Skanerdan chiqqan", 4)
+        resp = self.client.put(
+            "/api/products/upsert-by-barcode/",
+            {"barcode": p.barcode, "name": p.name, "price": 10000, "stock_qty": 0},
+            format="json",
+        )
+        self.assertIn(resp.status_code, (status.HTTP_200_OK, status.HTTP_201_CREATED))
+        self.assertFalse(Product.objects.filter(id=p.id).exists())
+
+    def test_nonzero_stock_update_keeps_product(self):
+        p = self._mk("O'zgaruvchi tovar", 3)
+        resp = self.client.put(
+            f"/api/products/{p.id}/",
+            {"barcode": p.barcode, "name": p.name, "price": 10000, "stock_qty": 5},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertTrue(Product.objects.filter(id=p.id).exists())

@@ -17,7 +17,11 @@ class SaleItemInputSerializer(serializers.Serializer):
 
 
 class SaleItemSerializer(serializers.ModelSerializer):
-    product_id = serializers.IntegerField(source="product.id", read_only=True)
+    # Mahsulot stock'u 0 ga tushib avtomatik o'chirilganda product_id null bo'ladi —
+    # tarix snapshot (product_name_snapshot, barcode_snapshot) orqali saqlanadi.
+    product_id = serializers.IntegerField(
+        source="product.id", read_only=True, allow_null=True, required=False
+    )
     product_name = serializers.CharField(source="product_name_snapshot", read_only=True)
 
     class Meta:
@@ -217,6 +221,12 @@ class SaleCreateSerializer(serializers.Serializer):
                 subtotal=si["subtotal"],
                 **si["snapshot"],
             )
+
+        # Zahirasi 0 ga tushgan mahsulotlarni avtomatik o'chirish.
+        # SaleItem.product SET_NULL + snapshotlar tufayli savdo tarixi saqlanadi.
+        exhausted = [p.id for p in products.values() if p.stock_qty <= 0]
+        if exhausted:
+            Product.objects.filter(id__in=exhausted).delete()
 
         # Serializerda nested ko'rsatish uchun
         return sale

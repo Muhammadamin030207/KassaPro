@@ -580,6 +580,13 @@ select {
   font-weight: 600;
 }
 
+.field-warn {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--warn);
+  font-weight: 600;
+}
+
 .apply-result {
   margin-top: 14px;
   padding: 12px 14px;
@@ -1847,7 +1854,7 @@ table.data tbody tr:hover {
   width: 108px;
   height: 108px;
   border-radius: 50%;
-  background: radial-gradient(circle at 32% 28%, #34d399, var(--brand) 70%);
+  background: radial-gradient(circle at 32% 28%, #818cf8, var(--brand) 70%);
   display: grid;
   place-items: center;
   box-shadow: 0 0 60px rgba(99, 102, 241, 0.6), 0 20px 50px rgba(0, 0, 0, 0.4);
@@ -1993,8 +2000,8 @@ table.data tbody tr:hover {
 }
 
 .settings-badge-main {
-  background: rgba(16, 185, 129, 0.14);
-  color: #10b981;
+  background: rgba(99, 102, 241, 0.14);
+  color: var(--brand);
 }
 
 .settings-group-desc {
@@ -2388,6 +2395,27 @@ table.data tbody tr:hover {
 
 .quick-add-head .ghost-btn {
   margin-left: auto;
+}
+
+.debt-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 768px) {
+  .debt-filter-bar {
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  .debt-filter-bar > input,
+  .debt-filter-bar .input {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
 }
 
 .quick-add-grid {
@@ -2800,12 +2828,12 @@ table.data tbody tr:hover {
   width: 100%;
   padding: 18px 20px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
   color: #fff;
   font-size: 17px;
   font-weight: 800;
   letter-spacing: 0.3px;
-  box-shadow: 0 10px 26px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 10px 26px rgba(99, 102, 241, 0.35);
   border: none;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.2s ease;
@@ -3205,9 +3233,9 @@ html, body, #root {
     font-weight: 800;
     width: 100%;
     letter-spacing: 0.02em;
-    background: linear-gradient(135deg, #10b981, #34d399);
-    color: #04231a;
-    box-shadow: 0 12px 34px rgba(16, 185, 129, 0.4);
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    color: #fff;
+    box-shadow: 0 12px 34px rgba(99, 102, 241, 0.4);
     border-radius: 16px;
     position: relative;
     overflow: hidden;
@@ -3348,7 +3376,7 @@ html, body, #root {
   height: 100%;
   width: var(--pct, 0%);
   border-radius: 999px;
-  background: linear-gradient(90deg, #818cf8, #10b981);
+  background: linear-gradient(90deg, #818cf8, #6366f1);
   transition: width 0.4s ease;
 }
 

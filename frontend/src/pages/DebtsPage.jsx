@@ -8,6 +8,7 @@ import { Modal } from "../components/Modal";
 import Icon from "../components/Icon";
 import { DebtDetailModal } from "../components/DebtDetailModal";
 import { DebtPaymentModal } from "../components/DebtPaymentModal";
+import { PhoneInputMask } from "../components/PhoneInputMask";
 import { formatMoney, todayISO } from "../utils/format";
 
 const BASE = import.meta.env.VITE_API_URL || "/api";
@@ -289,7 +290,7 @@ export function DebtsPage() {
           </button>
         </div>
 
-        <div className="quick-add-head" style={{ marginTop: 14 }}>
+        <div className="debt-filter-bar" style={{ marginTop: 14 }}>
           <input
             className="input mono"
             placeholder={tab === "active" ? "Mijoz (ism/telefon) izlash..." : "Tarixdan qidirish..."}
@@ -470,7 +471,7 @@ export function DebtsPage() {
           </div>
           <div className="field">
             <label>Telefon raqam</label>
-            <input className="input mono" placeholder="+998 90 123 45 67" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
+            <PhoneInputMask className="input mono" value={newPhone} onChange={setNewPhone} />
           </div>
           <div className="field">
             <label>Mijoz ismi (yangi bo'lsa)</label>

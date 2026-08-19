@@ -41,7 +41,6 @@ export function CashierPage() {
   const [code, setCode] = useState("");
   const [payment, setPayment] = useState("cash");
   const [quickBarcode, setQuickBarcode] = useState("");
-  const [quickStep, setQuickStep] = useState("confirm");
   const [quickName, setQuickName] = useState("");
   const [quickPrice, setQuickPrice] = useState("");
   const [paying, setPaying] = useState(false);
@@ -131,9 +130,10 @@ export function CashierPage() {
       if (notFound) {
         playBarcodeError(); // success "CHIK" emas, warning
         setQuickBarcode(barcode);
-        setQuickStep("confirm");
         setQuickName("");
         setQuickPrice("");
+        // Forma tasdiqlashsiz avtomatik ochiladi — kassir nom/narxni darhol kiritadi
+        setTimeout(() => quickNameRef.current?.focus(), 80);
         show(
           err.status === 404
             ? `Bunday mahsulot yo'q — "${barcode}" bazada topilmadi`
@@ -186,7 +186,6 @@ export function CashierPage() {
         show(`Qo'shildi: ${product.name}`, "success", 1500);
       }
       setQuickBarcode("");
-      setQuickStep("confirm");
       setQuickName("");
       setQuickPrice("");
       inputRef.current?.focus();
@@ -197,15 +196,9 @@ export function CashierPage() {
 
   const closeQuick = () => {
     setQuickBarcode("");
-    setQuickStep("confirm");
     setQuickName("");
     setQuickPrice("");
     inputRef.current?.focus();
-  };
-
-  const startQuickAdd = () => {
-    setQuickStep("form");
-    setTimeout(() => quickNameRef.current?.focus(), 80);
   };
 
   // To'lov: asosan "TO'LOVGA O'TISH" tugmasi PaymentSheet (bottom-sheet) ochadi —
@@ -370,61 +363,49 @@ export function CashierPage() {
                   </button>
                 </div>
 
-                {quickStep === "confirm" ? (
-                  <div className="pnf-body" style={{ padding: "6px 0 2px" }}>
+                <div className="pnf-body" style={{ padding: "6px 0 2px" }}>
                     <div className="pnf-sub" style={{ marginBottom: 12 }}>
-                      Bazada <b className="mono">{quickBarcode}</b> bo'yicha mahsulot topilmadi.
-                      Avval bazada tekshirildi — bunday mahsulot yo'q.
+                      Bu kod bilan mahsulot bazadan topilmadi — quyida nom va narxni kiriting.
                     </div>
-                    <div className="pnf-actions">
-                      <button className="btn btn-primary" onClick={startQuickAdd}>
-                        <Icon name="plus" /> Shu mahsulotni qo'shamizmi?
-                      </button>
-                      <button className="btn btn-ghost" onClick={closeQuick}>
-                        Bekor
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="quick-add-grid">
-                    <div className="field" style={{ marginBottom: 0 }}>
-                      <label>Nomi</label>
-                      <input
-                        ref={quickNameRef}
-                        className="input"
-                        value={quickName}
-                        onChange={(e) => setQuickName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") { e.preventDefault(); quickPriceRef.current?.focus(); }
-                        }}
-                        placeholder="Masalan: Cappy Pulpy 1L"
-                      />
-                    </div>
-                    <div className="field" style={{ marginBottom: 0 }}>
-                      <label>Narx (so'm)</label>
-                      <input
-                        ref={quickPriceRef}
-                        className="input mono"
-                        type="number"
-                        min="1"
-                        value={quickPrice}
-                        onChange={(e) => setQuickPrice(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") { e.preventDefault(); quickAdd(); }
-                        }}
-                        placeholder="16000"
-                      />
-                    </div>
-                    <div className="quick-add-btns">
-                      <button className="btn btn-ghost" onClick={closeQuick}>
-                        Bekor
-                      </button>
-                      <button className="btn btn-primary" onClick={quickAdd}>
-                        <Icon name="check" /> Chekka qo'shish
-                      </button>
+                    <div className="quick-add-grid">
+                      <div className="field" style={{ marginBottom: 0 }}>
+                        <label>Nomi</label>
+                        <input
+                          ref={quickNameRef}
+                          className="input"
+                          value={quickName}
+                          onChange={(e) => setQuickName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") { e.preventDefault(); quickPriceRef.current?.focus(); }
+                          }}
+                          placeholder="Masalan: Cappy Pulpy 1L"
+                        />
+                      </div>
+                      <div className="field" style={{ marginBottom: 0 }}>
+                        <label>Narx (so'm)</label>
+                        <input
+                          ref={quickPriceRef}
+                          className="input mono"
+                          type="number"
+                          min="1"
+                          value={quickPrice}
+                          onChange={(e) => setQuickPrice(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") { e.preventDefault(); quickAdd(); }
+                          }}
+                          placeholder="16000"
+                        />
+                      </div>
+                      <div className="quick-add-btns">
+                        <button className="btn btn-ghost" onClick={closeQuick}>
+                          Bekor
+                        </button>
+                        <button className="btn btn-primary" onClick={quickAdd}>
+                          <Icon name="check" /> Chekka qo'shish
+                        </button>
+                      </div>
                     </div>
                   </div>
-                )}
               </motion.div>
             )}
           </AnimatePresence>
