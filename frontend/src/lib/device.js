@@ -23,7 +23,7 @@ export function getDeviceId() {
 
 /**
  * Qurilma turini best-effort aniqlash (laptop/desktop/tablet/phone).
- * Faqat metadata — xavfsizlik qatlami emas (server session_id + status bilan tekshiradi).
+ * Faqat metadata — xavfsizlik qatlami emas.
  */
 export function detectDeviceType() {
   try {

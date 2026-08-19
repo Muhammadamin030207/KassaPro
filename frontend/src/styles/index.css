@@ -548,6 +548,59 @@ select {
   text-align: center;
 }
 
+/* ---------- Web ariza formasi (LoginPage) ---------- */
+.apply-toggle {
+  margin-top: 14px;
+}
+
+.apply-form {
+  margin-top: 16px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.apply-form-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+
+.apply-form .field {
+  margin-bottom: 12px;
+}
+
+.field-error {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.apply-result {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+.apply-result.ok {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: var(--brand-light);
+}
+
+.apply-result.err {
+  background: rgba(255, 93, 93, 0.12);
+  border: 1px solid rgba(255, 93, 93, 0.4);
+  color: var(--danger);
+}
+
 /* ---------- Glass cards ---------- */
 .card {
   background: var(--panel);
@@ -3354,6 +3407,96 @@ html, body, #root {
 
   .hide-m {
     display: none !important;
+  }
+}
+
+/* ---- Qurilmalar (informatsion) ---- */
+.device-toolbar {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 18px;
+  flex-wrap: wrap;
+}
+
+.input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+
+.input-wrap > span {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+
+.device-search {
+  width: 100%;
+  padding-left: 38px;
+}
+
+.device-sort {
+  width: auto;
+  min-width: 150px;
+}
+
+.device-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.acc-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-family: var(--font-head);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.acc-item:hover {
+  border-color: var(--line-strong);
+}
+
+.acc-caret {
+  display: inline-flex;
+  color: var(--ink-faint);
+  transition: transform 0.25s ease;
+}
+
+.acc-item.open .acc-caret {
+  transform: rotate(90deg);
+}
+
+.acc-body {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  padding: 14px;
+  margin-top: -8px;
+}
+
+@media (max-width: 720px) {
+  .device-toolbar {
+    flex-direction: column;
+  }
+
+  .device-sort {
+    width: 100%;
+    min-width: 0;
   }
 }
 

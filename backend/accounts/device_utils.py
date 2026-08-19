@@ -1,11 +1,9 @@
-"""Qurilma/sessiya metadata yordamchilari.
+"""Qurilma metadata yordamchilari.
 
 User-Agent faqat metadata (display) uchun parse qilinadi — device identity
-EMAS. Asosiy identifikator: persistent device_id + session_id.
+EMAS. Asosiy identifikator: persistent device_id (UUID v4, localStorage).
 """
 import re
-
-from accounts.models import DeviceAuditLog, LoginEvent
 
 _VERSION_RE = re.compile(r"([\d.]+)")
 
@@ -122,7 +120,7 @@ DEVICE_TYPE_LABELS = {
 
 
 def device_name_for(username, device_type=""):
-    """Avtomatik qurilma nomi fallback: "Muhammadamin's Laptop".
+    """Avtomatik qurilma nomi: "Muhammadamin's Laptop".
 
     Client haqiqiy nom yubormagan bo'lsa ishlatiladi. HOSTNAME brauzer orqali
     olinmaydi — username + tur kombinatsiyasi eng aniq haqiqiy nom.
@@ -133,36 +131,3 @@ def device_name_for(username, device_type=""):
         base = "Foydalanuvchi"
     name = f"{base[0].upper()}{base[1:]}'s {label}"
     return name[:255]
-
-
-def record_login_event(
-    user, request, result,
-    device_id="", device_name="", device_model="", device_type="",
-):
-    browser, bv, os, osv = parse_user_agent(request.META.get("HTTP_USER_AGENT", ""))
-    LoginEvent.objects.create(
-        user=user,
-        device_id=device_id,
-        device_name=device_name,
-        device_model=device_model,
-        device_type=device_type,
-        browser=browser,
-        browser_version=bv,
-        os=os,
-        os_version=osv,
-        ip_address=get_client_ip(request),
-        result=result,
-    )
-
-
-def device_audit(actor, target_user, action, device_id="", device_name="", session_id="", request=None, detail=None):
-    DeviceAuditLog.objects.create(
-        actor=actor,
-        target_user=target_user or actor,
-        action=action,
-        device_id=device_id,
-        device_name=device_name,
-        session_id=session_id,
-        ip_address=get_client_ip(request) if request else None,
-        detail=detail or {},
-    )

@@ -1,13 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import serializers
-from rest_framework_simplejwt.serializers import (
-    TokenObtainPairSerializer,
-    TokenRefreshSerializer,
-)
-from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from accounts.models import DeviceSession, LoginEvent, User
+from accounts.models import Device, User
 from shops.models import Shop
 
 UserModel = get_user_model()
@@ -19,31 +15,6 @@ class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
         data["user"] = UserSerializer(self.user).data
-        return data
-
-
-class SessionTokenRefreshSerializer(TokenRefreshSerializer):
-    """Refresh'da yangi tokenlarga session_id/device_id claim'larini ko'chiradi."""
-
-    def validate(self, attrs):
-        data = super().validate(attrs)
-        try:
-            old = RefreshToken(attrs["refresh"])
-        except Exception:
-            return data
-        session_id = old.payload.get("session_id")
-        device_id = old.payload.get("device_id")
-        if session_id and data.get("access") and data.get("refresh"):
-            access = AccessToken(data["access"])
-            access["session_id"] = session_id
-            if device_id:
-                access["device_id"] = device_id
-            data["access"] = str(access)
-            new_refresh = RefreshToken(data["refresh"])
-            new_refresh["session_id"] = session_id
-            if device_id:
-                new_refresh["device_id"] = device_id
-            data["refresh"] = str(new_refresh)
         return data
 
 
@@ -136,83 +107,31 @@ class OwnerRegisterSerializer(serializers.Serializer):
         return user
 
 
-class DeviceSessionSerializer(serializers.ModelSerializer):
-    """Bitta qurilmadagi login sessiyasi (session tarixi)."""
+class DeviceSerializer(serializers.ModelSerializer):
+    """Bitta qurilma kartasi (informatsion)."""
 
-    device_id = serializers.CharField(source="device.device_id", read_only=True)
-    is_current = serializers.SerializerMethodField()
-    revoked_by_name = serializers.SerializerMethodField()
+    device_type_label = serializers.CharField(source="get_device_type_display", read_only=True)
 
     class Meta:
-        model = DeviceSession
+        model = Device
         fields = [
             "id",
             "device_id",
-            "session_id",
-            "status",
-            "ip_address",
-            "user_agent",
-            "created_at",
-            "last_login_at",
-            "last_active_at",
-            "expires_at",
-            "revoked_at",
-            "revoked_by_name",
-            "is_current",
-        ]
-
-    def get_is_current(self, obj):
-        current = self.context.get("current_session_id")
-        return bool(current) and obj.session_id == current
-
-    def get_revoked_by_name(self, obj):
-        if obj.revoked_by_id:
-            return getattr(obj.revoked_by, "username", "")
-        return ""
-
-
-class DeviceSerializer(serializers.Serializer):
-    """Bitta canonical Device kartasi (device_id bo'yicha birlashtirilgan)."""
-
-    id = serializers.IntegerField()
-    session_id = serializers.CharField()
-    device_id = serializers.CharField()
-    device_name = serializers.CharField()
-    device_model = serializers.CharField()
-    device_type = serializers.CharField()
-    browser = serializers.CharField()
-    browser_version = serializers.CharField()
-    os = serializers.CharField()
-    os_version = serializers.CharField()
-    device_kind = serializers.CharField()
-    ip_address = serializers.CharField()
-    location = serializers.CharField()
-    status = serializers.CharField()
-    is_name_manual = serializers.BooleanField()
-    is_model_manual = serializers.BooleanField()
-    created_at = serializers.DateTimeField()
-    last_login_at = serializers.DateTimeField()
-    last_active_at = serializers.DateTimeField()
-    revoked_at = serializers.DateTimeField(allow_null=True)
-    revoked_by_name = serializers.CharField()
-    is_current = serializers.BooleanField()
-    active_sessions = serializers.IntegerField()
-    sessions_count = serializers.IntegerField()
-
-
-class LoginEventSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = LoginEvent
-        fields = [
-            "id",
             "device_name",
             "device_model",
             "device_type",
-            "browser",
-            "browser_version",
+            "device_type_label",
             "os",
             "os_version",
-            "ip_address",
-            "result",
+            "browser",
+            "browser_version",
+            "is_name_manual",
+            "is_model_manual",
+            "first_seen_at",
+            "last_active_at",
+            "last_login_at",
             "created_at",
+            "updated_at",
         ]
+        read_only_fields = fields
+        extra_kwargs = {"device_model": {"default": ""}}

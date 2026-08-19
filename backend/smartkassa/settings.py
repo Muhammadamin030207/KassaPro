@@ -95,7 +95,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "accounts.authentication.SessionJWTAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
@@ -110,6 +110,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "sales": "60/min",
         "login": "60/min",
+        "application": "6/hour",
     },
 }
 
@@ -118,6 +119,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "test":
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
         "sales": "100000/min",
         "login": "100000/min",
+        "application": "100000/min",
     }
 
 SIMPLE_JWT = {

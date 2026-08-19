@@ -1,433 +1,208 @@
+from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from accounts.models import Device, DeviceAuditLog, DeviceSession, LoginEvent
+from accounts.models import Device
+from shops.models import Shop
+
+User = get_user_model()
 
 
-def _device_id(i):
-    return f"device-{i:08d}-abcdef-1234-5678-9abcdef01234"
+def _device_id(n):
+    """Barqaror fake persistent device_id (client localStorage'dan keladi)."""
+    return f"device-uuid-{n}"
+
+
+def _login_payload(username, password, device_id, device_type="laptop"):
+    return {
+        "username": username,
+        "password": password,
+        "device_id": device_id,
+        "device_type": device_type,
+        "device_name": "",
+        "device_model": "",
+        "device_type_label": "",
+    }
 
 
 class DeviceSystemApiTestCase(TestCase):
     def setUp(self):
+        self.user = User.objects.create_user(
+            username="owner", password="pass12345", role=User.Role.OWNER
+        )
+        self.shop = Shop.objects.create(name="Test Do'kon", owner=self.user)
+        self.user.shop = self.shop
+        self.user.save(update_fields=["shop"])
         self.client = APIClient()
-        self.user = self._create_user("admin", pwd="admin123", superuser=True)
-        self.user2 = self._create_user("other", pwd="admin123")
 
-    def _create_user(self, username, pwd="admin123", role=None, superuser=False):
-        from accounts.models import User
-
-        kwargs = {"username": username}
-        if role:
-            kwargs["role"] = role
-        user = User.objects.create_user(password=pwd, **kwargs)
-        if superuser:
-            user.is_superuser = True
-            user.save(update_fields=["is_superuser"])
-        return user
-
-    def _login(self, username="admin", pwd="admin123", device_id=None, **extra):
-        body = {"username": username, "password": pwd}
-        if device_id:
-            body["device_id"] = device_id
-        body.update(extra)
-        return self.client.post("/api/auth/login/", body, format="json")
-
-    def _logout(self, refresh):
+    def _login(self, device_id, username="owner", password="pass12345", **kw):
         return self.client.post(
-            "/api/auth/logout/", {"refresh": refresh}, format="json"
-        )
-
-    def _auth_get(self, path, token):
-        return self.client.get(
-            path, **{"HTTP_AUTHORIZATION": f"Bearer {token}"}
-        )
-
-    def _auth_post(self, path, token, body=None):
-        return self.client.post(
-            path,
-            body or {},
-            **{"HTTP_AUTHORIZATION": f"Bearer {token}"},
-            content_type="application/json",
-        )
-
-    def _auth_patch(self, path, token, body):
-        return self.client.patch(
-            path,
-            body,
-            **{"HTTP_AUTHORIZATION": f"Bearer {token}"},
-            content_type="application/json",
-        )
-
-    # ================================================== ONE DEVICE = SAME CARD
-
-    def test_login_creates_one_device_and_session(self):
-        res = self._login(device_id=_device_id(1))
-        self.assertEqual(res.status_code, 200)
-        self.assertIn("access", res.json())
-        self.assertTrue(res.json()["session_id"])
-        self.assertEqual(Device.objects.count(), 1)
-        self.assertEqual(DeviceSession.objects.count(), 1)
-        dev = Device.objects.get()
-        self.assertEqual(dev.status, Device.Status.ACTIVE)
-        self.assertEqual(dev.device_id, _device_id(1))
-        self.assertEqual(
-            LoginEvent.objects.filter(result="success").count(), 1
-        )
-
-    def test_many_logins_still_one_device(self):
-        res = None
-        for i in range(10):
-            res = self._login(device_id=_device_id(1))
-            self.assertEqual(res.status_code, 200)
-            self._logout(res.json()["refresh"])
-        self.assertEqual(Device.objects.count(), 1)
-        sessions = DeviceSession.objects.filter(device__device_id=_device_id(1))
-        self.assertEqual(sessions.count(), 10)
-        self.assertEqual(
-            sessions.filter(status=DeviceSession.Status.ACTIVE).count(), 0
-        )
-
-    def test_logout_login_cycle_single_device(self):
-        res = self._login(device_id=_device_id(1))
-        token = res.json()["access"]
-        refresh = res.json()["refresh"]
-        self._logout(refresh)
-        session = DeviceSession.objects.get()
-        self.assertEqual(session.status, DeviceSession.Status.EXPIRED)
-        self.assertEqual(Device.objects.count(), 1)
-
-        # logout'dan keyin refresh ham ishlamaydi
-        res = self.client.post(
-            "/api/auth/refresh/", {"refresh": refresh}, format="json"
-        )
-        self.assertEqual(res.status_code, 401)
-        self.assertEqual(res.json().get("code"), "session_expired")
-        self.assertEqual(self._auth_get("/api/auth/me/", token).status_code, 401)
-
-        # qayta login — yana BITTA device (bloklanmagan)
-        res = self._login(device_id=_device_id(1))
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(Device.objects.count(), 1)
-        self.assertEqual(
-            DeviceSession.objects.filter(device__device_id=_device_id(1)).count(), 2
-        )
-
-    def test_two_devices_two_cards(self):
-        self._login(device_id=_device_id(1))
-        self._login(device_id=_device_id(2))
-        self.assertEqual(Device.objects.count(), 2)
-        # yana laptop determinism — qurilmalar ko'paymaydi
-        self._login(device_id=_device_id(1))
-        self.assertEqual(Device.objects.count(), 2)
-        self.assertEqual(DeviceSession.objects.count(), 3)
-
-    def test_legacy_login_without_device_still_works(self):
-        res = self._login()
-        self.assertEqual(res.status_code, 200)
-        self.assertIn("access", res.json())
-        self.assertNotIn("session_id", res.json())
-        self.assertEqual(Device.objects.count(), 0)
-        self.assertEqual(DeviceSession.objects.count(), 0)
-
-    # ================================================== metadata (name/model/type)
-
-    def test_login_stores_device_metadata(self):
-        res = self._login(
-            device_id=_device_id(1),
-            device_name="Muhammadamin's Laptop",
-            device_model="Lenovo IdeaPad 3 15IAU7",
-            device_type="laptop",
-        )
-        self.assertEqual(res.status_code, 200)
-        dev = Device.objects.get(user=self.user, device_id=_device_id(1))
-        self.assertEqual(dev.device_name, "Muhammadamin's Laptop")
-        self.assertEqual(dev.device_model, "Lenovo IdeaPad 3 15IAU7")
-        self.assertEqual(dev.device_type, "laptop")
-
-    def test_model_unknown_when_not_detected(self):
-        res = self.client.post(
             "/api/auth/login/",
-            {
-                "username": "admin",
-                "password": "admin123",
-                "device_id": _device_id(2),
-            },
-            HTTP_USER_AGENT="Mozilla/5.0 (X11; Linux x86_64) Chrome/151.0",
+            _login_payload(username, password, device_id, **kw),
             format="json",
         )
-        self.assertEqual(res.status_code, 200)
-        dev = Device.objects.get(user=self.user, device_id=_device_id(2))
-        self.assertEqual(dev.device_model, "Noutbuk modeli aniqlanmadi")
-        self.assertEqual(dev.device_type, "desktop")
 
-    def test_login_falls_back_to_username_device_name(self):
-        res = self._login(device_id=_device_id(3))
-        self.assertEqual(res.status_code, 200)
-        dev = Device.objects.get(user=self.user, device_id=_device_id(3))
-        self.assertTrue(dev.device_name)
+    # ------------------------------------------------------------------
+    # 1) LOGIN IS NEVER BLOCKED — asosiy talab
+    # ------------------------------------------------------------------
+    def test_wrong_password_fails(self):
+        r = self._login(_device_id(1), password="wrong")
+        self.assertEqual(r.status_code, 401)
+        self.assertEqual(Device.objects.count(), 0)
 
-    # ================================================== name/model persistence
+    def test_correct_login_succeeds(self):
+        r = self._login(_device_id(1))
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("access", r.data)
+        self.assertIn("refresh", r.data)
+        self.assertEqual(r.data["user"]["username"], "owner")
+        # login faqat username/password'ga tayanadi — qurilma record side-effect
+        self.assertEqual(Device.objects.count(), 1)
 
-    def test_manual_edit_persists_after_relogin(self):
-        self._login(
-            device_id=_device_id(1),
-            device_name="Muhammadamin's Laptop",
-            device_model="Lenovo IdeaPad 3 15IAU7",
-            device_type="laptop",
+    # ------------------------------------------------------------------
+    # 2) ONE USER + ONE DEVICE_ID = ONE DEVICE (uniqueness)
+    # ------------------------------------------------------------------
+    def test_single_device_id_stays_single_after_many_logins(self):
+        device_id = _device_id("chrome-pc")
+        for _ in range(10):
+            r = self._login(device_id)
+            self.assertEqual(r.status_code, 200)
+        self.assertEqual(Device.objects.count(), 1)
+        dev = Device.objects.get()
+        self.assertEqual(dev.device_id, device_id)
+        self.assertEqual(dev.last_login_at is not None, True)
+
+    def test_second_device_creates_second_account(self):
+        self._login(_device_id("phone-1"), device_type="phone")
+        self._login(_device_id("pc-2"))
+        self.assertEqual(Device.objects.count(), 2)
+        types = set(Device.objects.values_list("device_type", flat=True))
+        self.assertTrue({"phone", "laptop"} <= types)
+
+    def test_login_does_not_break_existing_device_metadata(self):
+        dev_id = _device_id("pc")
+        self._login(dev_id, device_type="laptop")
+        first = Device.objects.get()
+        self.assertEqual(first.first_seen_at is not None, True)
+        # keyingi login — yangi bitta record, o'zgarmaydi
+        self._login(dev_id, device_type="laptop")
+        self.assertEqual(Device.objects.count(), 1)
+
+    def test_device_id_missing_still_logs_in(self):
+        payload = {"username": "owner", "password": "pass12345"}
+        r = self.client.post("/api/auth/login/", payload, format="json")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(Device.objects.count(), 0)
+
+    # ------------------------------------------------------------------
+    # 3) authorized: bo'sh/noto'g'ri device_id login'ni to'smaydi
+    # ------------------------------------------------------------------
+    def test_blank_device_id_ignored(self):
+        r = self._login("")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(Device.objects.count(), 0)
+
+    def test_login_from_any_device_never_401(self):
+        for dev in ["a", "b", "c", "d"]:
+            r = self._login(dev)
+            self.assertEqual(r.status_code, 200)
+
+    # ------------------------------------------------------------------
+    # 4) DEVICES API
+    # ------------------------------------------------------------------
+    def test_device_list_returns_only_own_devices(self):
+        other = User.objects.create_user(
+            username="other", password="pass12345", role=User.Role.CASHIER,
+            shop=self.shop,
         )
-        ctrl = self._login(device_id=_device_id(9)).json()["access"]
-        dev = Device.objects.get(user=self.user, device_id=_device_id(1))
-        res = self._auth_patch(
-            f"/api/devices/{dev.pk}/update/",
-            ctrl,
-            {"device_name": "Muhammadamin's Work Laptop", "device_model": "Lenovo Legion 5"},
+        self._login(_device_id(1))
+        self.client.force_authenticate(self.user)
+        r = self.client.get("/api/devices/")
+        self.assertEqual(r.status_code, 200)
+        items = r.data["results"] if isinstance(r.data, dict) else r.data
+        self.assertEqual(len(items), 1)
+
+        self.client.force_authenticate(other)
+        r = self.client.get("/api/devices/")
+        items = r.data["results"] if isinstance(r.data, dict) else r.data
+        self.assertEqual(len(items), 0)
+
+    def test_device_detail_patch_name_model(self):
+        self._login(_device_id("pc"))
+        dev = Device.objects.get()
+        self.client.force_authenticate(self.user)
+
+        r = self.client.get(f"/api/devices/{dev.pk}/")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.data["device_id"], _device_id("pc"))
+
+        r = self.client.patch(
+            f"/api/devices/{dev.pk}/",
+            {"device_name": "Asosiy Noutbuk", "device_model": "MacBook Pro M4"},
+            format="json",
         )
-        self.assertEqual(res.status_code, 200)
+        self.assertEqual(r.status_code, 200)
         dev.refresh_from_db()
         self.assertTrue(dev.is_name_manual)
         self.assertTrue(dev.is_model_manual)
-        self.assertTrue(
-            DeviceAuditLog.objects.filter(
-                action=DeviceAuditLog.Action.ADMIN_EDITED_DEVICE
-            ).exists()
+
+    def test_device_patch_rejects_empty(self):
+        self._login(_device_id("pc"))
+        dev = Device.objects.get()
+        self.client.force_authenticate(self.user)
+        r = self.client.patch(f"/api/devices/{dev.pk}/", {}, format="json")
+        self.assertEqual(r.status_code, 400)
+
+    def test_device_patch_forbidden_for_other_user(self):
+        self._login(_device_id("pc"))
+        dev = Device.objects.get()
+        other = User.objects.create_user(
+            username="other", password="pass12345", role=User.Role.CASHIER,
+            shop=self.shop,
         )
-
-        # logout + relogin — qo'lda kiritilgan nom/model saqlanib qoladi
-        r1 = self._login(device_id=_device_id(1))
-        self._logout(r1.json()["refresh"])
-        self._login(device_id=_device_id(1), device_name="Avto nom", device_model="Boshqa model")
-        dev.refresh_from_db()
-        self.assertEqual(dev.device_name, "Muhammadamin's Work Laptop")
-        self.assertEqual(dev.device_model, "Lenovo Legion 5")
-
-    def test_auto_name_not_overwritten_on_relogin(self):
-        self._login(device_id=_device_id(1), device_name="Muhammadamin's Laptop")
-        self._login(device_id=_device_id(1), device_name="")
-        dev = Device.objects.get(user=self.user, device_id=_device_id(1))
-        self.assertEqual(dev.device_name, "Muhammadamin's Laptop")
-        self.assertFalse(dev.is_name_manual)
-
-    def test_update_blank_body_rejected(self):
-        ctrl = self._login(device_id=_device_id(5)).json()["access"]
-        self._login(device_id=_device_id(4))
-        dev = Device.objects.get(user=self.user, device_id=_device_id(4))
-        res = self._auth_patch(
-            f"/api/devices/{dev.pk}/update/", ctrl, {}
+        self.client.force_authenticate(other)
+        r = self.client.patch(
+            f"/api/devices/{dev.pk}/", {"device_name": "hack"}, format="json"
         )
-        self.assertEqual(res.status_code, 400)
+        self.assertEqual(r.status_code, 404)
 
-    # ================================================== block / unblock / session
+    def test_devices_require_auth(self):
+        r = self.client.get("/api/devices/")
+        self.assertEqual(r.status_code, 401)
 
-    def test_block_device_denies_login_and_kills_tokens(self):
-        res1 = self._login(device_id=_device_id(1))
-        old_token = res1.json()["access"]
-        ctrl = self._login(device_id=_device_id(2)).json()["access"]
-        dev = Device.objects.get(user=self.user, device_id=_device_id(1))
+    # ------------------------------------------------------------------
+    # 5) OLD BLOCK/REVOKE ENDPOINTS NO LONGER EXIST
+    # ------------------------------------------------------------------
+    def test_old_block_endpoint_gone(self):
+        self._login(_device_id("pc"))
+        dev = Device.objects.get()
+        self.client.force_authenticate(self.user)
+        r = self.client.post(f"/api/devices/{dev.pk}/block/", format="json")
+        self.assertIn(r.status_code, (404, 405))
 
-        res = self._auth_post(f"/api/devices/{dev.pk}/block/", ctrl)
-        self.assertEqual(res.status_code, 200)
-        dev.refresh_from_db()
-        self.assertEqual(dev.status, Device.Status.BLOCKED)
-        self.assertIsNotNone(dev.blocked_at)
-        self.assertEqual(dev.blocked_by, self.user)
-        sess = DeviceSession.objects.get(device=dev)
-        self.assertEqual(sess.status, DeviceSession.Status.REVOKED)
-
-        # eski access token endi o'lik
-        res = self._auth_get("/api/auth/me/", old_token)
-        self.assertEqual(res.status_code, 401)
-        self.assertEqual(res.json().get("code"), "session_revoked")
-
-        # bloklangan qurilma — parol to'g'ri bo'lsa ham login rad
-        res = self._login(device_id=_device_id(1))
-        self.assertEqual(res.status_code, 403)
-        self.assertEqual(res.json().get("code"), "device_blocked")
-        self.assertTrue(LoginEvent.objects.filter(result="blocked").exists())
-        self.assertTrue(
-            DeviceAuditLog.objects.filter(
-                action=DeviceAuditLog.Action.LOGIN_BLOCKED
-            ).exists()
-        )
-
-    def test_unblock_allows_relogin(self):
-        self._login(device_id=_device_id(3))
-        ctrl = self._login(device_id=_device_id(9)).json()["access"]
-        dev = Device.objects.get(user=self.user, device_id=_device_id(3))
-        self._auth_post(f"/api/devices/{dev.pk}/block/", ctrl)
-
-        # login hali ham bloklangan
-        res = self._login(device_id=_device_id(3))
-        self.assertEqual(res.status_code, 403)
-
-        res = self._auth_post(f"/api/devices/{dev.pk}/unblock/", ctrl)
-        self.assertEqual(res.status_code, 200)
-        dev.refresh_from_db()
-        self.assertEqual(dev.status, Device.Status.ACTIVE)
-        self.assertIsNone(dev.blocked_at)
-
-        res = self._login(device_id=_device_id(3))
-        self.assertEqual(res.status_code, 200)
-        self.assertIn("session_id", res.json())
-        latest = DeviceSession.objects.filter(device=dev).order_by("-id").first()
-        self.assertEqual(latest.status, DeviceSession.Status.ACTIVE)
-        self.assertTrue(
-            DeviceAuditLog.objects.filter(
-                action=DeviceAuditLog.Action.ADMIN_UNBLOCKED_DEVICE
-            ).exists()
-        )
-
-    def test_revoke_session_only_kills_session(self):
-        self._login(device_id=_device_id(1))
-        ctrl = self._login(device_id=_device_id(2)).json()["access"]
-        dev = Device.objects.get(user=self.user, device_id=_device_id(1))
-
-        res = self._auth_post(f"/api/devices/{dev.pk}/revoke-session/", ctrl)
-        self.assertEqual(res.status_code, 200)
-        dev.refresh_from_db()
-        self.assertEqual(dev.status, Device.Status.ACTIVE)  # device qolmadi blok
-        self.assertEqual(
-            DeviceSession.objects.get(device=dev).status,
-            DeviceSession.Status.REVOKED,
-        )
-
-        # device BLOCKED emas — qayta login mumkin
-        res = self._login(device_id=_device_id(1))
-        self.assertEqual(res.status_code, 200)
+    # ------------------------------------------------------------------
+    # 6) clear_device_data command
+    # ------------------------------------------------------------------
+    def test_clear_device_data_only_clears_devices(self):
+        self._login(_device_id("pc-1"))
+        self._login(_device_id("pc-2"), device_type="phone")
         self.assertEqual(Device.objects.count(), 2)
+        self.assertEqual(self.user.shop.name, "Test Do'kon")
 
-    def test_refresh_rejected_after_block(self):
-        res1 = self._login(device_id=_device_id(2))
-        refresh = res1.json()["refresh"]
-        ctrl = self._login(device_id=_device_id(3)).json()["access"]
-        dev = Device.objects.get(user=self.user, device_id=_device_id(2))
-        self._auth_post(f"/api/devices/{dev.pk}/block/", ctrl)
-        res = self.client.post(
-            "/api/auth/refresh/", {"refresh": refresh}, format="json"
+        confirm = "y\n"
+        import io
+        from unittest import mock
+        with mock.patch("sys.stdin", io.StringIO(confirm)):
+            call_command("clear_device_data", "--yes")
+
+        self.assertEqual(Device.objects.count(), 0)
+        self.assertEqual(User.objects.count(), 1)  # user saqlanadi
+        self.assertEqual(Shop.objects.count(), 1)  # shop saqlanadi
+
+    def test_device_str(self):
+        dev = Device.objects.create(
+            user=self.user, device_id=_device_id(1), device_name="",
+            device_type="laptop",
         )
-        self.assertEqual(res.status_code, 401)
-        self.assertEqual(res.json().get("code"), "session_revoked")
-
-    def test_block_others_keeps_current(self):
-        r1 = self._login(device_id=_device_id(4))
-        r2 = self._login(device_id=_device_id(5))
-        token1 = r1.json()["access"]
-        token2 = r2.json()["access"]
-
-        res = self._auth_post("/api/devices/block-others/", token2)
-        self.assertEqual(res.status_code, 200)
-        d4 = Device.objects.get(user=self.user, device_id=_device_id(4))
-        d5 = Device.objects.get(user=self.user, device_id=_device_id(5))
-        self.assertEqual(d4.status, Device.Status.BLOCKED)
-        self.assertEqual(d5.status, Device.Status.ACTIVE)
-        # token1 invalid, token2 valid
-        self.assertEqual(self._auth_get("/api/auth/me/", token1).status_code, 401)
-        self.assertEqual(self._auth_get("/api/auth/me/", token2).status_code, 200)
-
-    def test_other_user_cannot_block_my_device(self):
-        self._login(device_id=_device_id(11))
-        dev = Device.objects.get(user=self.user, device_id=_device_id(11))
-        other_token = self._login(
-            username="other", device_id=_device_id(12)
-        ).json()["access"]
-        res = self._auth_post(f"/api/devices/{dev.pk}/block/", other_token)
-        self.assertEqual(res.status_code, 403)
-        dev.refresh_from_db()
-        self.assertEqual(dev.status, Device.Status.ACTIVE)
-
-    # ================================================== list / history / refresh
-
-    def test_list_returns_unique_devices_with_counts(self):
-        self._login(device_id=_device_id(1))
-        self._login(device_id=_device_id(1))
-        self._login(device_id=_device_id(1))
-        ctrl = self._login(device_id=_device_id(2)).json()["access"]
-
-        res = self._auth_get("/api/devices/", ctrl)
-        self.assertEqual(res.status_code, 200)
-        results = res.json()["results"]
-        self.assertEqual(len(results), 2)
-
-        d1 = next(d for d in results if d["device_id"] == _device_id(1))
-        d2 = next(d for d in results if d["device_id"] == _device_id(2))
-        self.assertEqual(d1["sessions_count"], 3)
-        self.assertEqual(d1["active_sessions"], 1)
-        self.assertFalse(d1["is_current"])
-        self.assertTrue(d2["is_current"])
-        statuses = [d["status"] for d in results]
-        for st in statuses:
-            self.assertIn(st, ("active", "blocked"))
-
-    def test_list_only_for_admin(self):
-        self._login(device_id=_device_id(7))
-        cashier = self._create_user("cash", role="cashier")
-        res = self.client.post(
-            "/api/auth/login/", {"username": "cash", "password": "admin123"},
-            format="json",
-        )
-        cash_token = res.json()["access"]
-        res = self._auth_get("/api/devices/", cash_token)
-        self.assertEqual(res.status_code, 403)
-
-        admin_token = self._login(device_id=_device_id(8)).json()["access"]
-        res = self._auth_get("/api/devices/", admin_token)
-        self.assertEqual(res.status_code, 200)
-        device_ids = {d["device_id"] for d in res.json()["results"]}
-        self.assertIn(_device_id(7), device_ids)
-        self.assertIn(_device_id(8), device_ids)
-
-    def test_device_sessions_history_endpoint(self):
-        self._login(device_id=_device_id(1))
-        self._login(device_id=_device_id(1))
-        ctrl = self._login(device_id=_device_id(2)).json()["access"]
-        dev = Device.objects.get(user=self.user, device_id=_device_id(1))
-        res = self._auth_get(f"/api/devices/{dev.pk}/sessions/", ctrl)
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json()["count"], 2)
-        for s in res.json()["results"]:
-            self.assertIn("session_id", s)
-            self.assertIn("status", s)
-
-    def test_login_history_endpoint(self):
-        self._login(device_id=_device_id(1))
-        ctrl = self._login(device_id=_device_id(10)).json()["access"]
-        res = self._auth_get("/api/devices/history/", ctrl)
-        self.assertEqual(res.status_code, 200)
-        self.assertGreaterEqual(len(res.json()["results"]), 2)
-
-    def test_refresh_keeps_session_claims_and_rotates(self):
-        res = self._login(device_id=_device_id(1))
-        refresh1 = res.json()["refresh"]
-        session = DeviceSession.objects.get()
-        jti1 = session.refresh_jti
-        res = self.client.post(
-            "/api/auth/refresh/", {"refresh": refresh1}, format="json"
-        )
-        self.assertEqual(res.status_code, 200)
-        data = res.json()
-        session.refresh_from_db()
-        self.assertNotEqual(session.refresh_jti, jti1)
-        # eski refresh endi rad etiladi (rotation)
-        res = self.client.post(
-            "/api/auth/refresh/", {"refresh": refresh1}, format="json"
-        )
-        self.assertEqual(res.status_code, 401)
-        res = self.client.post(
-            "/api/auth/refresh/", {"refresh": data["refresh"]}, format="json"
-        )
-        self.assertEqual(res.status_code, 200)
-
-    def test_last_active_throttle_not_broken(self):
-        self._login(device_id=_device_id(13))
-        token = self._login(device_id=_device_id(14)).json()["access"]
-        res = self._auth_get("/api/auth/me/", token)
-        self.assertEqual(res.status_code, 200)
-        self.assertIsNotNone(DeviceSession.objects.count())
-
-    def test_current_device_endpoint(self):
-        self._login(device_id=_device_id(1))
-        ctrl = self._login(device_id=_device_id(2)).json()["access"]
-        res = self._auth_get("/api/devices/current/", ctrl)
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json()["device_id"], _device_id(2))
-        self.assertTrue(res.json()["is_current"])
+        self.assertEqual(str(dev), dev.device_id)
