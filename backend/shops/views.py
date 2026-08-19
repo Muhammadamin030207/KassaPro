@@ -1,11 +1,13 @@
 from django.utils import timezone
 from rest_framework import generics, response, status, views
+from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny
 
 from accounts.permissions import IsAdmin, IsOwner, IsShopMember
 from shops.models import Shop, ShopSettings, StoreApplication
 from shops.serializers import (
     ApplicationCreateSerializer,
+    ApplicationPatchSerializer,
     ShopSettingsSerializer,
     StoreApplicationSerializer,
     StoreCreateSerializer,
@@ -149,6 +151,33 @@ class ApplicationRejectView(views.APIView):
                 + "Savollar uchun admin bilan bog'laning.",
             )
         return response.Response(StoreApplicationSerializer(app).data)
+
+
+class ApplicationDetailView(views.APIView):
+    """Admin: bitta ariza (GET), holatini o'zgartirish (PATCH), o'chirish (DELETE)."""
+
+    permission_classes = [IsAdmin]
+
+    def _get(self, pk):
+        app = StoreApplication.objects.filter(pk=pk).first()
+        if not app:
+            raise NotFound("Ariza topilmadi.")
+        return app
+
+    def get(self, request, pk):
+        return response.Response(StoreApplicationSerializer(self._get(pk)).data)
+
+    def patch(self, request, pk):
+        app = self._get(pk)
+        serializer = ApplicationPatchSerializer(app, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        app = serializer.save(processed_at=timezone.now(), processed_by=request.user)
+        return response.Response(StoreApplicationSerializer(app).data)
+
+    def delete(self, request, pk):
+        app = self._get(pk)
+        app.delete()
+        return response.Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class StoreCreateView(views.APIView):

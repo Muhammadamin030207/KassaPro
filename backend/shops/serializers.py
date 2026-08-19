@@ -9,6 +9,20 @@ from accounts.models import User
 from shops.models import Shop, ShopSettings, StoreApplication
 
 
+class ApplicationPatchSerializer(serializers.ModelSerializer):
+    """Admin: ariza holatini/izohni o'zgartirish (PATCH)."""
+
+    class Meta:
+        model = StoreApplication
+        fields = ["status", "note"]
+
+    def validate_status(self, value):
+        choices = [c for c, _ in StoreApplication.Status.choices]
+        if value not in choices:
+            raise serializers.ValidationError("Noto'g'ri status.")
+        return value
+
+
 class ApplicationCreateSerializer(serializers.Serializer):
     """Web form orqali yangi do'kon arizasi (ochiq endpoint)."""
 
