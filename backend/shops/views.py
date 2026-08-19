@@ -284,6 +284,7 @@ class StoreCloseView(views.APIView):
         members = UserModel.objects.filter(shop=shop)
         members.update(is_active=False)
         Device.objects.filter(user__in=members).delete()
+        shop = Shop.objects.select_related("owner").get(pk=shop.pk)
 
         # Egasiga Telegram xabari (chat_id faqat approval ichida saqlangan bo'lsa)
         app = (
