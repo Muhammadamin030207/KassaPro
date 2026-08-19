@@ -6,7 +6,8 @@ from shops.views import (
     ApplicationListView,
     ApplicationRejectView,
     ShopSettingsView,
-    StoreCreateView,
+    StoreAdminView,
+    StoreCloseView,
 )
 
 urlpatterns = [
@@ -23,5 +24,6 @@ urlpatterns = [
         ApplicationRejectView.as_view(),
         name="admin-application-reject",
     ),
-    path("admin/stores/", StoreCreateView.as_view(), name="admin-store-create"),
+    path("admin/stores/", StoreAdminView.as_view(), name="admin-stores-list"),
+    path("admin/stores/<int:pk>/close/", StoreCloseView.as_view(), name="admin-store-close"),
 ]

@@ -221,3 +221,84 @@ class ShopSettingsViewTests(APITestCase):
         resp = self.client.get(f"{self.URL}?shop_id={other_shop.id}")
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data["shop_id"], other_shop.id)
+
+
+class StoreAdminCloseTests(APITestCase):
+    """Admin: do'konlar ro'yxati + do'konni yopish (yumshoq o'chirish)."""
+
+    def setUp(self):
+        from accounts.models import Device, User
+        from shops.models import Shop  # noqa: PLC0415 — import order by file convention
+
+        self.admin = User.objects.create_user(
+            username="root", password="xpass1", is_staff=True, is_superuser=True
+        )
+        self.owner = User.objects.create_user(
+            username="ega", password="egapass", role=User.Role.OWNER
+        )
+        self.shop = Shop.objects.create(name="Yopiladigan Do'kon", owner=self.owner)
+        self.owner.shop = self.shop
+        self.owner.save()
+        self.client.force_authenticate(user=self.admin)
+
+    def test_admin_lists_stores(self):
+        resp = self.client.get("/api/admin/stores/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        names = [s["name"] for s in resp.data["results"]]
+        self.assertIn("Yopiladigan Do'kon", names)
+        row = next(s for s in resp.data["results"] if s["name"] == "Yopiladigan Do'kon")
+        self.assertTrue(row["is_active"])
+        self.assertEqual(row["status_display"], "Faol")
+
+    def test_admin_close_store_blocks_owner(self):
+        from accounts.models import Device, User
+
+        Device.objects.create(
+            user=self.owner, device_id="dev-1", device_name="Telefon",
+            device_type="phone", device_model="iPhone",
+        )
+        cashier = User.objects.create_user(
+            username="kassir1", password="xpass", role=User.Role.CASHIER
+        )
+        cashier.shop = self.shop
+        cashier.save()
+        Device.objects.create(
+            user=cashier, device_id="dev-2", device_name="Kassir telefoni",
+            device_type="phone", device_model="Android",
+        )
+        resp = self.client.post(f"/api/admin/stores/{self.shop.id}/close/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.shop.refresh_from_db()
+        self.owner.refresh_from_db()
+        cashier.refresh_from_db()
+        self.assertFalse(self.shop.is_active)
+        self.assertFalse(self.owner.is_active)
+        self.assertFalse(cashier.is_active)
+        self.assertFalse(Device.objects.filter(user__in=[self.owner, cashier]).exists())
+
+        # O'chirilgan ega va kassir endi kira olmaydi
+        self.client.force_authenticate(user=None)
+        for username, password in [("ega", "egapass"), ("kassir1", "xpass")]:
+            login = self.client.post(
+                "/api/auth/login/",
+                {"username": username, "password": password},
+                format="json",
+            )
+            self.assertEqual(login.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_close_already_closed_rejected(self):
+        self.client.post(f"/api/admin/stores/{self.shop.id}/close/")
+        resp = self.client.post(f"/api/admin/stores/{self.shop.id}/close/")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_non_admin_denied(self):
+        from accounts.models import User
+
+        cashier = User.objects.create_user(username="kassir", password="x")
+        cashier.shop = self.shop
+        cashier.save()
+        self.client.force_authenticate(user=cashier)
+        resp = self.client.get("/api/admin/stores/")
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        resp = self.client.post(f"/api/admin/stores/{self.shop.id}/close/")
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)

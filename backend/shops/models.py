@@ -14,6 +14,10 @@ class Shop(models.Model):
         related_name="owned_shops",
     )
     address = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Yopilgan (deaktiv) do'kon egasi kira olmaydi, ma'lumotlari arxiv sifatida saqlanadi.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

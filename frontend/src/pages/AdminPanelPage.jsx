@@ -15,14 +15,15 @@ const STATUS_LABEL = {
 /**
  * Super Admin paneli:
  *  - Telegram bot orqali kelgan arizalar ro'yxati
- *  - Arizani tasdiqlash / rad etish
+ *  - Arizani tasdiqlash / rad etish (fikrni o'zgartirish)
+ *  - Do'konlar ro'yxati va do'konni yopish (yumshoq o'chirish)
  *  - Yangi do'kon + owner qo'lda yaratish
  */
 export function AdminPanelPage() {
+  const [tab, setTab] = useState("pending");
   const [apps, setApps] = useState([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState("pending");
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createdUser, setCreatedUser] = useState(null);
@@ -34,9 +35,16 @@ export function AdminPanelPage() {
     address: "",
     telegram_chat_id: "",
   });
+
+  // Do'konlar (yopish)
+  const [stores, setStores] = useState([]);
+  const [closeStore, setCloseStore] = useState(null);
+  const [closeConfirm, setCloseConfirm] = useState("");
+  const [closing, setClosing] = useState(false);
+
   const { show } = useToast();
 
-  const load = useCallback(async () => {
+  const loadApps = useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.list("admin/applications/", { status: tab, page_size: 100 });
@@ -49,15 +57,31 @@ export function AdminPanelPage() {
     }
   }, [tab, show]);
 
+  const loadStores = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await api.list("admin/stores/", { page_size: 200 });
+      setStores(data.results || []);
+    } catch (err) {
+      show(err.message || "Do'konlarni yuklashda xatolik", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [show]);
+
   useEffect(() => {
-    load();
-  }, [load]);
+    if (tab === "stores") {
+      loadStores();
+    } else {
+      loadApps();
+    }
+  }, [tab, loadApps, loadStores]);
 
   const reject = async (app) => {
     try {
       const data = await api.post(`admin/applications/${app.id}/reject/`, { note: "" });
       show(`"${data.store_name}" rad etildi`, "success");
-      load();
+      loadApps();
     } catch (err) {
       show(err.message || "Amalda xatolik", "error");
     }
@@ -89,11 +113,31 @@ export function AdminPanelPage() {
       setCreateOpen(false);
       setApproveApp(null);
       setForm({ store_name: "", owner_name: "", phone: "", address: "", telegram_chat_id: "" });
-      load();
+      loadStores();
     } catch (err) {
       show(err.message || "Yaratishda xatolik", "error");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const closeStoreNow = async () => {
+    if (!closeStore) return;
+    if ((closeConfirm || "").trim().toLowerCase() !== closeStore.name.toLowerCase()) {
+      show("Do'kon nomini to'g'ri yozing", "error");
+      return;
+    }
+    setClosing(true);
+    try {
+      const data = await api.post(`admin/stores/${closeStore.id}/close/`, {});
+      show(`"${data.name}" yopildi`, "success");
+      setCloseStore(null);
+      setCloseConfirm("");
+      loadStores();
+    } catch (err) {
+      show(err.message || "Do'konni yopishda xatolik", "error");
+    } finally {
+      setClosing(false);
     }
   };
 
@@ -110,19 +154,66 @@ export function AdminPanelPage() {
       </div>
 
       <div className="tabs">
-        {["pending", "approved", "rejected"].map((s) => (
+        {["pending", "approved", "rejected", "stores"].map((s) => (
           <button
             key={s}
             className={`tab ${tab === s ? "active" : ""}`}
             onClick={() => setTab(s)}
           >
-            {STATUS_LABEL[s]}
-            <span className="badge">{s === tab ? count : ""}</span>
+            {s === "stores" ? "Do'konlar" : STATUS_LABEL[s]}
+            <span className="badge">{s === tab ? (s === "stores" ? stores.length : count) : ""}</span>
           </button>
         ))}
       </div>
 
-      {loading ? (
+      {tab === "stores" ? (
+        loading ? (
+          <div className="empty-state">Yuklanmoqda...</div>
+        ) : stores.length === 0 ? (
+          <div className="empty-state">
+            <div className="big">🏪</div>
+            <h3>Do'konlar yo'q</h3>
+          </div>
+        ) : (
+          <div className="app-list">
+            {stores.map((s) => (
+              <motion.div
+                key={s.id}
+                className="panel app-card"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="app-card-head">
+                  <div>
+                    <h3>{s.name}</h3>
+                    <div className="muted">
+                      {s.owner_name || s.owner_username}
+                      {s.owner_phone ? ` · ${s.owner_phone}` : ""} · Login: {s.owner_username}
+                    </div>
+                    <div className="muted small">
+                      {s.product_count} mahsulot · {s.sale_count} savdo · {s.open_debt_count} ochiq qarz
+                      <br />
+                      Arizasi: {s.address ? `Manzil: ${s.address}` : "Manzil yo'q"}
+                    </div>
+                  </div>
+                  <span className={`status-pill ${s.is_active ? "status-approved" : "status-rejected"}`}>
+                    {s.status_display}
+                  </span>
+                </div>
+                {s.is_active ? (
+                  <div className="app-card-actions">
+                    <button className="btn btn-danger btn-sm" onClick={() => { setCloseStore(s); setCloseConfirm(""); }}>
+                      Do'konni yopish (o'chirish)
+                    </button>
+                  </div>
+                ) : (
+                  <div className="muted small">Yopiq — egasi kira olmaydi, ma'lumotlar arxivda</div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        )
+      ) : loading ? (
         <div className="empty-state">Yuklanmoqda...</div>
       ) : apps.length === 0 ? (
         <div className="empty-state">
@@ -165,6 +256,38 @@ export function AdminPanelPage() {
         </div>
       )}
 
+      {/* Do'konni yopish tasdiqlash */}
+      <Modal open={!!closeStore} onClose={() => setCloseStore(null)}>
+        <div>
+          <h3>Do'konni yopish</h3>
+          <p className="muted" style={{ marginTop: 8 }}>
+            <b>{closeStore?.name}</b> do'koni yopiladi. Ega endi kira olmaydi va barcha qurilmalari
+            bekor qilinadi. Savdo/qarz tarixi arxivda saqlanadi — qayta ochish mumkin.
+          </p>
+          <div className="field" style={{ marginTop: 14 }}>
+            <label>
+              Tasdiqlash uchun do'kon nomini yozing: <b className="mono">{closeStore?.name}</b>
+            </label>
+            <input
+              className="input"
+              value={closeConfirm}
+              onChange={(e) => setCloseConfirm(e.target.value)}
+              placeholder={closeStore?.name}
+              autoFocus
+            />
+          </div>
+          <div className="grid-2" style={{ marginTop: 16 }}>
+            <button className="btn btn-ghost" onClick={() => setCloseStore(null)} disabled={closing}>
+              Bekor qilish
+            </button>
+            <button className="btn btn-danger" onClick={closeStoreNow} disabled={closing}>
+              {closing ? "Yopilmoqda..." : "Do'konni yopish"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Do'kon yaratish / ariza tasdiqlash */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)}>
         {createdUser ? (
           <div>

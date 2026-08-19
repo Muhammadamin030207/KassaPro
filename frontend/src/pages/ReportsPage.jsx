@@ -20,7 +20,7 @@ import { api } from "../api/client";
 import { daysAgoISO, formatMoney, todayISO } from "../utils/format";
 import { useCountUp } from "../hooks/useCountUp";
 
-const PAY_COLORS = { cash: "#0E7C5A", card: "#29C77D", click: "#FF8A3D", payme: "#5B8DEF" };
+const PAY_COLORS = { cash: "#6366f1", card: "#818cf8", click: "#FF8A3D", payme: "#5B8DEF" };
 
 function AnimatedStat({ label, value, plain }) {
   const animated = useCountUp(Number(value || 0), { duration: 700 });

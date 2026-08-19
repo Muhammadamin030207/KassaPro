@@ -128,6 +128,49 @@ class StoreApplicationSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class StoreAdminSerializer(serializers.ModelSerializer):
+    """Admin: do'konlar ro'yxati (boshqaruv paneli uchun)."""
+
+    owner_name = serializers.CharField(source="owner.get_full_name", read_only=True)
+    owner_username = serializers.CharField(source="owner.username", read_only=True)
+    owner_phone = serializers.CharField(source="owner.phone", read_only=True)
+    owner_active = serializers.BooleanField(source="owner.is_active", read_only=True)
+    status_display = serializers.SerializerMethodField()
+    product_count = serializers.IntegerField(source="products.count", read_only=True)
+    sale_count = serializers.IntegerField(source="sales.count", read_only=True)
+    open_debt_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Shop
+        fields = [
+            "id",
+            "name",
+            "address",
+            "is_active",
+            "status_display",
+            "owner",
+            "owner_name",
+            "owner_username",
+            "owner_phone",
+            "owner_active",
+            "product_count",
+            "sale_count",
+            "open_debt_count",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_status_display(self, obj):
+        return "Faol" if obj.is_active else "Yopiq"
+
+    def get_open_debt_count(self, obj):
+        return (
+            obj.debts.exclude(
+                status__in=["paid", "cancelled"]
+            ).distinct().count()
+        )
+
+
 class StoreCreateSerializer(serializers.Serializer):
     """Super Admin tomonidan yangi do'kon yaratish / arizani tasdiqlash.
 

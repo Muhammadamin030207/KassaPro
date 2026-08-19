@@ -9,6 +9,7 @@ from shops.serializers import (
     ApplicationCreateSerializer,
     ApplicationPatchSerializer,
     ShopSettingsSerializer,
+    StoreAdminSerializer,
     StoreApplicationSerializer,
     StoreCreateSerializer,
 )
@@ -197,18 +198,22 @@ class ApplicationDetailView(views.APIView):
         return response.Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class StoreCreateView(views.APIView):
-    """Admin: yangi do'kon yaratish yoki arizani tasdiqlash.
+class StoreAdminView(views.APIView):
+    """Admin: do'konlar ro'yxati (GET) + yangi do'kon/arizani tasdiqlash (POST).
 
-    POST /api/admin/stores/
-    {
-      "store_name", "owner_name", "phone", "address",
-      "telegram_chat_id", "application_id" (ixtiyoriy)
-    }
-    Do'kon + owner yaratiladi, login/parol Telegram orqali yuboriladi.
+    GET  /api/admin/stores/?closed=true  — do'konlar (Faol/Yopiq)
+    POST /api/admin/stores/              — yangi do'kon yaratish yoki ariza tasdiqlash
     """
 
     permission_classes = [IsAdmin]
+
+    def get(self, request):
+        qs = Shop.objects.all()
+        if request.query_params.get("closed") == "true":
+            qs = qs.filter(is_active=False)
+        qs = qs.select_related("owner").order_by("-created_at")
+        serializer = StoreAdminSerializer(qs, many=True)
+        return response.Response({"results": serializer.data, "count": len(serializer.data)})
 
     def post(self, request):
         serializer = StoreCreateSerializer(data=request.data)
@@ -248,3 +253,54 @@ class StoreCreateView(views.APIView):
             )
         data["telegram_sent"] = sent
         return response.Response(data, status=status.HTTP_201_CREATED)
+
+
+class StoreCloseView(views.APIView):
+    """Admin: do'konni yopadi (yumshoq o'chirish).
+
+    Do'kon va egasi deaktiv qilinadi — egasi endi kira olmaydi,
+    barcha qurilma seanslari bekor qilinadi. Hisob-kitob tarixi
+    (savdolar, qarzlar, mijozlar) arxiv sifatida saqlanadi.
+    """
+
+    permission_classes = [IsAdmin]
+
+    def post(self, request, pk):
+        shop = Shop.objects.select_related("owner").filter(pk=pk).first()
+        if not shop:
+            raise NotFound("Do'kon topilmadi.")
+        if not shop.is_active:
+            return response.Response(
+                {"detail": "Bu do'kon allaqachon yopilgan."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from accounts.models import Device, User as UserModel
+
+        shop.is_active = False
+        shop.save(update_fields=["is_active"])
+
+        # Do'konning barcha a'zolari (ega + kassirlar) deaktiv — kirish bloklanadi
+        members = UserModel.objects.filter(shop=shop)
+        members.update(is_active=False)
+        Device.objects.filter(user__in=members).delete()
+
+        # Egasiga Telegram xabari (chat_id faqat approval ichida saqlangan bo'lsa)
+        app = (
+            StoreApplication.objects.filter(
+                created_shop=shop, status=StoreApplication.Status.APPROVED
+            ).first()
+            or shop.applications.first()
+        )
+        if app and app.telegram_chat_id:
+            try:
+                send_message(
+                    app.telegram_chat_id,
+                    f"🏪 <b>{shop.name}</b> — do'koningiz yopildi.\n\n"
+                    "Barcha ma'lumotlaringiz arxivda saqlanadi. "
+                    "Qayta ochish uchun admin bilan bog'laning.",
+                )
+            except Exception:  # noqa: BLE001 — Telegram xatosi yopishni buzmaydi
+                pass
+
+        return response.Response(StoreAdminSerializer(shop).data)
