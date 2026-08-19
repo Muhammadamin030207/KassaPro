@@ -19,8 +19,10 @@ class ProductListCreateView(generics.ListCreateAPIView):
     serializer_class = ProductSerializer
 
     def get_queryset(self):
-        # Stocki tugagan (0 yoki kam) mahsulotlar ro'yxatdan butunlay chiqib ketadi.
-        qs = Product.objects.filter(shop=self.request.user.shop, stock_qty__gt=0)
+        # Boshqaruv ro'yxati barcha mahsulotlarni ko'rsatadi — zahirasi 0 bo'lsa
+        # ham edit/delete/restock qilinishi uchun ro'yxatdan chiqib ketmaydi.
+        # (Kassa qidiruvi esa faqat stock>0 ni ishlatadi — by-barcode view.)
+        qs = Product.objects.filter(shop=self.request.user.shop)
         search = self.request.query_params.get("search")
         barcode = self.request.query_params.get("barcode")
 

@@ -10,7 +10,9 @@ from rest_framework.views import APIView
 from shops.models import StoreApplication
 from telegrambot.models import BotLog, BotSession
 from telegrambot.telegram_api import (
+    answer_callback_query,
     format_application_message,
+    inline_keyboard,
     send_admin_notification,
     send_message,
 )
@@ -48,7 +50,11 @@ class TelegramWebhookView(APIView):
                 return Response(status=status.HTTP_403_FORBIDDEN)
 
         update = request.data
+        # Inline tugma bosilganda callback_query keladi
+        callback = (update or {}).get("callback_query") or {}
         message = (update or {}).get("message") or {}
+        if callback:
+            return self.handle_callback(callback)
         chat = message.get("chat") or {}
         chat_id = chat.get("id")
         text = (message.get("text") or "").strip()
@@ -72,6 +78,72 @@ class TelegramWebhookView(APIView):
             )
             send_message(chat_id, "⚠️ Ichki xatolik yuz berdi. /start ni bosing.")
 
+        return Response(status=status.HTTP_200_OK)
+
+    def _start_keyboard(self):
+        """Asosiy inline tugmalar (menyu)."""
+        return inline_keyboard(
+            [
+                [{"text": "📩 Yangi ariza qoldirish", "callback_data": "start_application"}],
+                [{"text": "📊 Arizam holati", "callback_data": "check_status"}],
+                [{"text": "🖥 Saytga o'tish", "url": "https://smartkassa-1.onrender.com/login"}],
+            ]
+        )
+
+    def handle_callback(self, callback):
+        """Inline tugma bosilganda (callback_query update)."""
+        query_id = callback.get("id")
+        data = (callback.get("data") or "").strip()
+        msg = callback.get("message") or {}
+        chat = msg.get("chat") or {}
+        chat_id = chat.get("id")
+        from_user = callback.get("from") or {}
+        username = ((from_user.get("username") or "")[:255])
+
+        if not chat_id:
+            return Response(status=status.HTTP_200_OK)
+        answer_callback_query(query_id)
+
+        if data == "start_application":
+            session, _ = BotSession.objects.get_or_create(
+                chat_id=chat_id,
+                defaults={"step": "store_name", "telegram_username": username},
+            )
+            session.step = "store_name"
+            session.telegram_username = username
+            session.save()
+            send_message(chat_id, STEP_PROMPTS["store_name"])
+        elif data == "check_status":
+            existing = StoreApplication.objects.filter(
+                telegram_chat_id=chat_id
+            ).order_by("-id").first()
+            if not existing:
+                send_message(
+                    chat_id,
+                    "Siz hali ariza qoldirmagansiz.\n"
+                    "Yangi ariza uchun /start bosing yoki pastdagi tugmani bosing.",
+                    reply_markup=self._start_keyboard(),
+                )
+            elif existing.status == StoreApplication.Status.PENDING:
+                send_message(
+                    chat_id,
+                    "📊 <b>Arizangiz holati:</b> ⏳ Kutilmoqda\n\n"
+                    "Admin tasdiqlagach login/parol shu chatga yuboriladi.",
+                )
+            elif existing.status == StoreApplication.Status.APPROVED:
+                send_message(
+                    chat_id,
+                    "📊 <b>Arizangiz holati:</b> ✅ Tasdiqlangan\n"
+                    "Login/parol shu chatga yuborilgan bo'lishi kerak.",
+                )
+            else:
+                note = existing.note or "Izoh yo'q"
+                send_message(
+                    chat_id,
+                    f"📊 <b>Arizangiz holati:</b> ❌ Rad etilgan\nIzoh: {note}",
+                )
+        else:
+            send_message(chat_id, "Boshlash uchun /start bosing.")
         return Response(status=status.HTTP_200_OK)
 
     def handle_message(self, chat_id, text, username, from_user):
@@ -108,7 +180,8 @@ class TelegramWebhookView(APIView):
                 chat_id,
                 "Assalomu alaykum, " + (username and f"@{username} " or "") + "! 👋\n\n"
                 "KassaPro'ga yangi do'kon uchun ariza qoldirasiz.\n\n"
-                + STEP_PROMPTS["store_name"],
+                "Tugmadan foydalaning yoki do'kon nomini yozing:",
+                reply_markup=self._start_keyboard(),
             )
             session.step = "store_name"
             session.save(update_fields=["step"])
@@ -160,7 +233,9 @@ class TelegramWebhookView(APIView):
             f"Egas: <b>{app.owner_name}</b>\n"
             f"Tel: <b>{app.phone}</b>\n"
             f"Manzil: <b>{app.address}</b>\n\n"
-            "Admin arizani tasdiqlashi bilan login va parol shu chatga yuboriladi.",
+            "Admin arizani tasdiqlashi bilan login va parol shu chatga yuboriladi.\n\n"
+            "Holatni tekshirish: /start yoki 📊 tugmasi.",
+            reply_markup=self._start_keyboard(),
         )
         # Admin chatga xabar — muvaffaqiyatsiz bo'lsa yashirin o'tib ketmaydi
         if not send_admin_notification(format_application_message(app)):

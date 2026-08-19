@@ -28,18 +28,24 @@ def _format_uz_datetime(dt):
     )
 
 
-def send_message(chat_id, text):
-    """Telegram chat'ga xabar yuborish. Xatolarni yutib yubormaydi, log qiladi."""
+def send_message(chat_id, text, reply_markup=None):
+    """Telegram chat'ga xabar yuborish (ixtiyoriy inline keyboard bilan).
+
+    reply_markup: Telegram InlineKeyboardMarkup dict (inline tugma ko'rsatadi).
+    Xatolarni yutib yubormaydi, log qiladi.
+    """
     if not chat_id or not _token():
         return False
-    payload = json.dumps({
+    payload = {
         "chat_id": int(chat_id),
         "text": str(text),
         "parse_mode": "HTML",
-    }).encode()
+    }
+    if reply_markup is not None:
+        payload["reply_markup"] = reply_markup
     req = urllib_request.Request(
         f"{API_BASE}{_token()}/sendMessage",
-        data=payload,
+        data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json"},
     )
     try:
@@ -50,6 +56,38 @@ def send_message(chat_id, text):
         return False
     except Exception as exc:  # noqa: BLE001
         logger.error("telegram send_message: %s", exc)
+        return False
+
+
+def inline_keyboard(buttons_rows):
+    """Inline tugmalar markup'ini yig'adi.
+
+    buttons_rows: ro'yxatlar — har bir ro'yxat bitta qator.
+    Har bir tugma dict: {"text": str, "callback_data": str} yoki
+    {"text": str, "url": str}.
+    """
+    return {"inline_keyboard": buttons_rows}
+
+
+def answer_callback_query(callback_query_id, text="", show_alert=False):
+    """Callback tugmasi bosilganda bot "yuklanayotgan" holatni o'chiradi."""
+    if not callback_query_id or not _token():
+        return False
+    payload = {
+        "callback_query_id": str(callback_query_id),
+        "text": str(text),
+        "show_alert": bool(show_alert),
+    }
+    req = urllib_request.Request(
+        f"{API_BASE}{_token()}/answerCallbackQuery",
+        data=json.dumps(payload).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=15) as resp:
+            return resp.status == 200
+    except Exception as exc:  # noqa: BLE001
+        logger.error("telegram answer_callback_query: %s", exc)
         return False
 
 
@@ -91,7 +129,7 @@ def set_webhook(url, secret_token=""):
         raise RuntimeError("TELEGRAM_BOT_TOKEN env o'rnatilmagan.")
     payload = {
         "url": url,
-        "allowed_updates": ["message"],
+        "allowed_updates": ["message", "callback_query"],
     }
     if secret_token:
         payload["secret_token"] = secret_token
