@@ -7,6 +7,12 @@ pip install -r requirements.txt
 python manage.py collectstatic --no-input
 python manage.py migrate
 
+# Opt-in: faqat Device (qurilma) rekordlarini tozalash (users/schema QOLADI).
+# Faqat CLEAR_DEVICE_DATA_ON_BUILD=true bo'lganda ishlaydi — boshqa holatda no-op.
+if [ "$CLEAR_DEVICE_DATA_ON_BUILD" = "true" ]; then
+  python manage.py clear_device_data --yes
+fi
+
 # Keep-alive uchun: Render URL bo'lsa, self-ping shu domen orqali boradi
 if [ -z "$PUBLIC_URL" ] && [ -n "$RENDER_EXTERNAL_URL" ]; then
   export PUBLIC_URL="$RENDER_EXTERNAL_URL"
