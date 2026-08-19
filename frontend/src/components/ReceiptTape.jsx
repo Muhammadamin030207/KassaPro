@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 
-import { formatMoney } from "../utils/format";
+import { formatMoney, formatQty } from "../utils/format";
 import { useCartStore } from "../stores/cartStore";
 import { useAuthStore } from "../stores/authStore";
 import { useToast } from "./Toast";
@@ -32,7 +32,7 @@ export function ReceiptTape({ onEmptyAction }) {
   const adjust = (it, delta) => {
     const res = setQty(it.product_id, it.qty + delta);
     if (!res.ok && res.reason === "stock") {
-      show(`Qoldiq yetarli emas (${it.stock_qty ?? 0} dona)`, "error");
+      show(`Qoldiq yetarli emas (${formatQty(it.stock_qty)} dona)`, "error");
     }
   };
 

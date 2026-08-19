@@ -9,7 +9,7 @@ import { TiltCard } from "../components/TiltCard";
 import { CameraScannerModal } from "../components/CameraScannerModal";
 import Icon from "../components/Icon";
 import { Modal } from "../components/Modal";
-import { formatMoney } from "../utils/format";
+import { formatMoney, formatQty } from "../utils/format";
 
 const LOW_STOCK = 10;
 
@@ -69,7 +69,7 @@ export function ProductsPage() {
             name: product.name,
             price: product.price,
             cost_price: product.cost_price || "",
-            stock_qty: product.stock_qty || "",
+            stock_qty: product.stock_qty ? formatQty(product.stock_qty) : "",
           }
         : { barcode: "", name: "", price: "", cost_price: "", stock_qty: "" }
     );
@@ -147,7 +147,7 @@ export function ProductsPage() {
           name: p.name,
           price: p.price,
           cost_price: p.cost_price || "",
-          stock_qty: p.stock_qty || "",
+          stock_qty: p.stock_qty ? formatQty(p.stock_qty) : "",
         });
       }
     } catch {
@@ -263,9 +263,9 @@ export function ProductsPage() {
                     <div className="pc-top">
                       <span className="pc-barcode mono">{p.barcode}</span>
                       {low ? (
-                        <span className="badge badge-low">Kam: {p.stock_qty}</span>
+                        <span className="badge badge-low">Kam: {formatQty(p.stock_qty)}</span>
                       ) : (
-                        <span className="badge badge-ok">{p.stock_qty}</span>
+                        <span className="badge badge-ok">{formatQty(p.stock_qty)}</span>
                       )}
                     </div>
                     <div className="pc-bars" />

@@ -4,6 +4,17 @@ export function formatMoney(n) {
   return `${v.toLocaleString("uz-UZ", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} so'm`;
 }
 
+/**
+ * Miqdor (dona) formatlash — butun son bo'lsa '1', kasr bo'lsa '2.5'.
+ * '1.00' → '1' (Decimal string'lardan yuqoriga chiqishni tozalaydi).
+ */
+export function formatQty(n) {
+  const v = Number(n ?? 0);
+  if (!Number.isFinite(v) || v === 0) return "0";
+  if (Number.isInteger(v)) return String(v);
+  return String(v.toFixed(2)).replace(/\.?0+$/, "");
+}
+
 /** Sana/vaqtni formatlash. */
 export function formatDateTime(iso) {
   if (!iso) return "";
@@ -26,4 +37,4 @@ export function daysAgoISO(n) {
   return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
 }
 
-export default { formatMoney, formatDateTime, todayISO, daysAgoISO };
+export default { formatMoney, formatQty, formatDateTime, todayISO, daysAgoISO };
