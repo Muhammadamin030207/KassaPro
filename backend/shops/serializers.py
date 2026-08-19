@@ -9,6 +9,44 @@ from accounts.models import User
 from shops.models import Shop, ShopSettings, StoreApplication
 
 
+class ApplicationCreateSerializer(serializers.Serializer):
+    """Web form orqali yangi do'kon arizasi (ochiq endpoint)."""
+
+    store_name = serializers.CharField(max_length=150, allow_blank=True)
+    owner_name = serializers.CharField(max_length=255, allow_blank=True)
+    phone = serializers.CharField(max_length=20, allow_blank=True)
+    address = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    telegram_username = serializers.CharField(
+        max_length=255, required=False, allow_blank=True
+    )
+
+    def validate_store_name(self, value):
+        value = str(value).strip()
+        if not value:
+            raise serializers.ValidationError("Do'kon nomi kiritilmagan.")
+        return value
+
+    def validate_owner_name(self, value):
+        value = str(value).strip()
+        if not value:
+            raise serializers.ValidationError("Egasining ism-familiyasi kiritilmagan.")
+        return value
+
+    def validate_phone(self, value):
+        from customers.utils import normalize_phone
+
+        if not str(value or "").strip():
+            raise serializers.ValidationError("Telefon raqami kiritilmagan.")
+        normalized = normalize_phone(str(value))
+        # +998 + 9 xonali lokal raqam = 13 belgi. Qisqaroq/noto'g'ri → rad etiladi.
+        if not normalized or len(normalized) != 13:
+            raise serializers.ValidationError("Telefon raqami noto'g'ri formatda.")
+        return normalized
+
+    def validate_address(self, value):
+        return str(value or "").strip()
+
+
 class ShopSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShopSettings

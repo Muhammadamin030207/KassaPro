@@ -16,6 +16,7 @@ import { ProductPickerSheet } from "../components/ProductPickerSheet";
 import Icon from "../components/Icon";
 import { useCountUp } from "../hooks/useCountUp";
 import { formatMoney } from "../utils/format";
+import { playBarcodeError, playBarcodeSuccess } from "../utils/sound";
 
 const PAY_METHODS = [
   { key: "cash", label: "Naqd" },
@@ -59,6 +60,8 @@ export function CashierPage() {
   const inputRef = useRef(null);
   const quickNameRef = useRef(null);
   const quickPriceRef = useRef(null);
+  // Bitta skan → bitta action (Enter + avtoaniqlash yoki dublikat keydown'ni yutadi)
+  const lastScanRef = useRef({ code: "", at: 0 });
   const user = useAuthStore((s) => s.user);
   const { show } = useToast();
 
@@ -108,9 +111,16 @@ export function CashierPage() {
   // Shtrix kodni bazadan qidirib chekka qo'shish (fizik skaner / kamera / qo'lda)
   const processBarcode = async (barcode) => {
     if (!barcode) return;
+    // Dublikat skan (Enter + avtoaniqlash bir vaqtda) → faqat bitta action
+    const now = Date.now();
+    if (barcode === lastScanRef.current.code && now - lastScanRef.current.at < 800) {
+      return;
+    }
+    lastScanRef.current = { code: barcode, at: now };
     try {
       const product = await api.get(`products/by-barcode/${encodeURIComponent(barcode)}/`);
       if (addToCart(product)) {
+        playBarcodeSuccess(); // 🔊 CHIK
         show(`Qo'shildi: ${product.name}`, "success", 1200);
       }
     } catch (err) {
@@ -119,6 +129,7 @@ export function CashierPage() {
       // Oqim to'xtamaydi, kassir davom etadi.
       const notFound = err.status === 404 || !err.status || err.status >= 500;
       if (notFound) {
+        playBarcodeError(); // success "CHIK" emas, warning
         setQuickBarcode(barcode);
         setQuickStep("confirm");
         setQuickName("");
@@ -131,6 +142,7 @@ export function CashierPage() {
           3000
         );
       } else {
+        playBarcodeError();
         show(err.message, "error");
       }
     }
@@ -170,6 +182,7 @@ export function CashierPage() {
         price: Number(quickPrice),
       });
       if (addToCart(product)) {
+        playBarcodeSuccess(); // 🔊 CHIK
         show(`Qo'shildi: ${product.name}`, "success", 1500);
       }
       setQuickBarcode("");

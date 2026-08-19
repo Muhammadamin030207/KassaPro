@@ -9,7 +9,11 @@ from rest_framework.views import APIView
 
 from shops.models import StoreApplication
 from telegrambot.models import BotLog, BotSession
-from telegrambot.telegram_api import send_message
+from telegrambot.telegram_api import (
+    format_application_message,
+    send_admin_notification,
+    send_message,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -158,17 +162,15 @@ class TelegramWebhookView(APIView):
             f"Manzil: <b>{app.address}</b>\n\n"
             "Admin arizani tasdiqlashi bilan login va parol shu chatga yuboriladi.",
         )
-        # Admin chatga xabar (agar o'rnatilgan bo'lsa)
-        admin_chat = os.environ.get("TELEGRAM_ADMIN_CHAT_ID", "")
-        if admin_chat and admin_chat.isdigit():
-            send_message(
-                admin_chat,
-                f"🆕 <b>Yangi ariza</b> #{app.id}\n"
-                f"Do'kon: <b>{app.store_name}</b>\n"
-                f"Egas: <b>{app.owner_name}</b>\n"
-                f"Tel: <b>{app.phone}</b>\n"
-                f"Manzil: <b>{app.address}</b>\n\n"
-                "Tasdiqlash uchun Admin panelga qarang.",
+        # Admin chatga xabar — muvaffaqiyatsiz bo'lsa yashirin o'tib ketmaydi
+        if not send_admin_notification(format_application_message(app)):
+            BotLog.objects.create(
+                chat_id=chat_id,
+                text="Yangi ariza (bot)",
+                error=(
+                    "Telegram admin xabarnomasi yuborilmadi — "
+                    "TELEGRAM_ADMIN_CHAT_ID yoki TELEGRAM_BOT_TOKEN tekshiring."
+                ),
             )
 
     @staticmethod

@@ -21,11 +21,16 @@ services:
       - key: ALLOWED_HOSTS
         value: ".onrender.com,localhost,127.0.0.1"
       - key: CORS_ALLOWED_ORIGINS
-        value: "https://kassapro.vercel.app"
+        value: "https://smartkassa-1.onrender.com,http://localhost:5173"
       - key: DATABASE_URL
         fromDatabase:
           name: kassapro-db
           property: connectionString
+    # Telegram bot (secretlar dashboard'da o'rnatiladi, GitHub'ga YOZILMAYDI):
+    #   TELEGRAM_BOT_TOKEN      — bot token (api.telegram.org)
+    #   TELEGRAM_ADMIN_CHAT_ID  — yangi ariza xabarnomasi boradigan chat ID
+    #   TELEGRAM_WEBHOOK_SECRET — webhook'ni himoyalash (ixtiyoriy, tavsiya)
+    #   PUBLIC_URL              — webhook URL avto-o'rnatish uchun (mas. https://smartkassa.onrender.com)
 
 databases:
   - name: kassapro-db

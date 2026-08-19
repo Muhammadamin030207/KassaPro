@@ -1,14 +1,85 @@
 from django.utils import timezone
 from rest_framework import generics, response, status, views
+from rest_framework.permissions import AllowAny
 
 from accounts.permissions import IsAdmin, IsOwner, IsShopMember
 from shops.models import Shop, ShopSettings, StoreApplication
 from shops.serializers import (
+    ApplicationCreateSerializer,
     ShopSettingsSerializer,
     StoreApplicationSerializer,
     StoreCreateSerializer,
 )
-from telegrambot.telegram_api import send_message
+from telegrambot.models import BotLog
+from telegrambot.telegram_api import (
+    format_application_message,
+    send_admin_notification,
+    send_message,
+)
+
+
+class ApplicationCreateView(views.APIView):
+    """Ochiq (auth siz): yangi do'kon arizasini web form orqali qabul qilish.
+
+    POST /api/applications/
+    {
+      "store_name": "Asosiy Savdo",
+      "owner_name": "Aliyev Alisher",
+      "phone": "+998 90 123 45 67",
+      "address": "Toshkent, Chilonzor 8" (ixtiyoriy)
+    }
+
+    Ariza DBga saqlanadi (PENDING) va admin Telegram chatiga xabar yuboriladi.
+    Telegram muvaffaqiyatsiz bo'lsa ham ariza yo'qolmaydi — javobda
+    `telegram_sent: false` qaytadi (frontend fake-success ko'rsatmaydi).
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_scope = "application"
+
+    def post(self, request):
+        serializer = ApplicationCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        app = StoreApplication.objects.create(
+            store_name=serializer.validated_data["store_name"],
+            owner_name=serializer.validated_data["owner_name"],
+            phone=serializer.validated_data["phone"],
+            address=serializer.validated_data.get("address", ""),
+            telegram_username=serializer.validated_data.get("telegram_username", "")
+            or "",
+            status=StoreApplication.Status.PENDING,
+        )
+        sent = send_admin_notification(format_application_message(app))
+        if not sent:
+            BotLog.objects.create(
+                chat_id=None,
+                text="Web ariza",
+                error=(
+                    "Telegram admin xabarnomasi yuborilmadi — "
+                    "TELEGRAM_ADMIN_CHAT_ID yoki TELEGRAM_BOT_TOKEN tekshiring."
+                ),
+            )
+        return response.Response(
+            {
+                "id": app.id,
+                "store_name": app.store_name,
+                "owner_name": app.owner_name,
+                "phone": app.phone,
+                "address": app.address,
+                "status": app.status,
+                "telegram_sent": sent,
+                "message": (
+                    "Ariza muvaffaqiyatli yuborildi."
+                    if sent
+                    else (
+                        "Ariza saqlandi, lekin Telegram xabarnomasi yuborilmadi. "
+                        "Admin bilan bog'lanib, arizangizni tasdiqlating."
+                    )
+                ),
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class ShopSettingsView(views.APIView):

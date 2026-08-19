@@ -29,13 +29,19 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [apply, setApply] = useState({ store_name: "", owner_name: "", phone: "", address: "" });
+  const [applyErrors, setApplyErrors] = useState({});
+  const [sending, setSending] = useState(false);
+  const [applyResult, setApplyResult] = useState(null);
+
   const login = useAuthStore((s) => s.login);
   const kickMessage = useAuthStore((s) => s.kickMessage);
   const setKickMessage = useAuthStore((s) => s.setKickMessage);
   const navigate = useNavigate();
   const { show } = useToast();
 
-  // Sessiya revoke qilingan/bloklangan bo'lsa — xabarni ko'rsatamiz.
+  // Navbatda kelgan holat xabari bo'lsa — ko'rsatamiz va tozalaymiz.
   useEffect(() => {
     if (kickMessage) {
       show(kickMessage, "error");
@@ -52,6 +58,54 @@ export function LoginPage() {
     }
     window.open(BOT_URL, "_blank", "noopener,noreferrer");
   };
+
+  // Web form orqali ariza yuborish → POST /api/applications/ → Telegram admin.
+  const submitApplication = async (e) => {
+    e.preventDefault();
+    const errors = {};
+    if (!apply.store_name.trim()) errors.store_name = "Do'kon nomi kiritilmagan";
+    if (!apply.owner_name.trim()) errors.owner_name = "Egasining ism-familiyasi kiritilmagan";
+    if (!apply.phone.trim()) errors.phone = "Telefon raqami kiritilmagan";
+    else if (!/^\+?[0-9][0-9 ()-]{7,}$/.test(apply.phone.trim()))
+      errors.phone = "Telefon raqami noto'g'ri formatda";
+    if (Object.keys(errors).length) {
+      setApplyErrors(errors);
+      return;
+    }
+    setApplyErrors({});
+    setSending(true);
+    setApplyResult(null);
+    try {
+      const res = await api.post("applications/", {
+        store_name: apply.store_name.trim(),
+        owner_name: apply.owner_name.trim(),
+        phone: apply.phone.trim(),
+        address: apply.address.trim(),
+      });
+      if (res && res.telegram_sent) {
+        setApplyResult({ ok: true, message: res.message || "Ariza muvaffaqiyatli yuborildi!" });
+        setApply({ store_name: "", owner_name: "", phone: "", address: "" });
+        setApplyOpen(false);
+        show("Ariza muvaffaqiyatli yuborildi!", "success");
+      } else {
+        setApplyResult({
+          ok: false,
+          message:
+            res?.message ||
+            "Ariza saqlandi, lekin Telegram xabarnomasi yuborilmadi. Iltimos keyinroq urinib ko'ring.",
+        });
+        show("Arizani yuborishda xatolik yuz berdi", "error");
+      }
+    } catch (err) {
+      setApplyResult({ ok: false, message: err.message || "Arizani yuborishda xatolik yuz berdi" });
+      show(err.message || "Arizani yuborishda xatolik yuz berdi", "error");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const applyField = (name) => (e) =>
+    setApply((prev) => ({ ...prev, [name]: e.target.value }));
 
   const submit = async (e) => {
     e.preventDefault();
@@ -148,6 +202,88 @@ export function LoginPage() {
           Do'kon arizangizni @{BOT_USERNAME} ga yuboring — admin tasdiqlagach
           login va parol Telegram chat'ga keladi.
         </p>
+
+        <motion.button
+          type="button"
+          className="btn btn-ghost btn-block apply-toggle"
+          onClick={() => setApplyOpen((v) => !v)}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+        >
+          {applyOpen ? "— Formani yopish" : "Ariza formasini to'ldirish"}
+        </motion.button>
+
+        {applyOpen && (
+          <motion.form
+            className="apply-form"
+            onSubmit={submitApplication}
+            initial={{ opacity: 0, height: 0, y: -8 }}
+            animate={{ opacity: 1, height: "auto", y: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 24 }}
+          >
+            <div className="apply-form-title">Yangi do'kon uchun ariza</div>
+
+            <div className="field">
+              <label>Do'kon nomi</label>
+              <input
+                className="input"
+                value={apply.store_name}
+                onChange={applyField("store_name")}
+                placeholder="Masalan: Asosiy Savdo"
+                maxLength={150}
+              />
+              {applyErrors.store_name && <div className="field-error">{applyErrors.store_name}</div>}
+            </div>
+
+            <div className="field">
+              <label>Egasi ism-familiyasi</label>
+              <input
+                className="input"
+                value={apply.owner_name}
+                onChange={applyField("owner_name")}
+                placeholder="Masalan: Aliyev Alisher"
+                maxLength={255}
+              />
+              {applyErrors.owner_name && <div className="field-error">{applyErrors.owner_name}</div>}
+            </div>
+
+            <div className="field">
+              <label>Telefon raqami</label>
+              <input
+                className="input input-mono"
+                type="tel"
+                value={apply.phone}
+                onChange={applyField("phone")}
+                placeholder="+998 90 123 45 67"
+                inputMode="tel"
+                maxLength={20}
+              />
+              {applyErrors.phone && <div className="field-error">{applyErrors.phone}</div>}
+            </div>
+
+            <div className="field">
+              <label>Manzil (ixtiyoriy)</label>
+              <input
+                className="input"
+                value={apply.address}
+                onChange={applyField("address")}
+                placeholder="Toshkent, Chilonzor 8"
+                maxLength={255}
+              />
+            </div>
+
+            <button className="btn btn-primary btn-block" disabled={sending}>
+              {sending ? "Yuborilmoqda..." : "Arizani yuborish"}
+            </button>
+
+            {applyResult && (
+              <div className={`apply-result ${applyResult.ok ? "ok" : "err"}`}>
+                {applyResult.message}
+              </div>
+            )}
+          </motion.form>
+        )}
 
         <div className="barcode-deco" />
       </motion.div>
