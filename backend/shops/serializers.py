@@ -62,9 +62,14 @@ class ApplicationCreateSerializer(serializers.Serializer):
 
 
 class ShopSettingsSerializer(serializers.ModelSerializer):
+    shop_id = serializers.IntegerField(source="shop.id", read_only=True)
+    shop_name = serializers.CharField(source="shop.name", read_only=True)
+
     class Meta:
         model = ShopSettings
         fields = [
+            "shop_id",
+            "shop_name",
             "payme_merchant_id",
             "payme_card",
             "click_service_id",
@@ -75,7 +80,7 @@ class ShopSettingsSerializer(serializers.ModelSerializer):
             "qr_card_number",
             "qr_holder",
         ]
-        read_only_fields = []
+        read_only_fields = ["shop_id", "shop_name"]
 
     @staticmethod
     def _clean(value):

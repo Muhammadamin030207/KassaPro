@@ -141,3 +141,83 @@ class ApplicationDetailViewTests(APITestCase):
         self._auth()
         resp = self.client.get("/api/admin/applications/99999/")
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class ShopSettingsViewTests(APITestCase):
+    """Do'kon sozlamalari: owner/admin tahrirlaydi, kassir faqat o'qiydi."""
+
+    URL = "/api/stores/settings/"
+
+    def setUp(self):
+        from accounts.models import User
+        from shops.models import Shop
+
+        self.owner = User.objects.create_user(
+            username="owner1", password="xpass1", role=User.Role.OWNER
+        )
+        self.shop = Shop.objects.create(name="Do'kon A", owner=self.owner)
+        self.owner.shop = self.shop
+        self.owner.save()
+
+        self.cashier = User.objects.create_user(
+            username="kassir1", password="xpass1", role=User.Role.CASHIER
+        )
+        self.cashier.shop = self.shop
+        self.cashier.save()
+
+        self.admin = User.objects.create_user(
+            username="root", password="xpass1",
+            is_staff=True, is_superuser=True, role=User.Role.SUPER_ADMIN,
+        )
+
+    def _auth(self, user):
+        self.client.force_authenticate(user=user)
+
+    def test_owner_get_and_patch(self):
+        self._auth(self.owner)
+        resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["shop_id"], self.shop.id)
+        self.assertEqual(resp.data["shop_name"], "Do'kon A")
+
+        resp = self.client.patch(
+            self.URL, {"payme_merchant_id": "5e01ea93c6d9c24334933856"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["payme_merchant_id"], "5e01ea93c6d9c24334933856")
+
+    def test_admin_can_patch_settings(self):
+        """Bug-fix: admin (super_admin) endi sozlamalarni tahrirlay oladi."""
+        self._auth(self.admin)
+        resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+
+        resp = self.client.patch(
+            self.URL, {"qr_holder": "ASATOVA NILUFAR", "qr_card_number": "9860123456789012"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["qr_holder"], "ASATOVA NILUFAR")
+        self.shop.settings.refresh_from_db()
+        self.assertEqual(self.shop.settings.qr_card_number, "9860123456789012")
+
+    def test_cashier_reads_but_cannot_patch(self):
+        self._auth(self.cashier)
+        resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+
+        resp = self.client.patch(self.URL, {"qr_holder": "KASSA"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_anonymous_denied(self):
+        resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_admin_shop_id_param_selects_shop(self):
+        from accounts.models import User
+        from shops.models import Shop
+
+        other_shop = Shop.objects.create(name="Do'kon B", owner=self.owner)
+        self._auth(self.admin)
+        resp = self.client.get(f"{self.URL}?shop_id={other_shop.id}")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["shop_id"], other_shop.id)

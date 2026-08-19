@@ -11,6 +11,22 @@ class IsOwner(BasePermission):
         return bool(user and user.is_authenticated and user.is_owner)
 
 
+class IsOwnerOrAdmin(BasePermission):
+    """Do'kon egasi (owner) yoki platforma admini.
+
+    Admin (super_admin) ham do'kon egasi kabi boshqara oladi — masalan
+    do'kon sozlamalari (to'lov rekvizitlari) admin tomonidan ham to'ldiriladi.
+    """
+
+    message = "Faqat do'kon egasi yoki admin bu amalni bajarishi mumkin."
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(
+            user and user.is_authenticated and (user.is_owner or user.is_admin)
+        )
+
+
 class IsAdmin(BasePermission):
     """Faqat Super Admin (platforma administratori).
 
@@ -38,6 +54,23 @@ class IsShopMember(BasePermission):
     def has_object_permission(self, request, view, obj):
         user = request.user
         return getattr(obj, "shop", None) == user.shop
+
+
+class IsShopMemberOrAdmin(BasePermission):
+    """Do'kon xodimi (owner/kassir) yoki platforma admini.
+
+    Admin do'konga biriktirilmagan bo'lsa ham sozlamalarni o'qiy oladi.
+    """
+
+    message = "Boshqa do'kon ma'lumotlariga kirish taqiqlangan."
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not (user and user.is_authenticated):
+            return False
+        if user.is_admin:
+            return True
+        return user.shop is not None
 
 
 class IsShopOwnerOrCashierReadOnly(BasePermission):

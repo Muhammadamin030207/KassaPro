@@ -3,7 +3,7 @@ from rest_framework import generics, response, status, views
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny
 
-from accounts.permissions import IsAdmin, IsOwner, IsShopMember
+from accounts.permissions import IsAdmin, IsOwnerOrAdmin, IsShopMember, IsShopMemberOrAdmin
 from shops.models import Shop, ShopSettings, StoreApplication
 from shops.serializers import (
     ApplicationCreateSerializer,
@@ -87,17 +87,34 @@ class ApplicationCreateView(views.APIView):
 class ShopSettingsView(views.APIView):
     """Do'kon sozlamalari.
 
-    GET   /api/stores/settings/  — o'qish (kassir ham ko'radi — dinamik QR uchun)
-    PATCH /api/stores/settings/  — yangilash (faqat owner)
+    GET   /api/stores/settings/              — o'qish (kassir ham ko'radi — dinamik QR uchun)
+    PATCH /api/stores/settings/              — yangilash (owner yoki admin)
+    PATCH /api/stores/settings/?shop_id=N    — admin boshqa do'konni ham yangilay oladi
     """
 
     def get_permissions(self):
         if self.request.method == "GET":
-            return [IsShopMember()]
-        return [IsOwner()]
+            return [IsShopMemberOrAdmin()]
+        return [IsOwnerOrAdmin()]
+
+    def _resolve_shop(self, request):
+        user = request.user
+        # Owner/kassir — o'z do'konida ishlaydi (kassir faqat o'qiydi).
+        if user.is_owner or user.is_cashier:
+            return user.shop
+        # Admin — ?shop_id= orqali istalgan do'konni, aks holda o'z do'konini,
+        # u bo'lmasa birinchi do'konni boshqaradi.
+        shop_id = request.query_params.get("shop_id")
+        if shop_id:
+            return Shop.objects.filter(pk=shop_id).first()
+        if user.shop:
+            return user.shop
+        return Shop.objects.order_by("id").first()
 
     def _get_or_create(self, request):
-        shop = request.user.shop
+        shop = self._resolve_shop(request)
+        if shop is None:
+            raise NotFound("Do'kon topilmadi.")
         settings, _ = ShopSettings.objects.get_or_create(shop=shop)
         return settings
 
