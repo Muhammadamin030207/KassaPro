@@ -8,6 +8,7 @@ from shops.views import (
     ShopSettingsView,
     StoreAdminView,
     StoreCloseView,
+    StoreReopenView,
 )
 
 urlpatterns = [
@@ -26,4 +27,5 @@ urlpatterns = [
     ),
     path("admin/stores/", StoreAdminView.as_view(), name="admin-stores-list"),
     path("admin/stores/<int:pk>/close/", StoreCloseView.as_view(), name="admin-store-close"),
+    path("admin/stores/<int:pk>/reopen/", StoreReopenView.as_view(), name="admin-store-reopen"),
 ]

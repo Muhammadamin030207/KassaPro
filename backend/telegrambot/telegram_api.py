@@ -109,96 +109,60 @@ def format_application_message(app, base_url="https://smartkassa-1.onrender.com"
     )
 
 
-def format_support_application_message(app):
-    """Bot /application orqali kelgan murojaat — admin Telegram xabari."""
-    username = app.telegram_username or "—"
-    telegram_label = f"@{username}" if username != "—" else "—"
-    return (
-        "📩 <b>YANGI ARIZA</b>\n"
-        "━━━━━━━━━━━━━━\n"
-        f"🆔 #{app.application_number or 'APP-?'}\n"
-        f"👤 Ism: <b>{app.full_name}</b>\n"
-        f"📞 Telefon: <code>{app.phone}</code>\n"
-        f"📝 Murojaat: {app.message}\n"
-        + (f"💬 Izoh: {app.note}\n" if app.note else "")
-        + f"🕐 Vaqt: {_format_uz_datetime(app.created_at)}\n"
-        f"👤 Telegram: {telegram_label}\n"
-        "━━━━━━━━━━━━━━\n"
-        "KassaPro"
-    )
-
-
-def set_bot_commands():
-    """BotFather komandalarini ro'yxatga oladi (ihar command real ishlaydi)."""
-    if not _token():
-        return False
-    payload = {
-        "commands": [
-            {"command": "start", "description": "🚀 Botni ishga tushirish"},
-            {"command": "application", "description": "📝 Yangi ariza yuborish"},
-            {"command": "status", "description": "📋 Ariza holatini tekshirish"},
-            {"command": "help", "description": "📖 Botdan foydalanish bo'yicha yordam"},
-            {"command": "contact", "description": "📞 KassaPro bilan bog'lanish"},
-        ]
-    }
-    req = urllib_request.Request(
-        f"{API_BASE}{_token()}/setMyCommands",
-        data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json"},
-    )
-    try:
-        with urllib_request.urlopen(req, timeout=15) as resp:
-            return resp.status == 200
-    except Exception as exc:  # noqa: BLE001
-        logger.error("telegram set_bot_commands: %s", exc)
-        return False
-
-
-def remove_reply_markup(chat_id, message_id):
-    """Tugmalarni xabardan olib tashlash (tasdiqdan keyin qayta bosishning oldini olish)."""
-    if not chat_id or not message_id or not _token():
-        return False
-    payload = {
-        "chat_id": int(chat_id),
-        "message_id": int(message_id),
-        "reply_markup": {"inline_keyboard": []},
-    }
-    req = urllib_request.Request(
-        f"{API_BASE}{_token()}/editMessageReplyMarkup",
-        data=json.dumps(payload).encode(),
-        headers={"Content-Type": "application/json"},
-    )
-    try:
-        with urllib_request.urlopen(req, timeout=15) as resp:
-            return resp.status == 200
-    except Exception as exc:  # noqa: BLE001
-        logger.error("telegram remove_reply_markup: %s", exc)
-        return False
+def format_customer_application_message(app, base_url="https://smartkassa-1.onrender.com"):
+    """Umumiy ariza (bot /application) — admin Telegram xabari."""
+    now = app.created_at or timezone.now()
+    tg = (app.telegram_username or "").strip()
+    lines = [
+        "📩 <b>YANGI ARIZA</b>",
+        f"🆔 #<b>{app.application_number}</b>",
+        "━━━━━━━━━━━━━━",
+        f"👤 Ism: <b>{app.full_name}</b>",
+        f"📞 Telefon: <code>{app.phone}</code>",
+        f"📝 Murojaat: {app.message}",
+    ]
+    if app.note.strip():
+        lines.append(f"💬 Izoh: {app.note}")
+    lines.append(f"🕐 Vaqt: {_format_uz_datetime(now)}")
+    if tg:
+        lines.append(f"👤 Telegram: @{tg}")
+    lines.append("━━━━━━━━━━━━━━")
+    lines.append(base_url)
+    return "\n".join(lines)
 
 
 def contact_info():
-    """Bog'lanish ma'lumotlari — project config'dan (fake ma'lumot yozilmaydi).
-
-    Website/Telegram default'lar real; telefon CONTACT_PHONE env'da bo'lmasa
-    ko'rsatilmaydi (yaratma raqam chiqarib tashlanmaydi).
-    """
-    website = os.environ.get("CONTACT_WEBSITE", "").strip() or "https://smartkassa-1.onrender.com"
-    telegram = os.environ.get("CONTACT_TELEGRAM", "").strip() or "@KassaPro_001_bot"
+    """/contact uchun — project config (env) dan o'qiladi, fake data yo'q."""
     phone = os.environ.get("CONTACT_PHONE", "").strip()
-    tg_url = f"https://t.me/{telegram.lstrip('@')}"
-    lines = ["📞 <b>KassaPro bilan bog'lanish</b>\n",
-             "Savollar yoki muammolar bo'yicha biz bilan bog'laning.\n"]
-    if phone:
-        lines.append(f"📱 Telefon: <code>{phone}</code>")
-    lines.append(f"✈️ Telegram: <b>{telegram}</b>")
-    lines.append(f"🌐 Website: <code>{website}</code>")
-    markup = {
-        "inline_keyboard": [
-            [{"text": f"✈️ {telegram}", "url": tg_url}],
-            [{"text": "🌐 Saytimiz", "url": website}],
-        ]
-    }
-    return "\n".join(lines), markup
+    telegram = os.environ.get("CONTACT_TELEGRAM", "").strip() or "KassaPro_001_bot"
+    website = os.environ.get("CONTACT_WEBSITE", "").strip() or "https://smartkassa-1.onrender.com"
+    return {"phone": phone, "telegram": telegram, "website": website}
+
+
+def set_my_commands():
+    """BotFather'dagi commandlar ro'yxatini dasturiy o'rnatadi."""
+    if not _token():
+        return False
+    commands = [
+        {"command": "start", "description": "🚀 Botni ishga tushirish"},
+        {"command": "application", "description": "📝 Yangi ariza yuborish"},
+        {"command": "status", "description": "📋 Ariza holatini tekshirish"},
+        {"command": "help", "description": "📖 Botdan foydalanish bo'yicha yordam"},
+        {"command": "contact", "description": "📞 KassaPro bilan bog'lanish"},
+    ]
+    payload = json.dumps({"commands": commands}).encode()
+    req = urllib_request.Request(
+        f"{API_BASE}{_token()}/setMyCommands",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=15) as resp:
+            body = json.loads(resp.read())
+            return bool(body.get("ok"))
+    except Exception as exc:  # noqa: BLE001
+        logger.error("telegram setMyCommands: %s", exc)
+        return False
 
 
 def admin_chat_ids():

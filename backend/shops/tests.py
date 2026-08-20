@@ -302,3 +302,75 @@ class StoreAdminCloseTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
         resp = self.client.post(f"/api/admin/stores/{self.shop.id}/close/")
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_reopen_restores_shop_and_members(self):
+        from accounts.models import User
+
+        cashier = User.objects.create_user(
+            username="reopen-kassir", password="xpass", role=User.Role.CASHIER
+        )
+        cashier.shop = self.shop
+        cashier.save()
+
+        self.client.post(f"/api/admin/stores/{self.shop.id}/close/")
+        self.shop.refresh_from_db()
+        self.assertFalse(self.shop.is_active)
+
+        resp = self.client.post(f"/api/admin/stores/{self.shop.id}/reopen/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+
+        self.shop.refresh_from_db()
+        self.owner.refresh_from_db()
+        cashier.refresh_from_db()
+        self.assertTrue(self.shop.is_active)
+        self.assertTrue(self.owner.is_active)
+        self.assertTrue(cashier.is_active)
+
+        # Ega qayta kirish imkoniga ega
+        self.client.force_authenticate(user=None)
+        login = self.client.post(
+            "/api/auth/login/",
+            {"username": "ega", "password": "egapass"},
+            format="json",
+        )
+        self.assertEqual(login.status_code, status.HTTP_200_OK)
+
+    def test_reopen_active_store_rejected(self):
+        resp = self.client.post(f"/api/admin/stores/{self.shop.id}/reopen/")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class StoreApplicationDecisionTests(APITestCase):
+    """Admin: ariza qarorini o'zgartirish (approved/rejected -> pending)."""
+
+    def setUp(self):
+        from accounts.models import User
+        from shops.models import Shop, StoreApplication
+
+        self.admin = User.objects.create_user(
+            username="root", password="xpass1", is_staff=True, is_superuser=True
+        )
+        self.owner = User.objects.create_user(
+            username="ega2", password="egapass", role=User.Role.OWNER
+        )
+        self.shop = Shop.objects.create(name="Ariza Do'koni", owner=self.owner)
+        self.owner.shop = self.shop
+        self.owner.save()
+        self.app = StoreApplication.objects.create(
+            store_name="Ro'yxatga ariza",
+            owner_name="Aliyev",
+            phone="+998900000002",
+            created_shop=self.shop,
+            status=StoreApplication.Status.APPROVED,
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def test_admin_can_move_approved_back_to_pending(self):
+        resp = self.client.patch(
+            f"/api/admin/applications/{self.app.id}/",
+            {"status": "pending"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.status, "pending")

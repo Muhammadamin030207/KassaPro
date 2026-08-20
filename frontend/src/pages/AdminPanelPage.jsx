@@ -141,6 +141,28 @@ export function AdminPanelPage() {
     }
   };
 
+  /** Yopilgan do'konni qayta ochish — ega/kassirlar ham qayta faollashadi. */
+  const reopenStore = async (store) => {
+    try {
+      const data = await api.post(`admin/stores/${store.id}/reopen/`, {});
+      show(`"${data.name}" qayta ochildi`, "success");
+      loadStores();
+    } catch (err) {
+      show(err.message || "Do'konni qayta ochishda xatolik", "error");
+    }
+  };
+
+  /** Arizadagi qarorni o'zgartirish — qayta ko'rib chiqishga (pending) qaytarish. */
+  const reconsider = async (app) => {
+    try {
+      const data = await api.patch(`admin/applications/${app.id}/`, { status: "pending" });
+      show(`"${data.store_name}" qayta ko'rib chiqish uchun ochildi`, "success");
+      loadApps();
+    } catch (err) {
+      show(err.message || "Holatni o'zgartirishda xatolik", "error");
+    }
+  };
+
   return (
     <div className="page">
       <div className="page-head">
@@ -207,7 +229,14 @@ export function AdminPanelPage() {
                     </button>
                   </div>
                 ) : (
-                  <div className="muted small">Yopiq — egasi kira olmaydi, ma'lumotlar arxivda</div>
+                  <div className="app-card-actions">
+                    <div className="muted small" style={{ marginBottom: 8 }}>
+                      Yopiq — egasi kira olmaydi, ma'lumotlar arxivda
+                    </div>
+                    <button className="btn btn-primary btn-sm" onClick={() => reopenStore(s)}>
+                      Do'konni qayta ochish
+                    </button>
+                  </div>
                 )}
               </motion.div>
             ))}
@@ -247,6 +276,26 @@ export function AdminPanelPage() {
                   </button>
                   <button className="btn btn-danger btn-sm" onClick={() => reject(app)}>
                     Rad etish
+                  </button>
+                </div>
+              )}
+              {app.status === "rejected" && (
+                <div className="app-card-actions">
+                  <button className="btn btn-primary btn-sm" onClick={() => openApprove(app)}>
+                    Tasdiqlash (fikrni o'zgartirish)
+                  </button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => reconsider(app)}>
+                    Qayta ko'rib chiqish
+                  </button>
+                </div>
+              )}
+              {app.status === "approved" && (
+                <div className="app-card-actions">
+                  <button className="btn btn-ghost btn-sm" onClick={() => reconsider(app)}>
+                    Qayta ko'rib chiqish
+                  </button>
+                  <button className="btn btn-danger btn-sm" onClick={() => reject(app)}>
+                    Rad etish (fikrni o'zgartirish)
                   </button>
                 </div>
               )}

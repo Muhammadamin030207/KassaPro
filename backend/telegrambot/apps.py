@@ -3,7 +3,7 @@ import os
 
 from django.apps import AppConfig
 
-from telegrambot.telegram_api import set_webhook
+from telegrambot.telegram_api import set_my_commands, set_webhook
 
 logger = logging.getLogger(__name__)
 
@@ -29,5 +29,6 @@ class TelegrambotConfig(AppConfig):
                 f"{url}/api/bot/webhook/",
                 os.environ.get("TELEGRAM_WEBHOOK_SECRET", ""),
             )
+            set_my_commands()
         except Exception:  # noqa: BLE001
             logger.exception("Telegram webhook avto-o'rnatish muvaffaqiyatsiz")

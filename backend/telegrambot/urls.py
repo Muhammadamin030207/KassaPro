@@ -1,21 +1,18 @@
 from django.urls import path
 
-from telegrambot.views import (
-    AdminSupportApplicationDetailView,
-    AdminSupportApplicationListView,
-    TelegramWebhookView,
-)
+from telegrambot.api import BotApplicationDetailView, BotApplicationListView
+from telegrambot.views import TelegramWebhookView
 
 urlpatterns = [
     path("bot/webhook/", TelegramWebhookView.as_view(), name="bot-webhook"),
     path(
-        "admin/support-applications/",
-        AdminSupportApplicationListView.as_view(),
-        name="admin-support-applications",
+        "admin/bot-applications/",
+        BotApplicationListView.as_view(),
+        name="admin-bot-applications",
     ),
     path(
-        "admin/support-applications/<int:pk>/",
-        AdminSupportApplicationDetailView.as_view(),
-        name="admin-support-application-detail",
+        "admin/bot-applications/<int:pk>/",
+        BotApplicationDetailView.as_view(),
+        name="admin-bot-application-detail",
     ),
 ]

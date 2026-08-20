@@ -305,3 +305,49 @@ class StoreCloseView(views.APIView):
                 pass
 
         return response.Response(StoreAdminSerializer(shop).data)
+
+
+class StoreReopenView(views.APIView):
+    """Admin: yopilgan do'konni qayta ochadi.
+
+    Do'kon va uning a'zolari (ega + kassirlar) qayta faollashtiriladi —
+    yopilish vaqtida deaktivlangan edi. Savdo/qarz tarixi arxivda saqlanadi.
+    """
+
+    permission_classes = [IsAdmin]
+
+    def post(self, request, pk):
+        from accounts.models import User as UserModel
+
+        shop = Shop.objects.select_related("owner").filter(pk=pk).first()
+        if not shop:
+            raise NotFound("Do'kon topilmadi.")
+        if shop.is_active:
+            return response.Response(
+                {"detail": "Bu do'kon allaqachon faol."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        shop.is_active = True
+        shop.save(update_fields=["is_active"])
+
+        # Yopilishda deaktivlangan barcha a'zolar qayta ochiladi
+        UserModel.objects.filter(shop=shop).update(is_active=True)
+
+        app = (
+            StoreApplication.objects.filter(
+                created_shop=shop, status=StoreApplication.Status.APPROVED
+            ).first()
+            or shop.applications.first()
+        )
+        if app and app.telegram_chat_id:
+            try:
+                send_message(
+                    app.telegram_chat_id,
+                    f"🏪 <b>{shop.name}</b> — do'koningiz qayta ochildi!\n\n"
+                    "Endi avvalgi login va parol bilan kira olasiz.",
+                )
+            except Exception:  # noqa: BLE001 — Telegram xatosi ochishni buzmaydi
+                pass
+
+        return response.Response(StoreAdminSerializer(shop).data)
