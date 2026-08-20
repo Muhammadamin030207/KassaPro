@@ -339,6 +339,19 @@ class StoreAdminCloseTests(APITestCase):
         resp = self.client.post(f"/api/admin/stores/{self.shop.id}/reopen/")
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_close_does_not_lockout_superadmin_member(self):
+        """Platforma super-admini o'zi bog'langan do'kon yopilganda ham bloklanmaydi."""
+        from accounts.models import User
+
+        self.admin.shop = self.shop
+        self.admin.save(update_fields=["shop"])
+        resp = self.client.post(f"/api/admin/stores/{self.shop.id}/close/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.is_active)
+        self.owner.refresh_from_db()
+        self.assertFalse(self.owner.is_active)
+
 
 class StoreApplicationDecisionTests(APITestCase):
     """Admin: ariza qarorini o'zgartirish (approved/rejected -> pending)."""
@@ -374,3 +387,45 @@ class StoreApplicationDecisionTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.app.refresh_from_db()
         self.assertEqual(self.app.status, "pending")
+
+    def test_patch_cannot_approve_directly(self):
+        """PATCH orqali 'approved' qilish taqiqlanadi — do'kon yaratilmasdan
+        yarim holat yuzaga kelmasligi uchun (tasdiqlash faqat POST /admin/stores/)."""
+        resp = self.client.patch(
+            f"/api/admin/applications/{self.app.id}/",
+            {"status": "approved"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.status, StoreApplication.Status.APPROVED)
+
+    def test_reapprove_reuses_existing_shop_no_duplicate(self):
+        """Reconsider -> pending -> qayta tasdiqlash yangi do'kon YARATMAYDI,
+        mavjud do'kon qayta ochiladi (dublikat himoyasi)."""
+        from shops.models import Shop
+
+        self.client.patch(
+            f"/api/admin/applications/{self.app.id}/",
+            {"status": "pending"},
+            format="json",
+        )
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.status, "pending")
+        before = Shop.objects.count()
+
+        resp = self.client.post(
+            "/api/admin/stores/",
+            {
+                "store_name": "Ariza Do'koni",
+                "owner_name": "Aliyev Alisher",
+                "phone": "+998900000002",
+                "application_id": self.app.id,
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        self.assertEqual(Shop.objects.count(), before)
+        self.assertIn("password", resp.data)
+        self.app.refresh_from_db()
+        self.assertEqual(self.app.status, StoreApplication.Status.APPROVED)

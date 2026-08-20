@@ -98,3 +98,69 @@ class SaleResponseItemsTests(APITestCase):
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0]["product_name"], "Oxirgi")
         self.assertEqual(items[0]["barcode_snapshot"], "OX3")
+
+
+class ProfitSnapshotTests(APITestCase):
+    """Foyda hisoboti: mahsulot stock=0 bo'lib o'chirilganda ham tannarx
+    snapshot'idan to'g'ri hisoblanadi (product FK NULL bo'lib foyda shishmaydi)."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            username="ega", password="xpass1", role=User.Role.OWNER
+        )
+        self.shop = Shop.objects.create(name="Do'kon", owner=self.owner)
+        self.owner.shop = self.shop
+        self.owner.save()
+        self.client.force_authenticate(user=self.owner)
+
+    def test_profit_uses_cost_snapshot_after_auto_delete(self):
+        p = Product.objects.create(
+            shop=self.shop,
+            name="Sotilib tugadi",
+            barcode="FOY1",
+            price=5000,
+            cost_price=1000,
+            stock_qty=1,
+        )
+        resp = self.client.post(
+            "/api/sales/",
+            {"payment_method": "cash", "items": [{"product_id": p.id, "qty": 1}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(Product.objects.filter(id=p.id).exists())
+
+        summary = self.client.get("/api/reports/summary/").json()
+        self.assertEqual(summary["total_profit"], 4000)
+
+    def test_profit_keeps_revenue_after_auto_delete(self):
+        p1 = Product.objects.create(
+            shop=self.shop,
+            name="Birinchi",
+            barcode="FOY2",
+            price=3000,
+            cost_price=1000,
+            stock_qty=1,
+        )
+        p2 = Product.objects.create(
+            shop=self.shop,
+            name="Ikkinchi",
+            barcode="FOY3",
+            price=2000,
+            cost_price=500,
+            stock_qty=1,
+        )
+        self.client.post(
+            "/api/sales/",
+            {
+                "payment_method": "cash",
+                "items": [
+                    {"product_id": p1.id, "qty": 1},
+                    {"product_id": p2.id, "qty": 1},
+                ],
+            },
+            format="json",
+        )
+        summary = self.client.get("/api/reports/summary/").json()
+        self.assertEqual(summary["total_revenue"], 5000)
+        self.assertEqual(summary["total_profit"], 3500)

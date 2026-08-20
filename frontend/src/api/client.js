@@ -2,6 +2,33 @@ import { useAuthStore } from "../stores/authStore";
 
 const BASE = import.meta.env.VITE_API_URL || "/api";
 
+// Access token eskirganda bir vaqtning o'zida kelgan bir nechta so'rov har biri
+// alohida refresh POST yubormasligi uchun bitta promise ulashiladi.
+let refreshPromise = null;
+
+async function refreshTokens() {
+  const { refresh } = useAuthStore.getState();
+  if (!refresh) throw new Error("no-refresh-token");
+  const r = await fetch(`${BASE}/auth/refresh/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh }),
+  });
+  if (!r.ok) throw new Error("refresh-failed");
+  const data = await r.json();
+  useAuthStore.getState().setTokens(data);
+  return data.access;
+}
+
+function dedupeRefresh() {
+  if (!refreshPromise) {
+    refreshPromise = refreshTokens().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
 async function parseJson(res) {
   if (res.status === 204) return null;
   try {
@@ -22,7 +49,7 @@ async function parseJson(res) {
  */
 export async function apiFetch(path, options = {}) {
   const { getState } = useAuthStore;
-  let { access, refresh } = useAuthStore.getState();
+  let { access } = useAuthStore.getState();
 
   const baseOptions = {
     ...options,
@@ -37,20 +64,14 @@ export async function apiFetch(path, options = {}) {
   let body = await parseJson(res);
 
   // 401 — token eskirgan, refresh orqali tiklashga urinamiz.
-  if (res.status === 401 && refresh) {
+  if (res.status === 401 && useAuthStore.getState().refresh) {
     try {
-      const r = await fetch(`${BASE}/auth/refresh/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh }),
-      });
-      if (r.ok) {
-        const data = await r.json();
-        useAuthStore.getState().setTokens(data);
-        baseOptions.headers.Authorization = `Bearer ${data.access}`;
-        res = await fetch(`${BASE}/${path}`, baseOptions);
-        body = await parseJson(res);
-      } else {
+      const access = await dedupeRefresh();
+      baseOptions.headers.Authorization = `Bearer ${access}`;
+      res = await fetch(`${BASE}/${path}`, baseOptions);
+      body = await parseJson(res);
+      if (res.status === 401) {
+        // Refresh'dan keyin ham 401 — sessiya haqiqatan o'lgan, logout qilamiz.
         getState().logout();
       }
     } catch {

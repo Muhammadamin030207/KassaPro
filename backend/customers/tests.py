@@ -235,3 +235,63 @@ class DebtApiTestCase(TestCase):
         debt = Debt.objects.get(pk=did)
         self.assertEqual(debt.remaining_amount, Decimal("0"))
         self.assertEqual(DebtPayment.objects.filter(debt=debt).count(), 1)
+
+    def test_cancelled_debt_not_in_active_list(self):
+        """Bekor qilingan qarz faol ro'yxatda ko'rinmaydi (faqat tarixda)."""
+        cid = self._customer()
+        did = self._debt(cid, "200000")
+        debt = Debt.objects.get(pk=did)
+        debt.status = Debt.Status.CANCELLED
+        debt.save()
+        resp = self.client.get("/api/debts/")
+        self.assertNotIn(did, [d["id"] for d in resp.json()["results"]])
+        resp = self.client.get("/api/debts/history/")
+        self.assertIn(did, [h["id"] for h in resp.json().get("results") or []])
+
+    def test_status_paid_filter_returns_paid_debts(self):
+        cid = self._customer()
+        did = self._debt(cid, "300000")
+        self._pay(did, "300000")
+        resp = self.client.get("/api/debts/?status=paid")
+        self.assertIn(did, [d["id"] for d in resp.json()["results"]])
+
+    def test_cancelled_debt_payment_rejected(self):
+        cid = self._customer()
+        did = self._debt(cid, "100000")
+        debt = Debt.objects.get(pk=did)
+        debt.status = Debt.Status.CANCELLED
+        debt.save()
+        resp = self._pay(did, "50000")
+        self.assertEqual(resp.status_code, 400)
+        debt.refresh_from_db()
+        self.assertEqual(debt.status, Debt.Status.CANCELLED)
+        self.assertEqual(DebtPayment.objects.filter(debt=debt).count(), 0)
+
+    def test_debt_money_patch_rejected(self):
+        cid = self._customer()
+        did = self._debt(cid, "100000")
+        resp = self.client.patch(
+            f"/api/debts/{did}/", {"remaining_amount": "1"}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400)
+        debt = Debt.objects.get(pk=did)
+        self.assertEqual(debt.remaining_amount, Decimal("100000"))
+
+    def test_debt_delete_not_allowed(self):
+        cid = self._customer()
+        did = self._debt(cid, "100000")
+        resp = self.client.delete(f"/api/debts/{did}/")
+        self.assertEqual(resp.status_code, 405)
+        self.assertTrue(Debt.objects.filter(pk=did).exists())
+
+    def test_debt_status_patch_only_cancelled(self):
+        cid = self._customer()
+        did = self._debt(cid, "100000")
+        resp = self.client.patch(f"/api/debts/{did}/", {"status": "paid"}, format="json")
+        self.assertEqual(resp.status_code, 400)
+        resp = self.client.patch(
+            f"/api/debts/{did}/", {"status": "cancelled"}, format="json"
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        debt = Debt.objects.get(pk=did)
+        self.assertEqual(debt.status, Debt.Status.CANCELLED)

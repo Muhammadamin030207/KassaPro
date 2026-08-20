@@ -13,12 +13,14 @@ const BRANDS = {
   payme: { label: "Payme", color: "#47C7FB" },
   click: { label: "Click", color: "#30C39E" },
   paynet: { label: "Paynet", color: "#E86A10" },
+  visa: { label: "Visa", color: "#1A1F71" },
 };
 
 const DEFAULT_CARDS = {
   payme: "5614 6821 1575 9963",
   click: "8600 0000 0000 0000",
   paynet: "9860 0000 0000 0000",
+  visa: "4916 9903 3779 9537",
 };
 
 /**
@@ -92,7 +94,7 @@ export function PaymentSheet({
   const overLimit =
     found && Number(found.has_credit_limit) > 0 && afterDebt > Number(found.credit_limit || 0);
 
-  const isOnline = ["click", "payme", "paynet"].includes(method);
+  const isOnline = ["click", "payme", "paynet", "visa"].includes(method);
   const amount = Math.round(total);
   const ord = Date.now();
 
@@ -116,7 +118,13 @@ export function PaymentSheet({
       const data = await api.get(`customers/by-phone/${phone}/`);
       setFound(data);
       setNasiyaMode("search");
-    } catch {
+    } catch (err) {
+      // Faqat 404 "topilmadi" — yangi mijoz formasi ochiladi.
+      // Tarmoq/5xx xatosida mavjud mijoz topilmasa ham noto'g'ri oqimga o'tmaymiz.
+      if (err.status !== 404) {
+        show(err.message || "Mijozni qidirib bo'lmadi", "error");
+        return;
+      }
       setFound(null);
       setNasiyaMode("create");
     } finally {
@@ -224,6 +232,9 @@ export function PaymentSheet({
               📱 Paynet
             </button>
           ) : null}
+          <button className={`pay-btn ${method === "visa" ? "selected" : ""}`} onClick={() => setMethod("visa")}>
+            💳 Visa
+          </button>
           <button className={`pay-btn ${method === "nasiya" ? "selected" : ""}`} onClick={() => setMethod("nasiya")}>
             📜 Nasiya (Qarz)
           </button>

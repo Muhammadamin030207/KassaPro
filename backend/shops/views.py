@@ -280,8 +280,10 @@ class StoreCloseView(views.APIView):
         shop.is_active = False
         shop.save(update_fields=["is_active"])
 
-        # Do'konning barcha a'zolari (ega + kassirlar) deaktiv — kirish bloklanadi
-        members = UserModel.objects.filter(shop=shop)
+        # Do'konning barcha a'zolari (ega + kassirlar) deaktiv — kirish bloklanadi.
+        # Platforma super-admini hech qachon bloklanmaydi (is_superuser) —
+        # aks holda admin o'zi bog'langan do'kon yopilganda lockout bo'lardi.
+        members = UserModel.objects.filter(shop=shop, is_superuser=False)
         members.update(is_active=False)
         Device.objects.filter(user__in=members).delete()
         shop = Shop.objects.select_related("owner").get(pk=shop.pk)

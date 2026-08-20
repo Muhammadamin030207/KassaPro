@@ -59,6 +59,8 @@ export function CashierPage() {
   const inputRef = useRef(null);
   const quickNameRef = useRef(null);
   const quickPriceRef = useRef(null);
+  // Sotuv yakunlashda dublikat so'rov oldini oladi (double-submit).
+  const submittingRef = useRef(false);
   // Bitta skan → bitta action (Enter + avtoaniqlash yoki dublikat keydown'ni yutadi)
   const lastScanRef = useRef({ code: "", at: 0 });
   const user = useAuthStore((s) => s.user);
@@ -175,7 +177,29 @@ export function CashierPage() {
       show("Nom va narx kiritilishi shart", "error");
       return;
     }
+    const barcode = quickBarcode.trim().toLowerCase();
     try {
+      // Muhim himoya: by-barcode reytingda faqat is_active va stock>0 mahsulotlar
+      // topiladi. Bazada shu kod bilan LEKIN aktiv emas/stock=0 mahsulot bor bo'lsa
+      // (masalan owner tugatgan) — upsert uni ustiga yozib, stokni 1 qilib "qayta
+      // tiriltirardi". Buni oldini olamiz — bunday mahsulotni chekka qo'shmaymiz.
+      const existing = await api.list("products/", { barcode: quickBarcode.trim(), page_size: 5 });
+      const found = (existing.results || existing).find(
+        (p) => String(p.barcode || "").trim().toLowerCase() === barcode
+      );
+      if (found) {
+        playBarcodeError();
+        show(
+          `"${found.name}" bazada bor (zahira: ${Number(found.stock_qty) || 0}, ${found.is_active ? "aktiv" : "aktiv EMAS"}). Kassa qidiruvi faqat zahirasi bor mahsulotlarni ko'radi — "Mahsulotlar" bo'limidan yangilang.`,
+          "info",
+          4500
+        );
+        setQuickBarcode("");
+        setQuickName("");
+        setQuickPrice("");
+        inputRef.current?.focus();
+        return;
+      }
       const product = await api.put("products/upsert-by-barcode/", {
         barcode: quickBarcode.trim(),
         name: quickName.trim(),
@@ -223,6 +247,9 @@ export function CashierPage() {
   // Sotuvni yakunlash (asosiy API chaqiruvi)
   const checkout = async (customer, method = payment, cashReceived, change, dueDate, forceCredit = false) => {
     if (!hasItems) return;
+    // Double-submit himoyasi: tugma tez ikki marta bosilganda bitta so'rov ketadi.
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setPaying(true);
     setPayOpen(false);
     try {
@@ -234,6 +261,7 @@ export function CashierPage() {
         const phone = customer?.phone;
         if (!phone) {
           setPaying(false);
+          submittingRef.current = false;
           show("Nasiya uchun mijoz telefonini tanlang", "error");
           return;
         }
@@ -269,6 +297,7 @@ export function CashierPage() {
         );
         if (ok) {
           setPaying(false);
+          submittingRef.current = false; // qayta urinishga yo'l ochamiz
           checkout(customer, method, cashReceived, change, dueDate, true);
           return;
         }
@@ -276,6 +305,7 @@ export function CashierPage() {
       show(err.message, "error");
     } finally {
       setPaying(false);
+      submittingRef.current = false;
     }
   };
 

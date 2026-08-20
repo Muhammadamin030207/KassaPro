@@ -140,6 +140,7 @@ class SaleCreateSerializer(serializers.Serializer):
                         "product_name_snapshot": product.name,
                         "barcode_snapshot": product.barcode,
                         "price_snapshot": product.price,
+                        "cost_price_snapshot": product.cost_price,
                     },
                 }
             )
@@ -166,6 +167,9 @@ class SaleCreateSerializer(serializers.Serializer):
                     or phone
                 },
             )
+            # Kredit limiti tekshiruvi nisbati uchun mijoz satrini qulflaymiz —
+            # ikki parallel nasiya savdosi ham limitdan oshib keta olmaydi.
+            customer = Customer.objects.select_for_update().get(pk=customer.pk)
             sale.customer = customer
             sale.save(update_fields=["customer"])
 
@@ -265,8 +269,9 @@ class SaleSerializer(serializers.ModelSerializer):
         return obj.cashier.username if obj.cashier else ""
 
     def get_debt_due_date(self, obj):
+        # To'langan qarzda muddat ko'rsatilmaydi — faqat ochiq/qarz qolgan holatda.
         debt = obj.debts.exclude(
-            status__in=[Debt.Status.CANCELLED]
+            status__in=[Debt.Status.CANCELLED, Debt.Status.PAID]
         ).first()
         return str(debt.due_date) if debt else None
 

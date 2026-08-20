@@ -51,6 +51,11 @@ class SaleItem(models.Model):
     product_name_snapshot = models.CharField(max_length=255)
     barcode_snapshot = models.CharField(max_length=64)
     price_snapshot = models.DecimalField(max_digits=12, decimal_places=2)
+    # Tannarx snapshot: mahsulot stock=0 bo'lib avtomatik o'chirilganda ham
+    # foyda hisobotida to'g'ri tannarx saqlanadi (product FK SET_NULL bo'ladi).
+    cost_price_snapshot = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True
+    )
     qty = models.DecimalField(max_digits=10, decimal_places=2)
     subtotal = models.DecimalField(max_digits=14, decimal_places=2)
 

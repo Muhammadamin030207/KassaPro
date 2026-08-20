@@ -180,6 +180,7 @@ class SummaryReportView(views.APIView):
         )
         profit = items.annotate(
             cost_snapshot=Coalesce(
+                F("cost_price_snapshot"),
                 F("product__cost_price"),
                 Decimal("0"),
                 output_field=DecimalField(max_digits=12, decimal_places=2),

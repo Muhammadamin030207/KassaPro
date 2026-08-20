@@ -134,7 +134,8 @@ def format_customer_application_message(app, base_url="https://smartkassa-1.onre
 def contact_info():
     """/contact uchun — project config (env) dan o'qiladi, fake data yo'q."""
     phone = os.environ.get("CONTACT_PHONE", "").strip()
-    telegram = os.environ.get("CONTACT_TELEGRAM", "").strip() or "KassaPro_001_bot"
+    # Fallback: KassaPro bot'ning o'zi (telefon raqami Telegram handle sifatida ko'rsatilmasin).
+    telegram = os.environ.get("CONTACT_TELEGRAM", "").strip() or "@KassaPro_001_bot"
     website = os.environ.get("CONTACT_WEBSITE", "").strip() or "https://smartkassa-1.onrender.com"
     return {"phone": phone, "telegram": telegram, "website": website}
 

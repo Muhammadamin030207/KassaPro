@@ -112,6 +112,14 @@ export function ProductsPage() {
       show("Barcha maydonlar to'ldirilishi shart", "error");
       return;
     }
+    // Zahira 0 = mahsulot avtomatik o'chiriladi (stock=0 auto-delete).
+    // Tarix snapshot'da saqlanadi, lekin foydalanuvchi buni bila turib qilishi kerak.
+    if (payload.stock_qty <= 0) {
+      const ok = window.confirm(
+        `Diqqat: miqdor 0 bo'lsa "${payload.name}" bazadan o'chiriladi (sotuv tarixi saqlanadi). Davom etasizmi?`
+      );
+      if (!ok) return;
+    }
 
     try {
       await api.put(`products/upsert-by-barcode/`, payload);
@@ -381,6 +389,11 @@ export function ProductsPage() {
                 onKeyDown={handleFormKeyDown}
                 ref={saleRef}
               />
+              {String(form?.stock_qty || "") === "0" && (
+                <div className="field-warn" style={{ marginTop: 6 }}>
+                  Diqqat: miqdor 0 bo'lsa mahsulot bazadan o'chiriladi (sotuv tarixi snapshot'da saqlanadi).
+                </div>
+              )}
             </div>
             <div className="grid-2">
               <button type="button" className="btn btn-ghost" onClick={() => setFormOpen(false)}>

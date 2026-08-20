@@ -110,10 +110,12 @@ export function AdminPanelPage() {
       });
       setCreatedUser(data);
       show("Do'kon yaratildi!", "success");
-      setCreateOpen(false);
+      // Modal YOPILMAYDI — kredensiallar ekranda ko'rsatilishi shart.
+      // (Login/parolni saqlash imkoniyati bo'lmasa, parol tiklash qiyin.)
       setApproveApp(null);
       setForm({ store_name: "", owner_name: "", phone: "", address: "", telegram_chat_id: "" });
       loadStores();
+      loadApps();
     } catch (err) {
       show(err.message || "Yaratishda xatolik", "error");
     } finally {

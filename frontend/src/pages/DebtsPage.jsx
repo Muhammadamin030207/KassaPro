@@ -172,7 +172,10 @@ export function DebtsPage() {
       let customer = null;
       try {
         customer = await api.get(`customers/by-phone/${encodeURIComponent(phone)}/`);
-      } catch {
+      } catch (err) {
+        // Faqat 404 "topilmadi" degani — yangi mijoz yaratamiz.
+        // Tarmoq/5xx xatosida esa bunday qilmang (chalkashmaslik uchun).
+        if (err.status !== 404) throw err;
         customer = await api.post("customers/", { name: newName.trim() || phone, phone });
       }
       await api.post("debts/", {

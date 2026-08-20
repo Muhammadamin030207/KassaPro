@@ -130,42 +130,37 @@ class DebtListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         shop = self.request.user.shop
-        # Asosiy qoida: faqat ochiq (remaining_amount > 0) qarzlar.
-        # PAID/CANCELLED — history endpointida.
-        qs = (
-            Debt.objects.filter(shop=shop, remaining_amount__gt=0)
-            .select_related("customer", "sale")
-            .order_by("due_date", "-created_at")
-        )
         params = self.request.query_params
         today = timezone.localdate()
         status_value = params.get("status", "").strip()
-        if status_value:
-            # effective_status logikasini DB darajasida qo'llash
-            settled = [Debt.Status.PAID, Debt.Status.CANCELLED]
+        settled = [Debt.Status.PAID, Debt.Status.CANCELLED]
+
+        # Asosiy qoida: bu ro'yxat faqat ochiq qarzlar (remaining > 0, CANCELLED tashqari).
+        # PAID/CANCELLED — history endpointida; ?status=paid alohida qaytaradi
+        # (remaining_amount__gt=0 bazasi bilan ziddiyatga tushmasligi uchun).
+        if status_value == Debt.Status.PAID:
+            qs = Debt.objects.filter(shop=shop, status=Debt.Status.PAID)
+        else:
+            qs = Debt.objects.filter(shop=shop, remaining_amount__gt=0).exclude(
+                status=Debt.Status.CANCELLED
+            )
             if status_value == Debt.Status.OVERDUE:
-                qs = qs.exclude(status__in=settled).filter(
-                    remaining_amount__gt=0, due_date__lt=today
-                )
-            elif status_value == Debt.Status.PAID:
-                qs = qs.filter(remaining_amount__lte=0)
+                qs = qs.exclude(status__in=settled).filter(due_date__lt=today)
             elif status_value == Debt.Status.CANCELLED:
-                qs = qs.filter(status=Debt.Status.CANCELLED)
+                qs = Debt.objects.filter(shop=shop, status=Debt.Status.CANCELLED)
             elif status_value == Debt.Status.ACTIVE:
                 qs = qs.exclude(status__in=settled).filter(
-                    remaining_amount__gt=0,
                     remaining_amount=F("original_amount"),
                     due_date__gte=today,
                 )
             elif status_value == Debt.Status.PARTIALLY_PAID:
                 qs = qs.exclude(status__in=settled).filter(
-                    remaining_amount__gt=0,
                     remaining_amount__lt=F("original_amount"),
                     due_date__gte=today,
                 )
+        qs = qs.select_related("customer", "sale").order_by("due_date", "-created_at")
+
         due = params.get("due", "").strip()
-        today = timezone.localdate()
-        settled = [Debt.Status.PAID, Debt.Status.CANCELLED]
         overdue_q = qs.exclude(status__in=settled).filter(
             remaining_amount__gt=0, due_date__lt=today
         )
@@ -202,12 +197,54 @@ class DebtListCreateView(generics.ListCreateAPIView):
         return qs
 
 
-class DebtDetailView(generics.RetrieveUpdateDestroyAPIView):
+class DebtDetailView(generics.RetrieveUpdateAPIView):
+    """Qarz tafsilotlari.
+
+    Moliyaviy ma'lumot tarixiy ahamiyatga ega (Debt model docstring):
+      - summalarni (original_amount/remaining_amount) bevosita o'zgartirish TAQIQLANADI —
+        to'lov faqat POST /payments/ orqali qabul qilinadi;
+      - DELETE ruxsat etilmaydi (405) — bekor qilish status='cancelled' bilan;
+      - status faqat 'cancelled' (bekor qilish) ga o'zgartirilishi mumkin.
+    """
+
     permission_classes = [IsShopMember]
     serializer_class = DebtDetailSerializer
 
     def get_queryset(self):
         return Debt.objects.filter(shop=self.request.user.shop)
+
+    def patch(self, request, *args, **kwargs):
+        data = request.data or {}
+        for field in ("original_amount", "remaining_amount", "paid_amount"):
+            if field in data:
+                return response.Response(
+                    {
+                        "detail": (
+                            f"'{field}'ni to'g'ridan-to'g'ri o'zgartirib bo'lmaydi. "
+                            "To'lov /debts/<id>/payments/ orqali qabul qilinadi."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        new_status = data.get("status")
+        if new_status is not None:
+            if new_status != Debt.Status.CANCELLED:
+                return response.Response(
+                    {
+                        "detail": (
+                            "Statusni faqat 'cancelled' (bekor qilish) holatiga "
+                            "o'zgartirish mumkin."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            debt = self.get_object()
+            if debt.effective_status in (Debt.Status.PAID, Debt.Status.CANCELLED):
+                return response.Response(
+                    {"detail": "Yopilgan qarzni bekor qilib bo'lmaydi."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        return super().patch(request, *args, **kwargs)
 
 
 class DebtHistoryView(generics.ListAPIView):
@@ -263,6 +300,11 @@ class DebtPaymentView(views.APIView):
             if debt.remaining_amount <= 0:
                 return response.Response(
                     {"detail": "Qarz allaqachon to'langan."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if debt.status == Debt.Status.CANCELLED:
+                return response.Response(
+                    {"detail": "Bekor qilingan qarzga to'lov qabul qilinmaydi."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             if amount > debt.remaining_amount:

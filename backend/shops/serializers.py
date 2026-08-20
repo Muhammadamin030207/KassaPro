@@ -20,6 +20,13 @@ class ApplicationPatchSerializer(serializers.ModelSerializer):
         choices = [c for c, _ in StoreApplication.Status.choices]
         if value not in choices:
             raise serializers.ValidationError("Noto'g'ri status.")
+        # Tasdiqlash faqat POST /api/admin/stores/ orqali amalga oshiriladi
+        # (o'sha joyda do'kon + owner yaratiladi). PATCH orqali 'approved'
+        # qilinsa — do'kon yaratilmagan yarim holat yuzaga keladi.
+        if value == StoreApplication.Status.APPROVED:
+            raise serializers.ValidationError(
+                "Tasdiqlash faqat do'kon yaratish orqali amalga oshiriladi."
+            )
         return value
 
 
@@ -217,6 +224,7 @@ class StoreCreateSerializer(serializers.Serializer):
     @transaction.atomic
     def create(self, validated_data):
         application_id = validated_data.get("application_id")
+        app = None
         if application_id:
             app = StoreApplication.objects.filter(id=application_id).first()
             if not app:
@@ -229,6 +237,30 @@ class StoreCreateSerializer(serializers.Serializer):
                 )
 
         phone = validated_data.get("phone", "")
+
+        # Qayta tasdiqlash (reconsider): ariza avval do'kon yaratgan bo'lsa —
+        # yangi do'kon/owner yaratish o'rniga mavjudini qayta ochamiz.
+        # Aks holda har qayta tasdiqlashda dublikat do'kon paydo bo'lardi.
+        if app and app.created_shop_id:
+            shop = Shop.objects.select_related("owner").get(pk=app.created_shop_id)
+            user = shop.owner
+            user.first_name = validated_data["owner_name"]
+            if phone:
+                user.phone = phone
+            user.is_active = True
+            user.set_password(validated_data["password"])
+            user.save(update_fields=["first_name", "phone", "is_active", "password"])
+            shop.name = validated_data["store_name"]
+            shop.is_active = True
+            shop.save(update_fields=["name", "is_active"])
+            StoreApplication.objects.filter(id=app.id).update(
+                status=StoreApplication.Status.APPROVED,
+                processed_at=timezone.now(),
+                created_shop=shop,
+            )
+            user._generated_password = validated_data["password"]
+            return user
+
         user = User.objects.create_user(
             username=validated_data["username"],
             password=validated_data["password"],

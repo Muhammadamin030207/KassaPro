@@ -63,7 +63,20 @@ class TelegramWebhookView(APIView):
         callback = (update or {}).get("callback_query") or {}
         message = (update or {}).get("message") or {}
         if callback:
-            return self.handle_callback(callback)
+            # Callback ishlovchisi ham xatoliklardan himoyalanadi — Telegram
+            # 500 qaytganda webhook'ni qayta yuboradi (va duplikat amal bo'lishi mumkin).
+            try:
+                return self.handle_callback(callback)
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("bot handle_callback failed")
+                callback_chat = (callback.get("message") or {}).get("chat") or {}
+                BotLog.objects.create(
+                    chat_id=callback_chat.get("id"),
+                    text=str(callback.get("data") or "callback")[:1000],
+                    error=str(exc)[:2000],
+                )
+                answer_callback_query(callback.get("id"))
+                return Response(status=status.HTTP_200_OK)
         chat = message.get("chat") or {}
         chat_id = chat.get("id")
         text = (message.get("text") or "").strip()
@@ -164,6 +177,14 @@ class TelegramWebhookView(APIView):
         session.app_phone = ""
         session.app_message = ""
         session.app_note = ""
+        # Do'kon arizasi flow'ini ham to'liq tozalaymiz — "Bekor qilish"
+        # tugmasi bosilgach keyingi ixtiyoriy matn ariza bosqichi deb
+        # qabul qilinmasligi uchun (eski `step` qolib ketmasligi).
+        session.step = ""
+        session.store_name = ""
+        session.owner_name = ""
+        session.phone = ""
+        session.address = ""
         session.save()
 
     # ---------------------------------------------------------------- commands

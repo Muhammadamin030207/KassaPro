@@ -50,13 +50,15 @@ export function PhoneInputMask({
   // Backend kutgan formatga tyuring: +998 + 9 raqam
   const handleChange = (e) => {
     const raw = e.target.value;
-    const rawDigits = raw.replace(/\D/g, "");
-    let n = rawDigits.startsWith("998")
-      ? rawDigits
-      : rawDigits.startsWith("8")
-        ? "998" + rawDigits.slice(1)
-        : "998" + rawDigits;
-    if (!rawDigits) n = "";
+    let rawDigits = raw.replace(/\D/g, "");
+    // O'zimizga tegishli prefixni ('998' yoki '8') birinchi olib tashlaymiz —
+    // qolgani lokl raqamlar. Prefix sohasini tahrirlashda (Backspace/typing)
+    // "998" ikki marta yopishtirilib, qiymat 13-14 xonaga o'sib ketmasligi uchun.
+    if (rawDigits.startsWith("998")) rawDigits = rawDigits.slice(3);
+    else if (rawDigits.startsWith("8")) rawDigits = rawDigits.slice(1);
+    // Ikkinchi ehtimoliy "998" qoldig'ini ham tozalaymiz va 9 xonaga cheklaymiz.
+    rawDigits = rawDigits.replace(/^998/, "").slice(0, 9);
+    const n = rawDigits ? "998" + rawDigits : "";
     onChange(n);
   };
 
