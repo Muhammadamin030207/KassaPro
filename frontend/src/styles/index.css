@@ -208,92 +208,6 @@ select {
   left: 12%;
 }
 
-.scene-card {
-  position: absolute;
-  width: 210px;
-  height: 296px;
-  border-radius: 22px;
-  background: linear-gradient(150deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.02));
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
-  transform-style: preserve-3d;
-}
-
-.scene-card .sc-bars {
-  position: absolute;
-  left: 20px;
-  right: 20px;
-  top: 96px;
-  height: 74px;
-  background: repeating-linear-gradient(90deg, var(--ink) 0 4px, transparent 4px 8px, var(--ink) 8px 10px, transparent 10px 14px, var(--ink) 14px 19px, transparent 19px 21px);
-  opacity: 0.85;
-}
-
-.scene-card .sc-line {
-  position: absolute;
-  left: 20px;
-  right: 20px;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--brand-light), transparent);
-  opacity: 0.8;
-}
-
-.sc-new {
-  --tilt-x: -14deg;
-  --tilt-y: 10deg;
-  position: absolute;
-  top: 13%;
-  right: 9%;
-  animation: cardFloat 9s ease-in-out infinite;
-  opacity: 0;
-}
-
-.sc-new .sc-name-holder {
-  position: absolute;
-  top: 26px;
-  left: 20px;
-  color: var(--ink-soft);
-  font-family: var(--font-head);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-
-.sc-new .sc-amount {
-  position: absolute;
-  bottom: 22px;
-  left: 20px;
-  font-family: var(--font-mono);
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--brand-light);
-}
-
-.sc-pos {
-  --tilt-x: 11deg;
-  --tilt-y: -8deg;
-  position: absolute;
-  bottom: 8%;
-  left: 6%;
-  animation: cardFloat 11s ease-in-out infinite reverse;
-  opacity: 0;
-}
-
-.sc-pos .sc-chip {
-  position: absolute;
-  top: 26px;
-  left: 20px;
-  width: 36px;
-  height: 26px;
-  border-radius: 6px;
-  background: linear-gradient(120deg, var(--gold), #b8903c);
-}
-
-@keyframes cardFloat {
-  0%, 100% { transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) translateY(0); }
-  50% { transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) translateY(-26px); }
-}
-
 /* ---------- Layout ---------- */
 .app-shell {
   position: relative;
@@ -2776,9 +2690,6 @@ table.data tbody tr:hover {
   }
   .grid-2 {
     grid-template-columns: 1fr;
-  }
-  .scene-card {
-    display: none;
   }
 }
 
