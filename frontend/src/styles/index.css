@@ -40,7 +40,8 @@
 html,
 body,
 #root {
-  height: 100%;
+  height: auto;
+  min-height: 100%;
 }
 
 body {
@@ -1772,7 +1773,7 @@ table.data tbody tr:hover {
   display: grid;
   place-items: center;
   box-shadow: 0 0 60px rgba(99, 102, 241, 0.6), 0 20px 50px rgba(0, 0, 0, 0.4);
-  color: #04231a;
+  color: #10131c;
   margin-bottom: 26px;
 }
 
@@ -2497,7 +2498,7 @@ table.data tbody tr:hover {
 
 .camera-btn:hover {
   background: linear-gradient(135deg, var(--brand-light), var(--brand));
-  color: #04231a;
+  color: #10131c;
   transform: translateY(-2px);
   box-shadow: 0 12px 34px rgba(99, 102, 241, 0.38);
 }
@@ -2568,7 +2569,7 @@ table.data tbody tr:hover {
   display: grid;
   place-items: center;
   background: linear-gradient(135deg, var(--brand), var(--brand-light));
-  color: #04231a;
+  color: #10131c;
   font-weight: 800;
   font-size: 16px;
   box-shadow: 0 0 18px rgba(99, 102, 241, 0.32);
