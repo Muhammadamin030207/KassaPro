@@ -73,7 +73,8 @@ class CommandHandlerTests(TestCase):
         run_message(self.view, "/contact")
         text = mock_send.call_args[0][1]
         self.assertIn("KassaPro bilan bog'lanish", text)
-        self.assertIn("@KassaPro_001_bot", text)
+        self.assertIn("@uzb000777uz", text)
+        self.assertNotIn("@@", text)  # handle faqat bitta '@' bilan
         self.assertNotIn("Telefon", text)  # CONTACT_PHONE o'rnatilmagan -> fake yo'q
 
     def test_main_keyboard_has_all_buttons(self):

@@ -273,7 +273,10 @@ class TelegramWebhookView(APIView):
         lines = ["📞 <b>KassaPro bilan bog'lanish</b>\n\n", "Savollar yoki muammolar bo'yicha biz bilan bog'lanishingiz mumkin:"]
         if info["phone"]:
             lines.append(f"📱 Telefon: <code>{info['phone']}</code>")
-        lines.append(f"💬 Telegram: <b>@{info['telegram']}</b>")
+        # Telegram handle faqat bitta '@' bilan ko'rsatiladi (config'da '@' bo'lsin yoki yo'q).
+        telegram = (info["telegram"] or "").lstrip("@")
+        if telegram:
+            lines.append(f"💬 Telegram: <b>@{telegram}</b>")
         lines.append(f"🌐 Sayt: <a href='{info['website']}'>{info['website']}</a>")
         lines.append("\nTezroq javob uchun /application orqali ariza qoldiring.")
         send_message(chat_id, "\n".join(lines))
