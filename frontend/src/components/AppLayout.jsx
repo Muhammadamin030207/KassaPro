@@ -85,11 +85,38 @@ export function AppLayout({ children }) {
       {/* Mobile header — faqat <768px da ko'rinadi */}
       <header className="mobile-header">
         <button
-          className="hamburger-btn"
-          onClick={() => setDrawerOpen(true)}
-          aria-label="Menyuni ochish"
+          className={`hamburger-btn${drawerOpen ? " is-open" : ""}`}
+          onClick={() => setDrawerOpen((v) => !v)}
+          aria-label={drawerOpen ? "Menyuni yopish" : "Menyuni ochish"}
+          aria-expanded={drawerOpen}
         >
-          <Icon name="menu" />
+          <span className="hamburger-icon">
+            <AnimatePresence mode="wait" initial={false}>
+              {drawerOpen ? (
+                <motion.span
+                  key="close"
+                  initial={{ rotate: -90, scale: 0.6, opacity: 0 }}
+                  animate={{ rotate: 0, scale: 1, opacity: 1 }}
+                  exit={{ rotate: 90, scale: 0.6, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 26 }}
+                  className="hamburger-ico"
+                >
+                  <Icon name="x" />
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="open"
+                  initial={{ rotate: 90, scale: 0.6, opacity: 0 }}
+                  animate={{ rotate: 0, scale: 1, opacity: 1 }}
+                  exit={{ rotate: -90, scale: 0.6, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 26 }}
+                  className="hamburger-ico"
+                >
+                  <Icon name="menu" />
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </span>
         </button>
         <span className="mobile-logo">
           <img src="/favicon.svg" alt="KassaPro" />

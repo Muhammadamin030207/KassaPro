@@ -2543,6 +2543,29 @@ table.data tbody tr:hover {
   color: var(--brand-light);
 }
 
+.hamburger-btn.is-open {
+  background: rgba(99, 102, 241, 0.14);
+  border-color: rgba(99, 102, 241, 0.55);
+  color: var(--brand-light);
+}
+
+.hamburger-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  position: relative;
+}
+
+.hamburger-ico {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .mobile-logo {
   display: inline-flex;
   align-items: center;
