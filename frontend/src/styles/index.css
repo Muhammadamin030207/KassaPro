@@ -2970,6 +2970,7 @@ body {
   }
   .cashier-layout .receipt-row-wrap {
     flex-direction: column !important;
+    flex-wrap: nowrap !important;
   }
 }
 
@@ -3173,6 +3174,9 @@ html, body, #root {
     flex: 1 1 0 !important;
     min-height: 0 !important;
     flex-direction: column !important;
+    /* JSX inline `flex-wrap: wrap` + column = pay-zone ikkinchi ustunga chiqib
+       chek ustiga tushardi (overlap). Mobile'da doim bitta ustun. */
+    flex-wrap: nowrap !important;
     gap: 10px !important;
     overflow: visible;
   }
