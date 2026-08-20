@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { apiFetch } from "../api/client";
+import { Icon } from "../components/Icon";
 import { useAuthStore } from "../stores/authStore";
 
 /**
@@ -27,9 +28,9 @@ function getInitData() {
 }
 
 const STATUS_STYLE = {
-  pending: { emoji: "🟡", label: "Kutilmoqda" },
-  approved: { emoji: "🟢", label: "Tasdiqlangan" },
-  rejected: { emoji: "🔴", label: "Rad etilgan" },
+  pending: { icon: "clock", label: "Kutilmoqda" },
+  approved: { icon: "check", label: "Tasdiqlangan" },
+  rejected: { icon: "x", label: "Rad etilgan" },
 };
 
 export function MiniAppPage() {
@@ -100,7 +101,7 @@ export function MiniAppPage() {
     }
   };
 
-  const st = STATUS_STYLE[state.app?.status] || { emoji: "❓", label: "Noma'lum" };
+  const st = STATUS_STYLE[state.app?.status] || { icon: "alert", label: "Noma'lum" };
 
   return (
     <div className="miniapp-page">
@@ -160,8 +161,9 @@ export function MiniAppPage() {
                 </div>
                 <div className="miniapp-app-row">
                   <span className="muted">Holat</span>
-                  <span className={`status-pill status-${state.app.status}`}>
-                    {st.emoji} {state.app.status_display || st.label}
+                  <span className={`status-icon status-icon-${state.app.status}`}>
+                    <Icon name={st.icon} />
+                    {state.app.status_display || st.label}
                   </span>
                 </div>
                 {state.app.note && (
@@ -178,21 +180,23 @@ export function MiniAppPage() {
             )}
 
             {state.app?.status === "pending" && (
-              <p className="muted small" style={{ marginTop: 12 }}>
-                ⏳ Admin tasdiqlashini kuting. Tasdiqlangach login/parol shu
+              <p className="muted small status-hint" style={{ marginTop: 12 }}>
+                <span className="status-icon status-icon-pending"><Icon name="clock" /></span>
+                Admin tasdiqlashini kuting. Tasdiqlangach login/parol shu
                 bot chatga yuboriladi.
               </p>
             )}
             {state.app?.status === "rejected" && (
-              <p className="muted small" style={{ marginTop: 12 }}>
-                ❌ Arizangiz rad etilgan. Yangi ariza qoldirish uchun botda
+              <p className="muted small status-hint" style={{ marginTop: 12 }}>
+                <span className="status-icon status-icon-rejected"><Icon name="x" /></span>
+                Arizangiz rad etilgan. Yangi ariza qoldirish uchun botda
                 «Do'kon arizasi» tugmasini bosing.
               </p>
             )}
 
             {state.canLogin && (
               <button className="btn btn-primary btn-block btn-lg" onClick={autoLogin}>
-                🔓 Kirishni sinab ko'rish
+                <Icon name="check" /> Kirishni sinab ko'rish
               </button>
             )}
 
