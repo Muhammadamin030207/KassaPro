@@ -3084,86 +3084,76 @@ html, body, #root {
   min-width: 0;
 }
 
-/* ---------- Mobile: fixed-height Kassa frame (chek doim ko'rinadi) ---------- */
+/* ======================================================================
+   MOBIL KASSA — bitta vertikal, tabiiy oqim (1.2-band QAT'IY talabi)
+   Tartib: Sarlavha/skan → [tezkor qo'shish paneli] → Chek → Jami →
+   to'lov turlari → To'lov tugmasi. Hech narsa fixed/absolute EMAS —
+   hamma narsa normal document flow'da, ustma-ust tushmaydi.
+   ====================================================================== */
 @media (max-width: 768px) {
+  /* Sahifa o'zi scroll qiladi; har qanday ekran balandligida hamma
+     blok lar ketma-ket, to'liq ko'rinadi. */
   .cashier-page {
-    display: flex;
-    flex-direction: column;
-    /* mobile-header (65px) + main padding (28px) dan toza viewport */
-    height: calc(100vh - 93px);
-    height: calc(100dvh - 93px);
+    height: auto;
     min-height: 0;
-    /* To'lov bloki endi normal flow'da (fixed emas) — kichik ekranda
-       bo'lishi uchun sahifa scroll bo'la oladi (hech narsa yo'qolmaydi),
-       katta ekranda esa hammasi bitta ramkaga sig'adi. */
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: visible;
   }
 
   .cashier-page .page-head {
-    flex: 0 0 auto;
     margin-bottom: 12px;
   }
 
   .cashier-layout {
     display: flex;
     flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 0;
+    align-items: stretch;
     height: auto;
+    min-height: 0;
     gap: 12px;
     overflow: visible;
   }
 
   .scan-zone {
-    position: relative;
     display: flex;
     flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 0;
+    align-items: stretch;
     height: auto;
+    min-height: 0;
     gap: 12px;
     overflow: visible;
   }
 
-  /* Skan satri va kamera tugmasi — yuqorida o'zgarmas */
+  /* Skan satri va kamera tugmasi — eng tepada */
   .scan-zone > div:first-child {
     flex: 0 0 auto;
   }
 
-  /* Nomavjud mahsulot paneli — flow'ni BUZMAYDI: skan satri ustiga
-     suzib chiqadi (overlay), chek bloki hech qachon pastga surilmaydi.
-     Katta bo'lsa ichida scroll qiladi, banner hech qachon tugmalarni bekitmaydi. */
+  /* Tezkor qo'shish paneli — oddiy flow element: skan satri ostida
+     natural ravishda ochiladi, chek esa keyin keladi. Hech bir blok
+     ikkinchisini yopmaydi. */
   .scan-zone .quick-add-panel {
-    position: absolute;
-    top: calc(100% + 0px);
-    left: 0;
-    right: 0;
-    z-index: 60;
-    max-height: min(46dvh, 340px);
-    overflow-y: auto;
+    position: static !important;
+    width: 100%;
+    margin: 0;
+    max-height: none;
+    overflow: visible;
     background: #0f172a;
     border: 1px solid #1e293b;
     border-radius: 16px;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
-    margin-top: -8px;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.4);
   }
   .scan-zone .quick-add-panel .quick-add-head {
-    position: sticky;
-    top: 0;
-    background: #0f172a;
+    position: static;
+    background: transparent;
     padding: 12px 14px;
-    z-index: 1;
   }
   .scan-zone .quick-add-panel .pnf-body {
-    max-height: 40dvh;
-    overflow-y: auto;
+    max-height: none;
+    overflow: visible;
   }
 
-  /* Chek konteyneri — qolgan balandlikning hammasini oladi, chek ichida scroll */
+  /* Chek konteyneri */
   .cashier-layout > .scan-zone .card.glass-panel {
-    flex: 1 1 0 !important;
-    min-height: 0 !important;
     display: flex;
     flex-direction: column;
     padding: 14px;
@@ -3171,42 +3161,35 @@ html, body, #root {
   }
 
   .cashier-layout .receipt-row-wrap {
-    flex: 1 1 0 !important;
-    min-height: 0 !important;
     flex-direction: column !important;
-    /* JSX inline `flex-wrap: wrap` + column = pay-zone ikkinchi ustunga chiqib
-       chek ustiga tushardi (overlap). Mobile'da doim bitta ustun. */
     flex-wrap: nowrap !important;
+    align-items: stretch !important;
     gap: 10px !important;
     overflow: visible;
   }
 
   .cashier-layout .receipt-area {
-    flex: 1 1 0 !important;
-    min-height: 220px !important;
     width: 100% !important;
     max-width: 100% !important;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .cashier-layout .receipt-area .receipt-tape {
-    height: 100%;
+    height: auto;
     transform: none;
-    /* To'lov bloki endi normal flow'da — tape hech qanday clearance
-       hack kerak emas, ichida receipt-items scroll qiladi. */
     padding-bottom: 12px;
   }
 
+  /* Chek mahsulotlari — ko'p bo'lsa faqat shu blok ichida scroll
+     (max-height + overflow-y), Jami/to'lov esa kerakli joyda turadi. */
   .receipt-tape .receipt-items {
-    flex: 1 1 0;
-    min-height: 0;
+    max-height: 38dvh;
+    min-height: 120px;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
 
-  /* ===== To'lov bloki — NORMAL FLOW (fixed/absolute EMAS) ===== */
-  /* 1.2-band talabi: Chek → Jami summa → to'lov turlari → To'lov tugmasi
-     bitta vertikal flex oqimda, ustma-ust tushmasdan. To'lov bloki chekdan
-     KEYIN keladi va uning matnini hech qachon yopmaydi. */
+  /* ===== Jami + to'lov — normal flow, chekdan KEYIN ===== */
   .cashier-layout .pay-zone {
     flex: 0 0 auto !important;
     width: 100% !important;
@@ -3217,13 +3200,9 @@ html, body, #root {
     border: 1px solid #1e293b;
     border-top: 2px solid #1e293b;
     border-radius: 16px;
-    box-shadow: 0 -6px 25px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
     gap: 10px;
     overflow: visible;
-  }
-
-  .cashier-layout .receipt-row-wrap {
-    padding-bottom: 0;
   }
 
   .cashier-layout .pay-zone .pay-checkout {
@@ -3265,7 +3244,7 @@ html, body, #root {
     white-space: nowrap;
   }
 
-  /* Katta, Emerald/primary, full-width checkout tugmasi */
+  /* Katta, Indigo, full-width checkout tugmasi */
   .cashier-layout .pay-zone .pay-checkout {
     margin-top: 6px !important;
     min-height: 56px;
