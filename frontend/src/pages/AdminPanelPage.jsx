@@ -28,6 +28,9 @@ export function AdminPanelPage() {
   const [creating, setCreating] = useState(false);
   const [createdUser, setCreatedUser] = useState(null);
   const [approveApp, setApproveApp] = useState(null);
+  const [rejectApp, setRejectApp] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejecting, setRejecting] = useState(false);
   const [form, setForm] = useState({
     store_name: "",
     owner_name: "",
@@ -44,28 +47,28 @@ export function AdminPanelPage() {
 
   const { show } = useToast();
 
-  const loadApps = useCallback(async () => {
-    setLoading(true);
+  const loadApps = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const data = await api.list("admin/applications/", { status: tab, page_size: 100 });
       setApps(data.results || []);
       setCount(data.count || 0);
     } catch (err) {
-      show(err.message || "Arizalarni yuklashda xatolik", "error");
+      if (!silent) show(err.message || "Arizalarni yuklashda xatolik", "error");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [tab, show]);
 
-  const loadStores = useCallback(async () => {
-    setLoading(true);
+  const loadStores = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const data = await api.list("admin/stores/", { page_size: 200 });
       setStores(data.results || []);
     } catch (err) {
-      show(err.message || "Do'konlarni yuklashda xatolik", "error");
+      if (!silent) show(err.message || "Do'konlarni yuklashda xatolik", "error");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [show]);
 
@@ -77,13 +80,44 @@ export function AdminPanelPage() {
     }
   }, [tab, loadApps, loadStores]);
 
-  const reject = async (app) => {
+  // Real-time fallback: WebSocket yo'q bo'lsa — har 15 soniyada yangilash.
+  // Telegram bot arizasi kelishi/yechilishi panelda kutmasdan ko'rinadi.
+  useEffect(() => {
+    const poll = () => {
+      if (tab === "stores") {
+        loadStores(true);
+      } else {
+        loadApps(true);
+      }
+    };
+    const t = setInterval(poll, 15000);
+    return () => clearInterval(t);
+  }, [tab, loadApps, loadStores]);
+
+  const openReject = (app) => {
+    setRejectApp(app);
+    setRejectReason("");
+  };
+
+  const submitReject = async () => {
+    const app = rejectApp;
+    if (!app) return;
+    const reason = (rejectReason || "").trim();
+    if (!reason) {
+      show("Rad etish sababi kiritilishi shart", "error");
+      return;
+    }
+    setRejecting(true);
     try {
-      const data = await api.post(`admin/applications/${app.id}/reject/`, { note: "" });
+      const data = await api.post(`admin/applications/${app.id}/reject/`, { note: reason });
       show(`"${data.store_name}" rad etildi`, "success");
+      setRejectApp(null);
+      setRejectReason("");
       loadApps();
     } catch (err) {
       show(err.message || "Amalda xatolik", "error");
+    } finally {
+      setRejecting(false);
     }
   };
 
@@ -276,7 +310,7 @@ export function AdminPanelPage() {
                   <button className="btn btn-primary btn-sm" onClick={() => openApprove(app)}>
                     Tasdiqlash
                   </button>
-                  <button className="btn btn-danger btn-sm" onClick={() => reject(app)}>
+                  <button className="btn btn-danger btn-sm" onClick={() => openReject(app)}>
                     Rad etish
                   </button>
                 </div>
@@ -296,7 +330,7 @@ export function AdminPanelPage() {
                   <button className="btn btn-ghost btn-sm" onClick={() => reconsider(app)}>
                     Qayta ko'rib chiqish
                   </button>
-                  <button className="btn btn-danger btn-sm" onClick={() => reject(app)}>
+                  <button className="btn btn-danger btn-sm" onClick={() => openReject(app)}>
                     Rad etish (fikrni o'zgartirish)
                   </button>
                 </div>
@@ -307,9 +341,39 @@ export function AdminPanelPage() {
         </div>
       )}
 
-      {/* Do'konni yopish tasdiqlash */}
-      <Modal open={!!closeStore} onClose={() => setCloseStore(null)}>
+      {/* Arizani rad etish — sabab majburiy */}
+      <Modal open={!!rejectApp} onClose={() => setRejectApp(null)}>
         <div>
+          <h3>Arizani rad etish</h3>
+          <p className="muted" style={{ marginTop: 8 }}>
+            <b>{rejectApp?.store_name}</b> arizasi rad etiladi. Sabab
+            arizachiga Telegram orqali yuboriladi — kiritilishi shart.
+          </p>
+          <div className="field" style={{ marginTop: 14 }}>
+            <label>Rad etish sababi</label>
+            <textarea
+              className="input"
+              rows={3}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Masalan: Hujjatlar to'liq emas, manzil tasdiqlanmadi..."
+              maxLength={255}
+              autoFocus
+            />
+          </div>
+          <div className="grid-2" style={{ marginTop: 16 }}>
+            <button className="btn btn-ghost" onClick={() => setRejectApp(null)} disabled={rejecting}>
+              Bekor qilish
+            </button>
+            <button className="btn btn-danger" onClick={submitReject} disabled={rejecting}>
+              {rejecting ? "Yuborilmoqda..." : "Rad etish"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Do'konni yopish tasdiqlash */}
+      <Modal open={!!closeStore} onClose={() => setCloseStore(null)}>        <div>
           <h3>Do'konni yopish</h3>
           <p className="muted" style={{ marginTop: 8 }}>
             <b>{closeStore?.name}</b> do'koni yopiladi. Ega endi kira olmaydi va barcha qurilmalari

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 import { api } from "../api/client";
@@ -284,6 +284,9 @@ export function LoginPage() {
         )}
 
         <div className="barcode-deco" />
+        <p className="login-privacy">
+          <Link to="/privacy-policy">Maxfiylik siyosati</Link>
+        </p>
       </motion.div>
     </div>
   );

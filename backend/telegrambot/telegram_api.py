@@ -69,6 +69,37 @@ def inline_keyboard(buttons_rows):
     return {"inline_keyboard": buttons_rows}
 
 
+def reply_keyboard(
+    buttons_rows,
+    one_time_keyboard=True,
+    resize_keyboard=True,
+    input_field_placeholder="",
+):
+    """Reply keyboard (tugmalar) markup'ini yig'adi.
+
+    buttons_rows: ro'yxatlar — har bir ro'yxat bitta qator.
+    Har bir tugma dict: {"text": str, "request_contact": bool} va h.k.
+    """
+    markup = {
+        "keyboard": buttons_rows,
+        "one_time_keyboard": bool(one_time_keyboard),
+        "resize_keyboard": bool(resize_keyboard),
+    }
+    if input_field_placeholder:
+        markup["input_field_placeholder"] = input_field_placeholder
+    return markup
+
+
+def contact_button_keyboard(text="📲 Telefon raqamni yuborish"):
+    """Telefon raqami so'ralganda — Telegram'ning native 'share contact' tugmasi."""
+    return reply_keyboard(
+        [[{"text": text, "request_contact": True}]],
+        one_time_keyboard=True,
+        resize_keyboard=True,
+        input_field_placeholder="Yoki raqamni o'zingiz yozing",
+    )
+
+
 def answer_callback_query(callback_query_id, text="", show_alert=False):
     """Callback tugmasi bosilganda bot "yuklanayotgan" holatni o'chiradi."""
     if not callback_query_id or not _token():

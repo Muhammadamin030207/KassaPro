@@ -108,3 +108,46 @@ class StoreApplication(models.Model):
 
     def __str__(self):
         return f"{self.store_name} ({self.get_status_display()})"
+
+
+class AuditLog(models.Model):
+    """Admin harakatlari auditi (xavfsizlik majburiyati).
+
+    Har bir muhim admin amali (arizani tasdiqlash/rad etish, do'konni
+    yopish/qayta ochish) kimyoviy tarix sifatida saqlanadi: kim, qachon,
+    qanday amal bajardi va nima natija oldi. O'chirilmaydi — javobgarlik
+    yo'lida saqlanadi (retention 90 kun, keyin ushbu qator arxivga).
+    """
+
+    USER_ACTION = "user_action"
+
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="admin_audit_logs",
+    )
+    action = models.CharField(max_length=64)
+    application = models.ForeignKey(
+        StoreApplication,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="audit_logs",
+    )
+    shop = models.ForeignKey(
+        Shop,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="admin_audit_logs",
+    )
+    detail = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.action} by {self.actor_id or 'system'} at {self.created_at:%Y-%m-%d %H:%M}"

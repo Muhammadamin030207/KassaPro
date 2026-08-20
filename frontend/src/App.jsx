@@ -5,6 +5,8 @@ import { AppLayout } from "./components/AppLayout";
 import { apiFetch } from "./api/client";
 import { useAuthStore, isAuthed, isTokenExpired } from "./stores/authStore";
 import LoginPage from "./pages/LoginPage";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import MiniAppPage from "./pages/MiniAppPage";
 import CashierPage from "./pages/CashierPage";
 import ProductsPage from "./pages/ProductsPage";
 import ReportsPage from "./pages/ReportsPage";
@@ -135,6 +137,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={authed ? <Navigate to="/" replace /> : <LoginPage />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+      <Route path="/mini-app" element={<MiniAppPage />} />
       <Route path="/" element={<Protected><CashierPage /></Protected>} />
       <Route path="/products" element={<Protected><ProductsPage /></Protected>} />
       <Route path="/reports" element={<Protected><ReportsPage /></Protected>} />

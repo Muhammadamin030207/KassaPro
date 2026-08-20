@@ -4,7 +4,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny
 
 from accounts.permissions import IsAdmin, IsOwnerOrAdmin, IsShopMember, IsShopMemberOrAdmin
-from shops.models import Shop, ShopSettings, StoreApplication
+from shops.models import AuditLog, Shop, ShopSettings, StoreApplication
 from shops.serializers import (
     ApplicationCreateSerializer,
     ApplicationPatchSerializer,
@@ -19,6 +19,20 @@ from telegrambot.telegram_api import (
     send_admin_notification,
     send_message,
 )
+
+
+def write_audit(user, action, application=None, shop=None, detail=""):
+    """Admin harakatini AuditLog ga yozadi (hech qachon tashlamaydi)."""
+    try:
+        AuditLog.objects.create(
+            actor=user if (user and user.is_authenticated) else None,
+            action=action,
+            application=application,
+            shop=shop,
+            detail=str(detail or "")[:2000],
+        )
+    except Exception:  # noqa: BLE001 — audit xatosi biznes amalni buzmaydi
+        pass
 
 
 class ApplicationCreateView(views.APIView):
@@ -156,18 +170,30 @@ class ApplicationRejectView(views.APIView):
             return response.Response(
                 {"detail": "Ariza topilmadi."}, status=status.HTTP_404_NOT_FOUND
             )
+        note = (request.data.get("note") or "").strip()
+        if not note:
+            return response.Response(
+                {"detail": "Rad etish sababi (note) kiritilishi shart."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         app.status = StoreApplication.Status.REJECTED
         app.processed_at = timezone.now()
         app.processed_by = request.user
-        app.note = (request.data.get("note") or "")[:255]
+        app.note = note[:255]
         app.save()
         if app.telegram_chat_id:
             send_message(
                 app.telegram_chat_id,
                 "❌ Arizangiz rad etildi.\n"
-                + (f"Izoh: <b>{app.note}</b>\n" if app.note else "")
-                + "Savollar uchun admin bilan bog'laning.",
+                f"Izoh: <b>{app.note}</b>\n"
+                "Savollar uchun admin bilan bog'laning.",
             )
+        write_audit(
+            request.user,
+            "application.rejected",
+            application=app,
+            detail=f"Izoh: {app.note}",
+        )
         return response.Response(StoreApplicationSerializer(app).data)
 
 
@@ -240,6 +266,27 @@ class StoreAdminView(views.APIView):
             "shop_id": user.shop.id,
         }
 
+        if application_id:
+            app = StoreApplication.objects.filter(id=application_id).first()
+            if app:
+                write_audit(
+                    request.user,
+                    "application.approved",
+                    application=app,
+                    shop=user.shop,
+                    detail=(
+                        f"Do'kon yaratildi (id={user.shop.id}), "
+                        f"owner={vd['username']}."
+                    ),
+                )
+        else:
+            write_audit(
+                request.user,
+                "store.created",
+                shop=user.shop,
+                detail=f"owner={vd['username']}.",
+            )
+
         sent = False
         if chat_id:
             sent = send_message(
@@ -306,6 +353,13 @@ class StoreCloseView(views.APIView):
             except Exception:  # noqa: BLE001 — Telegram xatosi yopishni buzmaydi
                 pass
 
+        write_audit(
+            request.user,
+            "store.closed",
+            shop=shop,
+            application=app,
+            detail=f"A'zolar: {members.count()} (deaktiv)",
+        )
         return response.Response(StoreAdminSerializer(shop).data)
 
 
@@ -352,4 +406,11 @@ class StoreReopenView(views.APIView):
             except Exception:  # noqa: BLE001 — Telegram xatosi ochishni buzmaydi
                 pass
 
+        write_audit(
+            request.user,
+            "store.reopened",
+            shop=shop,
+            application=app,
+            detail="Barcha a'zolar qayta faollashtirildi.",
+        )
         return response.Response(StoreAdminSerializer(shop).data)

@@ -11,6 +11,7 @@ from shops.models import StoreApplication
 from telegrambot.models import BotLog, BotSession, CustomerApplication
 from telegrambot.telegram_api import (
     answer_callback_query,
+    contact_button_keyboard,
     contact_info,
     format_application_message,
     format_customer_application_message,
@@ -80,8 +81,14 @@ class TelegramWebhookView(APIView):
         chat = message.get("chat") or {}
         chat_id = chat.get("id")
         text = (message.get("text") or "").strip()
+        contact = message.get("contact") or {}
 
-        if not chat_id or "text" not in message:
+        if not chat_id:
+            return Response(status=status.HTTP_200_OK)
+
+        # Contact yoki text — kamida bittasi bo'lishi kerak. Telegram native
+        # "Telefon raqamni yuborish" tugmasi bosilganda `contact` jonatiladi.
+        if "text" not in message and not contact:
             return Response(status=status.HTTP_200_OK)
 
         username = ((chat.get("username") or "")[:255])
@@ -92,6 +99,7 @@ class TelegramWebhookView(APIView):
                 text=text,
                 username=username,
                 from_user=message.get("from") or {},
+                contact=contact or None,
             )
         except Exception as exc:  # noqa: BLE001
             logger.exception("bot handle_message failed")
@@ -119,6 +127,12 @@ class TelegramWebhookView(APIView):
                 [
                     {"text": "🏬 Do'kon arizasi", "callback_data": "store_start"},
                     {"text": "🖥 Sayt", "url": f"{SITE_URL}/login"},
+                ],
+                [
+                    {
+                        "text": "⚡️ Ilova (Mini App)",
+                        "web_app": {"url": f"{SITE_URL}/mini-app"},
+                    }
                 ],
             ]
         )
@@ -282,6 +296,35 @@ class TelegramWebhookView(APIView):
         send_message(chat_id, "\n".join(lines))
 
     def store_start_handler(self, chat_id, session):
+        # Duplicate himoya: chatda allaqachon ko'rib chiqilmayotgan (PENDING)
+        # yoki tasdiqlangan (APPROVED) ariza bo'lsa — yangi ariza ochilmaydi.
+        existing = (
+            StoreApplication.objects.filter(telegram_chat_id=chat_id)
+            .order_by("-id")
+            .first()
+        )
+        if existing and existing.status == StoreApplication.Status.PENDING:
+            send_message(
+                chat_id,
+                "⏳ Arizangiz hozir <b>ADMIN KO'Rib CHIQILMOQDA</b>.\n\n"
+                f"🏬 Do'kon: {existing.store_name}\n"
+                "— admin tasdiqlagach login/parol shu chatga yuboriladi.",
+                reply_markup=inline_keyboard(
+                    [[{"text": "📋 Arizam holati", "callback_data": "store_status"}]]
+                ),
+            )
+            return
+        if existing and existing.status == StoreApplication.Status.APPROVED:
+            send_message(
+                chat_id,
+                "✅ Do'koningiz allaqachon <b>TASDIQLANGAN</b>.\n\n"
+                f"🏬 Do'kon: {existing.store_name}\n"
+                "Loginda parol oldingi xabarda yuborilgan. "
+                "Muammo bo'lsa admin bilan bog'laning.",
+                reply_markup=self._main_keyboard(),
+            )
+            return
+
         session.step = "store_name"
         session.save()
         send_message(
@@ -482,7 +525,13 @@ class TelegramWebhookView(APIView):
 
     # ---------------------------------------------------------------- messages
 
-    def handle_message(self, chat_id, text, username, from_user):
+    def handle_message(self, chat_id, text, username, from_user, contact=None):
+        # Telegram native "Telefon raqamni yuborish" tugmasi bosilganda
+        # `contact` keladi (text bo'lmaydi) — telefon bosqichida uni qabul qilamiz.
+        contact_phone = ((contact or {}).get("phone_number") or "").strip()
+        if contact_phone:
+            text = contact_phone
+
         if not text:
             send_message(chat_id, "Matn kiriting.")
             return
@@ -566,7 +615,12 @@ class TelegramWebhookView(APIView):
             next_stage = APP_STEPS[next_index]
             session.app_stage = next_stage
             session.save()
-            send_message(chat_id, APP_PROMPTS[next_stage], reply_markup=self._flow_keyboard(next_stage))
+            markup = (
+                contact_button_keyboard()
+                if next_stage == "phone"
+                else self._flow_keyboard(next_stage)
+            )
+            send_message(chat_id, APP_PROMPTS[next_stage], reply_markup=markup)
         elif next_index == len(APP_STEPS) - 1:
             # confirm
             session.app_stage = "confirm"
@@ -585,7 +639,12 @@ class TelegramWebhookView(APIView):
             next_step = STEPS[next_index]
             session.step = next_step
             session.save()
-            send_message(chat_id, STEP_PROMPTS[next_step], reply_markup=self._flow_keyboard("store"))
+            markup = (
+                contact_button_keyboard()
+                if next_step == "phone"
+                else self._flow_keyboard("store")
+            )
+            send_message(chat_id, STEP_PROMPTS[next_step], reply_markup=markup)
             return
         session.step = ""
         session.save()

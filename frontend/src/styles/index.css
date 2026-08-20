@@ -3858,3 +3858,119 @@ html, body, #root {
     width: 100%;
   }
 }
+
+/* ---------- Maxfiylik siyosati sahifasi (ommaviy) ---------- */
+.privacy-policy-page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(1000px 500px at 15% -10%, rgba(99, 102, 241, 0.25), transparent),
+    radial-gradient(800px 500px at 90% 110%, rgba(129, 140, 248, 0.18), transparent),
+    var(--bg);
+}
+
+.privacy-policy-card {
+  width: 100%;
+  max-width: 720px;
+  padding: 28px;
+  border-radius: var(--radius-lg);
+}
+
+.privacy-policy-card h3 {
+  margin: 18px 0 6px;
+  font-size: 1.02rem;
+}
+
+.privacy-policy-card ul {
+  margin: 6px 0;
+  padding-left: 20px;
+  line-height: 1.65;
+}
+
+.privacy-policy-card p {
+  line-height: 1.7;
+  color: var(--ink-soft);
+}
+
+.login-privacy {
+  margin: 14px 0 0;
+  text-align: center;
+  font-size: 12.5px;
+}
+
+.login-privacy a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(165, 170, 184, 0.4);
+  transition: color 0.2s;
+}
+
+.login-privacy a:hover {
+  color: var(--primary);
+}
+
+/* ---------- Telegram Mini App (5.6 / 5.7) ---------- */
+.miniapp-page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background:
+    radial-gradient(900px 420px at 20% -10%, rgba(99, 102, 241, 0.28), transparent),
+    radial-gradient(700px 420px at 95% 110%, rgba(129, 140, 248, 0.2), transparent),
+    var(--bg);
+}
+
+.miniapp-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 26px;
+  border-radius: var(--radius-lg);
+}
+
+.miniapp-card .sm {
+  margin-bottom: 12px;
+  color: var(--ink-soft);
+}
+
+.miniapp-msg {
+  padding: 18px 0;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.miniapp-msg.err {
+  color: var(--danger, #f87171);
+}
+
+.miniapp-app {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  border-radius: 14px;
+  padding: 16px;
+  margin: 14px 0;
+}
+
+.miniapp-app-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.92rem;
+}
+
+.miniapp-app-row > span:last-child {
+  text-align: right;
+  color: var(--ink);
+}
+
+.miniapp-card .btn-lg {
+  margin-top: 14px;
+}
