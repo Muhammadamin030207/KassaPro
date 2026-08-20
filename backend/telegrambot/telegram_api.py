@@ -135,7 +135,7 @@ def contact_info():
     """/contact uchun — project config (env) dan o'qiladi, fake data yo'q."""
     phone = os.environ.get("CONTACT_PHONE", "").strip()
     # Fallback: KassaPro bot'ning o'zi (telefon raqami Telegram handle sifatida ko'rsatilmasin).
-    telegram = os.environ.get("CONTACT_TELEGRAM", "").strip() or "@KassaPro_001_bot"
+    telegram = os.environ.get("CONTACT_TELEGRAM", "").strip() or "@uzb000777uz"
     website = os.environ.get("CONTACT_WEBSITE", "").strip() or "https://smartkassa-1.onrender.com"
     return {"phone": phone, "telegram": telegram, "website": website}
 
