@@ -1,3 +1,6 @@
+import importlib
+
+from django.apps import apps
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -164,3 +167,52 @@ class ProfitSnapshotTests(APITestCase):
         summary = self.client.get("/api/reports/summary/").json()
         self.assertEqual(summary["total_revenue"], 5000)
         self.assertEqual(summary["total_profit"], 3500)
+
+
+class CostSnapshotBackfillTests(APITestCase):
+    """0007 migratsiya funksiyasi: cost_price_snapshot NULL bo'lgan eski
+    qatorlarni mahsulot tannarxidan to'ldiradi (history freeze)."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            username="ega2", password="xpass1", role=User.Role.OWNER
+        )
+        self.shop = Shop.objects.create(name="Do'kon", owner=self.owner)
+        self.owner.shop = self.shop
+        self.owner.save()
+        self.client.force_authenticate(user=self.owner)
+
+    def test_backfill_fills_null_cost_snapshots(self):
+        product = Product.objects.create(
+            shop=self.shop,
+            name="Eski tovar",
+            barcode="ESK",
+            price=10000,
+            cost_price=7000,
+            stock_qty=0,
+        )
+        sale = Sale.objects.create(shop=self.shop, cashier=self.owner, total=10000)
+        stale = SaleItem.objects.create(
+            sale=sale,
+            product=product,
+            product_name_snapshot="Eski tovar",
+            barcode_snapshot="ESK",
+            price_snapshot=10000,
+            cost_price_snapshot=None,
+            qty=1,
+            subtotal=10000,
+        )
+
+        # Migratsiya funksiyasini to'g'ridan-to'g'ri chaqiramiz.
+        mod = importlib.import_module(
+            "sales.migrations.0007_backfill_saleitem_cost_snapshots"
+        )
+        mod.backfill_cost_snapshots(apps, None)
+
+        stale.refresh_from_db()
+        self.assertEqual(int(stale.cost_price_snapshot), 7000)
+
+        # Endi tannarx o'zgarsa ham eski foyda o'zgarmaydi (history freeze).
+        Product.objects.filter(pk=product.pk).update(cost_price=9000)
+        summary = self.client.get("/api/reports/summary/").json()
+        self.assertEqual(summary["total_profit"], 3000)
