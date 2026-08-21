@@ -6,96 +6,50 @@ import { Scene3D } from "./Scene3D";
 import { useAuthStore } from "../stores/authStore";
 import { api } from "../api/client";
 
-const DRAWER_LINKS = [
+/** Mobile-only bottom navigation links (4 main + extra via sheet) */
+const MOBILE_LINKS = [
   { to: "/", label: "Kassa", icon: "scan", end: true, key: "kassa" },
   { to: "/products", label: "Mahsulotlar", icon: "bag", key: "mahsulotlar" },
   { to: "/debts", label: "Qarzdorlik", icon: "money", key: "qarzdorlik" },
   { to: "/reports", label: "Hisobotlar", icon: "chart", key: "hisobotlar" },
 ];
 
-const DRAWER_EXTRA_LINKS = [
+const EXTRA_LINKS = [
   { to: "/staff", label: "Kassirlar", icon: "users", ownerOnly: true, key: "kassirlar" },
   { to: "/devices", label: "Qurilmalar", icon: "devices", superAdminOnly: true, key: "qurilmalar" },
   { to: "/settings", label: "Sozlamalar", icon: "settings", ownerOnly: true, key: "sozlamalar" },
   { to: "/admin", label: "Admin", icon: "shield", superAdminOnly: true, key: "admin" },
 ];
 
-const LINKS = [
-  { to: "/", label: "Kassa", icon: "scan", end: true, key: "kassa" },
-  { to: "/products", label: "Mahsulotlar", icon: "bag", key: "mahsulotlar" },
-  { to: "/debts", label: "Qarzdorlik", icon: "money", key: "qarzdorlik" },
-  { to: "/reports", label: "Hisobotlar", icon: "chart", key: "hisobotlar" },
-];
-
-const bottomNavLinks = LINKS.map((l) => ({
-  ...l,
-  isActive: false,
-}));
-
-/** Pastki navigatsiya panelini (bottom navigation bar) qaytaradi. */
+/** Faqat mobil ekranda ko'rinadigan bottom-nav holatini saqlaydi */
 function useBottomNav() {
   const navigate = useNavigate();
+  const [activeKey, setActiveKey] = useState(MOBILE_LINKS[0].key);
   const [showExtra, setShowExtra] = useState(false);
-  const [extraLinks, setExtraLinks] = useState([]);
 
   const toggleExtra = () => setShowExtra((v) => !v);
 
-  // Scroll hiding show (optional)
+  // faqat mobil (max-width: 768px)da show, desktopda none
   useEffect(() => {
-    const wrapper = document.querySelector(".app-shell");
-    if (!wrapper) return;
-    let timeoutId;
-    const handler = () => {
-      clearTimeout(timeoutId);
-      wrapper.classList.add("bottom-nav-hidden");
-      timeoutId = setTimeout(() => wrapper.classList.remove("bottom-nav-hidden"), 1000);
+    const update = () => {
+      const isMobile = window.innerWidth <= 768;
+      document.body.style.setProperty(
+        "--bottom-nav-display",
+        isMobile ? "flex" : "none",
+        "important"
+      );
     };
-    wrapper.addEventListener("mouseenter", handler);
-    wrapper.addEventListener("mouseleave", () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {}, 1000);
-    });
-    return () => {
-      wrapper.removeEventListener("mouseenter", handler);
-      wrapper.removeEventListener("mouseleave", () => {});
-    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
   }, []);
 
-  const renderExtraLinks = () => {
-    if (!showExtra) return null;
-    return (
-      <div className="bottom-sheet" onClick={toggleExtra}>
-        <div className="sheet-header">
-          <span className="sheet-title">Ko'proq</span>
-          <button className="sheet-close" onClick={toggleExtra}>✕</button>
-        </div>
-        <nav className="sheet-nav">
-          {extraLinks.map((l) => (
-            <NavLink
-              key={l.key}
-              to={l.to}
-              className={({ isActive }) =>
-                `sheet-nav-link ${isActive ? "active" : ""}`
-              }
-            >
-              <Icon name={l.icon} />
-              <span>{l.label}</span>
-            </NavLink>
-          ))}
-        </nav>
-      </div>
-    );
+  const setActive = (key) => {
+    setActiveKey(key);
+    navigate(key);
   };
 
-  return {
-    showExtra,
-    toggleExtra,
-    renderExtraLinks,
-    extraLinks: extraLinks.map((l) => ({
-      ...l,
-      isActive: false,
-    })),
-  };
+  return { activeKey, setActive, showExtra, toggleExtra };
 }
 
 /** Mobil header — hamburger O'CHIRIQLANGAN, o'za o'ng nav bar qo'shilgan. */
@@ -103,7 +57,7 @@ export function AppLayout({ children }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
-  const { showExtra, toggleExtra, renderExtraLinks, extraLinks } = useBottomNav();
+  const { activeKey, setActive, showExtra, toggleExtra } = useBottomNav();
 
   const isAdmin = user?.role === "super_admin" || user?.is_admin;
   const roleLabel =
@@ -112,18 +66,16 @@ export function AppLayout({ children }) {
       : isAdmin
         ? "Admin"
         : "Kassir";
-  const links = LINKS.filter(
+
+  // Faqat mobildagi 4 ta asosiy linikal (extra bo'lmagan)
+  const mobileLinks = MOBILE_LINKS.filter(
     (l) =>
       (!l.ownerOnly || user?.role === "owner" || isAdmin) &&
       (!l.superAdminOnly || isAdmin)
   );
 
-  // Bottom nav state
-  const [activeKey, setActiveKey] = useState(LINKS[0].key);
-
   const onLogout = () => {
-    setActiveKey(LINKS[0].key);
-    // Backend'ga chiqishni xabar qilamiz (sessiyani EXPIRED qiladi).
+    setActive(MOBILE_LINKS[0].key);
     const { refresh } = useAuthStore.getState();
     if (refresh) {
       api.post("auth/logout/", { refresh }).catch(() => {});
@@ -138,25 +90,44 @@ export function AppLayout({ children }) {
     <div className="app-shell">
       <Scene3D />
 
-      {/* ==== MOBIL: pastki navigatsiya panelisi (bottom navigation) ==== */}
+      {/* ==== MOBIL: pastki navigatsiya panelishi (bottom navigation) ==== */}
       <div className="mobile-bottom-nav">
-        {LINKS.map((l) => (
+        {mobileLinks.map((l) => (
           <NavLink
             key={l.key}
             className={`bottom-nav-item ${activeKey === l.key ? "active" : ""}`}
-            onClick={() => {
-              setActiveKey(l.key);
-              navigate(l.to);
-            }}
+            onClick={() => setActive(l.key)}
           >
             <Icon name={l.icon} />
             <span className="bottom-nav-label">{l.label}</span>
           </NavLink>
         ))}
-        {showExtra && renderExtraLinks()}
+        {showExtra && (
+          <div className="bottom-sheet" onClick={toggleExtra}>
+            <div className="sheet-header">
+              <span className="sheet-title">Ko'proq</span>
+              <button className="sheet-close" onClick={toggleExtra}>✕</button>
+            </div>
+            <nav className="sheet-nav">
+              {EXTRA_LINKS.map((l) => (
+                <NavLink
+                  key={l.key}
+                  to={l.to}
+                  className={({ isActive }) =>
+                    `sheet-nav-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <Icon name={l.icon} />
+                  <span>{l.label}</span>
+                </NavLink>
+              ))}
+            </nav>
+          </div>
+        )}
       </div>
 
-      {/* Desktop sidebar (o'zgartirilib turmush — ekanchani ya'ni qoldiq) */}
+      {/* ==== DESKTOP: old Sidebar (faqat dasturlash yoki admin uchun) ==== */}
+      {/* Sidebar faqat max-width: 768px (mobile)da ko'rinadi, kattakor zhurnali chiqarib ketadi */}
       <aside className="sidebar">
         <motion.div
           className="logo"
@@ -169,7 +140,8 @@ export function AppLayout({ children }) {
             <span className="logo-sub">Barcode POS</span>
           </span>
         </motion.div>
-        {links.map((l, i) => (
+        {/* Desktop sidebarga faqat oddiy user uchun barcha linklar, adminlar uchun filter */}
+        {mobileLinks.map((l, i) => (
           <NavLink
             key={l.to}
             to={l.to}
