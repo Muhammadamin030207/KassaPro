@@ -29,6 +29,11 @@ function useBottomNav() {
 
   const toggleExtra = () => setShowExtra((v) => !v);
 
+  /* Drawer state for mobile */
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const toggleDrawer = () => setDrawerOpen((v) => !v);
+
   // faqat mobil (max-width: 768px)da show, desktopda none
   useEffect(() => {
     const update = () => {
@@ -92,7 +97,19 @@ export function AppLayout({ children }) {
       <Scene3D />
 
       {/* ==== MOBIL: pastki navigatsiya panelishi (bottom navigation) ==== */}
-      <div className="mobile-bottom-nav">
+      <div className="hamburger-container">
+  <button className="hamburger-btn" onClick={toggleDrawer} aria-label="Menyuni ochish/yopish">
+    <div className="hamburger-icon">
+      <div className="hamburger-ico">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+  </button>
+</div>
+
+<div className="mobile-bottom-nav">
         {mobileLinks.map((l) => (
           <NavLink
             key={l.key}
@@ -126,6 +143,41 @@ export function AppLayout({ children }) {
           </div>
         )}
       </div>
+
+
+      }
+
+      {/* Mobile drawer when hamburger is open */}
+      {drawerOpen && (
+        <div className="drawer-menu">
+          <nav>
+            <ul>
+              {MOBILE_LINKS.map((l) => (
+                <li key={l.key} className="nav-item">
+                  <a className="nav-link" href={l.to} onClick={toggleDrawer}>
+                    <Icon name={l.icon} />
+                    <span>{l.label}</span>
+                  </a>
+                </li>
+              ))}
+              {EXTRA_LINKS.map((l) => {
+                const canView = 
+                  (!l.ownerOnly || user?.role === "owner" || isAdmin) &&
+                  (!l.superAdminOnly || user?.role === "super_admin" || isAdmin);
+                if (!canView) return null;
+                return (
+                  <li key={l.key} className="nav-item">
+                    <a className="nav-link" href={l.to} onClick={toggleDrawer}>
+                      <Icon name={l.icon} />
+                      <span>{l.label}</span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        </div>
+      )}
 
       {/* ==== DESKTOP: old Sidebar (faqat dasturlash yoki admin uchun) ==== */}
       {/* Sidebar faqat max-width: 768px (mobile)da ko'rinadi, kattakor zhurnali chiqarib ketadi */}
