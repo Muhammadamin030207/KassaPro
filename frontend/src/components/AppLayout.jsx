@@ -62,7 +62,7 @@ export function AppLayout({ children }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
-  const { activeKey, setActive, showExtra, toggleExtra } = useBottomNav();
+  const { activeKey, setActive, showExtra, toggleExtra, toggleDrawer, drawerOpen } = useBottomNav();
 
   const isAdmin = user?.role === "super_admin" || user?.is_admin;
   const roleLabel =
