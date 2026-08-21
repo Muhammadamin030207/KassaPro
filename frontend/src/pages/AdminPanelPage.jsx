@@ -282,7 +282,7 @@ export function AdminPanelPage() {
         <div className="empty-state">Yuklanmoqda...</div>
       ) : apps.length === 0 ? (
         <div className="empty-state">
-          <div className="big" style=""".fluent-emoji-high-contrast--card-index-dividers {
+          <div className="big">
   display: inline-block;
   width: 1em;
   height: 1em;
