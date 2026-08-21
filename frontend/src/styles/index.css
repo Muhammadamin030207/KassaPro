@@ -4066,3 +4066,12 @@ html, body, #root {
     display: none !important;
   }
 }
+
+@media (min-width: 721px) {
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+  .sidebar {
+    display: block !important;
+  }
+}
