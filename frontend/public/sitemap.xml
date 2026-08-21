@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemap.org/schemas/sitemap/0.9">
+   <url>
+      <loc>https://smartkassa-1.onrender.com/</loc>
+      <changefreq> daily</changefreq>
+      <priority> 1.0</priority>
+   </url>
+   <url>
+      <loc>https://smartkassa-1.onrender.com/products</loc>
+      <changefreq> weekly</changefreq>
+      <priority> 0.8</priority>
+   </url>
+   <url>
+      <loc>https://smartkassa-1.onrender.com/debts</loc>
+      <changefreq> weekly</changefreq>
+      <priority> 0.8</priority>
+   </url>
+   <url>
+      <loc>https://smartkassa-1.onrender.com/reports</loc>
+      <changefreq> weekly</changefreq>
+      <priority> 0.8</priority>
+   </url>
+   <url>
+      <loc>https://smartkassa-1.onrender.com/kassa</loc>
+      <changefreq> weekly</changefreq>
+      <priority> 0.8</priority>
+   </url>
+   <url>
+      <loc>https://smartkassa-1.onrender.com/qarzdorlik</loc>
+      <changefreq> weekly</changefreq>
+      <priority> 0.8</priority>
+   </url>
+</urlset>
