@@ -54,7 +54,7 @@ function useBottomNav() {
     navigate(key);
   };
 
-  return { activeKey, setActive, showExtra, toggleExtra, toggleDrawer };
+  return { activeKey, setActive, showExtra, toggleExtra, toggleDrawer, drawerOpen };
 }
 
 /** Mobil header — hamburger O'CHIRIQLANGAN, o'za o'ng nav bar qo'shilgan. */
@@ -110,7 +110,7 @@ export function AppLayout({ children }) {
 </div>
 
 <div className="mobile-bottom-nav">
-        {mobileLinks.map((l) => (
+        {MOBILE_LINKS.map((l) => (
           <NavLink
             key={l.key}
             className={`bottom-nav-item ${activeKey === l.key ? "active" : ""}`}
@@ -145,7 +145,6 @@ export function AppLayout({ children }) {
       </div>
 
 
-      }
 
       {/* Mobile drawer when hamburger is open */}
       {drawerOpen && (
