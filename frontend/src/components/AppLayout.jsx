@@ -54,7 +54,7 @@ function useBottomNav() {
     navigate(key);
   };
 
-  return { activeKey, setActive, showExtra, toggleExtra };
+  return { activeKey, setActive, showExtra, toggleExtra, toggleDrawer };
 }
 
 /** Mobil header — hamburger O'CHIRIQLANGAN, o'za o'ng nav bar qo'shilgan. */
