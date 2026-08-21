@@ -4068,3 +4068,48 @@ html, body, #root {
 .miniapp-card .btn-lg {
   margin-top: 14px;
 }
+
+/* ---------- Mobile bottom navigation ---------- */
+.mobile-bottom-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+  min-height: 56px;
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  text-decoration: none;
+  padding: 4px 0;
+  flex: 1;
+  font-size: 11px;
+}
+
+.bottom-nav-item .bottom-nav-label {
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--ink-soft);
+}
+
+.bottom-nav-item.active {
+  color: var(--brand);
+}
+
+@media (max-width: 720px) {
+  .sidebar {
+    display: none !important;
+  }
+  .mobile-header {
+    display: none !important;
+  }
+}
