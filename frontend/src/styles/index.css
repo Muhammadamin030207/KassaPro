@@ -2519,53 +2519,6 @@ table.data tbody tr:hover {
   box-shadow: 0 10px 34px rgba(0, 0, 0, 0.35);
 }
 
-.hamburger-btn {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--panel);
-  color: var(--ink);
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
-}
-
-.hamburger-btn:active {
-  background: var(--panel-hover);
-}
-
-.hamburger-btn:hover {
-  border-color: rgba(99, 102, 241, 0.5);
-  color: var(--brand-light);
-}
-
-.hamburger-btn.is-open {
-  background: rgba(99, 102, 241, 0.14);
-  border-color: rgba(99, 102, 241, 0.55);
-  color: var(--brand-light);
-}
-
-.hamburger-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  position: relative;
-}
-
-.hamburger-ico {
-  position: absolute;
-  inset: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .mobile-logo {
   display: inline-flex;
   align-items: center;
