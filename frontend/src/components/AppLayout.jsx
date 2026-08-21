@@ -68,10 +68,11 @@ export function AppLayout({ children }) {
         : "Kassir";
 
   // Faqat mobildagi 4 ta asosiy linikal (extra bo'lmagan)
-  const mobileLinks = MOBILE_LINKS.filter(
+  /* Barcha 8 bo'limni birga: 4 ta asosiy + 4 ta admin bo'lim */
+  const allLinks = MOBILE_LINKS.concat(EXTRA_LINKS).filter(
     (l) =>
       (!l.ownerOnly || user?.role === "owner" || isAdmin) &&
-      (!l.superAdminOnly || isAdmin)
+      (!l.superAdminOnly || user?.role === "super_admin" || isAdmin)
   );
 
   const onLogout = () => {
@@ -141,7 +142,7 @@ export function AppLayout({ children }) {
           </span>
         </motion.div>
         {/* Desktop sidebarga faqat oddiy user uchun barcha linklar, adminlar uchun filter */}
-        {mobileLinks.map((l, i) => (
+        {allLinks.map((l, i) => (
           <NavLink
             key={l.to}
             to={l.to}
