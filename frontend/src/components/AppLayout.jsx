@@ -34,6 +34,21 @@ function useBottomNav() {
 
   const toggleDrawer = () => setDrawerOpen((v) => !v);
 
+  useEffect(() => {
+    if (!drawerOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") setDrawerOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [drawerOpen]);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    document.body.classList.add("drawer-open");
+    return () => document.body.classList.remove("drawer-open");
+  }, [drawerOpen]);
+
   // faqat mobil (max-width: 768px)da show, desktopda none
   useEffect(() => {
     const update = () => {
@@ -98,7 +113,12 @@ export function AppLayout({ children }) {
 
       {/* ==== MOBIL: pastki navigatsiya panelishi (bottom navigation) ==== */}
       <div className="hamburger-container">
-  <button className="hamburger-btn" onClick={toggleDrawer} aria-label="Menyuni ochish/yopish">
+  <button
+    className={`hamburger-btn ${drawerOpen ? "is-open" : ""}`}
+    onClick={toggleDrawer}
+    aria-expanded={drawerOpen}
+    aria-label="Menyuni ochish/yopish"
+  >
     <div className="hamburger-icon">
       <div className="hamburger-ico">
         <span></span>
@@ -148,25 +168,41 @@ export function AppLayout({ children }) {
 
       {/* Mobile drawer when hamburger is open */}
       {drawerOpen && (
-        <div className="drawer-menu">
-          <nav>
+        <div className="drawer-menu" onClick={toggleDrawer}>
+          <nav onClick={(e) => e.stopPropagation()}>
             <ul>
               {MOBILE_LINKS.map((l) => (
                 <li key={l.key} className="nav-item">
-                  <a className="nav-link" href={l.to} onClick={toggleDrawer}>
+                  <a
+                    className="nav-link"
+                    href={l.to}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      toggleDrawer();
+                      navigate(l.to);
+                    }}
+                  >
                     <Icon name={l.icon} />
                     <span>{l.label}</span>
                   </a>
                 </li>
               ))}
               {EXTRA_LINKS.map((l) => {
-                const canView = 
+                const canView =
                   (!l.ownerOnly || user?.role === "owner" || isAdmin) &&
                   (!l.superAdminOnly || user?.role === "super_admin" || isAdmin);
                 if (!canView) return null;
                 return (
                   <li key={l.key} className="nav-item">
-                    <a className="nav-link" href={l.to} onClick={toggleDrawer}>
+                    <a
+                      className="nav-link"
+                      href={l.to}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        toggleDrawer();
+                        navigate(l.to);
+                      }}
+                    >
                       <Icon name={l.icon} />
                       <span>{l.label}</span>
                     </a>

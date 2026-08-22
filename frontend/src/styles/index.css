@@ -4076,9 +4076,19 @@ html, body, #root {
   }
 }
 
+/* ---------- Hamburger: faqat mobil, desktopda yashiriladi ---------- */
+.hamburger-container {
+  display: none;
+}
+
+.drawer-menu {
+  display: none;
+}
+
 /* ---------- Mobile hamburger menu ---------- */
 @media (max-width: 768px) {
   .hamburger-container {
+    display: block;
     position: fixed;
     top: 16px;
     left: 16px;
