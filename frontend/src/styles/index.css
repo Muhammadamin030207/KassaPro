@@ -4174,3 +4174,144 @@ html, body, #root {
     font-size: 18px;
   }
 }
+
+/* ================= MOBILE POS — professional compact rebuild ================= */
+@media (max-width: 768px) {
+  /* Navigatsiya FAQAT drawer/hamburger orqali — horizontal nav olib tashlanadi */
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+
+  /* Performance: 3D sahna + og'ir blur mobil'da yo'q */
+  .scene-3d {
+    display: none !important;
+  }
+  .glass-panel {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Overflow himoyasi */
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  .main {
+    padding-bottom: calc(18px + env(safe-area-inset-top, 0px));
+  }
+
+  /* ---- Compact header ---- */
+  .page-head {
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+  .page-head h1 {
+    font-size: 28px;
+    letter-spacing: -0.5px;
+  }
+  .page-head .sub {
+    font-size: 13px;
+    margin-top: 2px;
+  }
+
+  /* ---- Barcode input: to'liq kenglik, 52-56px ---- */
+  .scan-zone > div:first-child {
+    flex-wrap: nowrap !important;
+    gap: 8px;
+  }
+  .scan-input-wrap {
+    min-width: 0 !important;
+    border-radius: 14px;
+  }
+  .scan-input-wrap .scan-icon {
+    left: 14px;
+  }
+  .scan-input {
+    min-height: 54px !important;
+    height: 54px;
+    font-size: 16px !important;
+    padding-left: 44px !important;
+    padding-right: 12px !important;
+    letter-spacing: 1px;
+  }
+  .scan-input:focus {
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.45);
+  }
+
+  /* ---- Scanner tugmasi: compact 48-52px ---- */
+  .camera-btn {
+    flex: 0 0 auto !important;
+    min-height: 50px;
+    height: 50px;
+    padding: 0 13px !important;
+    border-radius: 14px;
+    gap: 6px;
+    font-size: 13px;
+  }
+  .camera-btn svg,
+  .camera-btn .icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* ---- Chek: to'liq kenglik, compact ---- */
+  .receipt-tape {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 16px 16px 10px !important;
+    border-radius: 14px;
+  }
+  .receipt-head {
+    text-align: center;
+    padding: 4px 0 8px;
+  }
+  .receipt-head h3 {
+    font-size: 15px;
+  }
+  .receipt-head .store {
+    font-size: 11px;
+  }
+  .receipt-head .meta {
+    font-size: 10px;
+  }
+  .receipt-row {
+    padding: 9px 0;
+    gap: 8px;
+  }
+  .receipt-row .name {
+    font-size: 14px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .receipt-empty {
+    padding: 22px 10px !important;
+  }
+  .receipt-empty .emoji {
+    font-size: 30px !important;
+    margin-bottom: 4px !important;
+  }
+  .receipt-empty .empty-note {
+    font-size: 14px;
+  }
+
+  /* ---- Jami: compact typography ---- */
+  .pay-total-display .amount {
+    font-size: 27px !important;
+  }
+
+  /* ---- Sticky checkout footer (safe-area bilan) ---- */
+  .cashier-layout .pay-zone {
+    position: sticky;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    z-index: 30;
+    padding: 14px 16px !important;
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.35);
+  }
+  .pay-zone .btn-lg.pay-checkout {
+    min-height: 54px !important;
+    height: 54px;
+    font-size: 16px;
+  }
+}

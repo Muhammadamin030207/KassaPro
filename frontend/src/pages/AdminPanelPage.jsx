@@ -12,6 +12,14 @@ const STATUS_LABEL = {
   rejected: "Rad etilgan",
 };
 
+const BOT_STATUS_LABEL = {
+  new: "Yangi",
+  in_review: "Ko'rib chiqilmoqda",
+  accepted: "Qabul qilindi",
+  rejected: "Rad etildi",
+  completed: "Yakunlandi",
+};
+
 /**
  * Super Admin paneli:
  *  - Telegram bot orqali kelgan arizalar ro'yxati
@@ -23,6 +31,8 @@ export function AdminPanelPage() {
   const [tab, setTab] = useState("pending");
   const [apps, setApps] = useState([]);
   const [count, setCount] = useState(0);
+  const [botApps, setBotApps] = useState([]);
+  const [botCount, setBotCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -72,13 +82,38 @@ export function AdminPanelPage() {
     }
   }, [show]);
 
+  const loadBotApps = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const data = await api.list("admin/bot-applications/", { page_size: 100 });
+      setBotApps(data.results || []);
+      setBotCount(data.count || 0);
+    } catch (err) {
+      if (!silent) show(err.message || "Murojaatlarni yuklashda xatolik", "error");
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [show]);
+
+  const setBotStatus = async (app, next) => {
+    try {
+      await api.patch(`admin/bot-applications/${app.id}/`, { status: next });
+      show(`${app.application_number}: ${BOT_STATUS_LABEL[next]}`, "success");
+      loadBotApps(true);
+    } catch (err) {
+      show(err.message || "Holatni o'zgartirishda xatolik", "error");
+    }
+  };
+
   useEffect(() => {
     if (tab === "stores") {
       loadStores();
+    } else if (tab === "murojaatlar") {
+      loadBotApps();
     } else {
       loadApps();
     }
-  }, [tab, loadApps, loadStores]);
+  }, [tab, loadApps, loadStores, loadBotApps]);
 
   // Real-time fallback: WebSocket yo'q bo'lsa — har 15 soniyada yangilash.
   // Telegram bot arizasi kelishi/yechilishi panelda kutmasdan ko'rinadi.
@@ -86,13 +121,15 @@ export function AdminPanelPage() {
     const poll = () => {
       if (tab === "stores") {
         loadStores(true);
+      } else if (tab === "murojaatlar") {
+        loadBotApps(true);
       } else {
         loadApps(true);
       }
     };
     const t = setInterval(poll, 15000);
     return () => clearInterval(t);
-  }, [tab, loadApps, loadStores]);
+  }, [tab, loadApps, loadStores, loadBotApps]);
 
   const openReject = (app) => {
     setRejectApp(app);
@@ -212,14 +249,16 @@ export function AdminPanelPage() {
       </div>
 
       <div className="tabs">
-        {["pending", "approved", "rejected", "stores"].map((s) => (
+        {["pending", "approved", "rejected", "murojaatlar", "stores"].map((s) => (
           <button
             key={s}
             className={`tab ${tab === s ? "active" : ""}`}
             onClick={() => setTab(s)}
           >
-            {s === "stores" ? "Do'konlar" : STATUS_LABEL[s]}
-            <span className="badge">{s === tab ? (s === "stores" ? stores.length : count) : ""}</span>
+            {s === "stores" ? "Do'konlar" : s === "murojaatlar" ? "Murojaatlar" : STATUS_LABEL[s]}
+            <span className="badge">
+              {s === tab ? (s === "stores" ? stores.length : s === "murojaatlar" ? botCount : count) : ""}
+            </span>
           </button>
         ))}
       </div>
@@ -274,6 +313,93 @@ export function AdminPanelPage() {
                     </button>
                   </div>
                 )}
+              </motion.div>
+            ))}
+          </div>
+        )
+      ) : tab === "murojaatlar" ? (
+        loading ? (
+          <div className="empty-state">Yuklanmoqda...</div>
+        ) : botApps.length === 0 ? (
+          <div className="empty-state">
+            <div className="big" aria-hidden="true">📨</div>
+            <h3>Murojaatlar yo'q</h3>
+            <p className="muted">Telegram bot orqali kelgan arizalar shu yerda ko'rinadi</p>
+          </div>
+        ) : (
+          <div className="app-list">
+            {botApps.map((b) => (
+              <motion.div
+                key={b.id}
+                className="panel app-card"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="app-card-head">
+                  <div>
+                    <h3>
+                      <span className="mono">{b.application_number}</span> · {b.full_name}
+                    </h3>
+                    <div className="muted">
+                      {b.phone}
+                      {b.telegram_username ? ` · @${b.telegram_username}` : ""}
+                    </div>
+                    {b.message && <div style={{ marginTop: 6 }}>{b.message}</div>}
+                    {b.note && <div className="muted small">Izoh: {b.note}</div>}
+                  </div>
+                  <span
+                    className="status-pill"
+                    style={{
+                      background:
+                        b.status === "new"
+                          ? "rgba(234,179,8,.15)"
+                          : b.status === "in_review"
+                            ? "rgba(59,130,246,.15)"
+                            : b.status === "accepted"
+                              ? "rgba(34,197,94,.15)"
+                              : b.status === "rejected"
+                                ? "rgba(239,68,68,.15)"
+                                : "rgba(120,120,140,.15)",
+                      color:
+                        b.status === "new"
+                          ? "#eab308"
+                          : b.status === "in_review"
+                            ? "#60a5fa"
+                            : b.status === "accepted"
+                              ? "#22c55e"
+                              : b.status === "rejected"
+                                ? "#ef4444"
+                                : "#9ca3af",
+                    }}
+                  >
+                    {BOT_STATUS_LABEL[b.status] || b.status}
+                  </span>
+                </div>
+                <div className="muted small" style={{ marginTop: 4 }}>
+                  {new Date(b.created_at).toLocaleString("uz-UZ", { dateStyle: "short", timeStyle: "short" })}
+                </div>
+                <div className="app-card-actions">
+                  {(b.status === "new" || b.status === "in_review") && (
+                    <>
+                      {b.status === "new" && (
+                        <button className="btn btn-ghost btn-sm" onClick={() => setBotStatus(b, "in_review")}>
+                          Ko'rib chiqish
+                        </button>
+                      )}
+                      <button className="btn btn-primary btn-sm" onClick={() => setBotStatus(b, "accepted")}>
+                        Qabul qilish
+                      </button>
+                      <button className="btn btn-danger btn-sm" onClick={() => setBotStatus(b, "rejected")}>
+                        Rad etish
+                      </button>
+                    </>
+                  )}
+                  {(b.status === "accepted" || b.status === "rejected") && (
+                    <button className="btn btn-ghost btn-sm" onClick={() => setBotStatus(b, "completed")}>
+                      Yakunlash
+                    </button>
+                  )}
+                </div>
               </motion.div>
             ))}
           </div>

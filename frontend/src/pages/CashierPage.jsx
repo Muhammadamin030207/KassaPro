@@ -353,7 +353,7 @@ export function CashierPage() {
               <input
                 ref={inputRef}
                 className="scan-input"
-                placeholder="Shtrix kod..."
+                placeholder="Shtrix kodni skanerlang yoki kiriting"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 autoComplete="off"
