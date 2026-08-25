@@ -16,11 +16,11 @@ const MOBILE_LINKS = [
 
 const EXTRA_LINKS = [
   { to: "/debts", label: "Qarzdorlik", icon: "money", key: "qarzdorlik" },
-  { to: "/profile", label: "Profil", icon: "edit", key: "profil" },
   { to: "/staff", label: "Kassirlar", icon: "users", ownerOnly: true, key: "kassirlar" },
   { to: "/devices", label: "Qurilmalar", icon: "devices", superAdminOnly: true, key: "qurilmalar" },
   { to: "/settings", label: "Sozlamalar", icon: "settings", ownerOnly: true, key: "sozlamalar" },
   { to: "/admin", label: "Admin", icon: "shield", superAdminOnly: true, key: "admin" },
+  { to: "/profile", label: "Profil", icon: "user", key: "profil" },
 ];
 
 /** Faqat mobil ekranda ko'rinadigan bottom-nav holatini saqlaydi */
@@ -186,7 +186,16 @@ export function AppLayout({ children }) {
             </div>
 
             <div className="drawer-user">
-              <span className="drawer-avatar">{first}</span>
+              {user?.avatar ? (
+                <img
+                  src={user.avatar}
+                  alt=""
+                  className="drawer-avatar"
+                  style={{ objectFit: "cover" }}
+                />
+              ) : (
+                <span className="drawer-avatar">{first}</span>
+              )}
               <span className="drawer-user-meta">
                 <b>{user?.username}</b>
                 <small>

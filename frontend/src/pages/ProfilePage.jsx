@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import { useAuthStore } from "../stores/authStore";
 import { useToast } from "../components/Toast";
 import Icon from "../components/Icon";
+import { PhoneInputMask } from "../components/PhoneInputMask";
 
 /** Profil sahifasi: avatar (kamera/galereya), ma'lumotlar, do'kon nomi, parol. */
 export function ProfilePage() {
@@ -122,7 +123,7 @@ export function ProfilePage() {
     }
   };
 
-  const avatarSrc = avatarPreview || null;
+  const avatarSrc = avatarPreview || user?.avatar || null;
   const initial = (user?.username || "?").charAt(0).toUpperCase();
 
   return (
@@ -209,7 +210,11 @@ export function ProfilePage() {
           </div>
           <div className="field">
             <label>Telefon</label>
-            <input className="input mono" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998..." />
+            <PhoneInputMask
+              value={phone}
+              onChange={(v) => setPhone(v)}
+              placeholder="+998 90 123 45 67"
+            />
           </div>
           {user?.role === "owner" && (
             <div className="field">

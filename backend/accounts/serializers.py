@@ -40,7 +40,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ["id", "username", "first_name", "last_name", "phone", "avatar", "role", "shop", "shop_name", "is_admin"]
 
     def get_avatar(self, obj):
-        return bool(getattr(obj, "avatar", ""))
+        return getattr(obj, "avatar", "") or None
         read_only_fields = ["id"]
 
     def get_is_admin(self, obj):
