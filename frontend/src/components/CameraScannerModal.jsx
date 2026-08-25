@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Modal } from "./Modal";
 import Icon from "./Icon";
+import { playBarcodeError, playBarcodeSuccess } from "../utils/sound";
 
 let scanUID = 0;
 
@@ -18,6 +19,9 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
   const [flash, setFlash] = useState(false);
   const [facing, setFacing] = useState("environment");
   const [torch, setTorch] = useState(false);
+  const [continuous, setContinuous] = useState(false);
+  const continuousRef = useRef(continuous);
+  continuousRef.current = continuous;
   const scannerRef = useRef(null);
   const onDetectedRef = useRef(onDetected);
   onDetectedRef.current = onDetected;
@@ -39,15 +43,21 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
       return import("html5-qrcode")
         .then(({ Html5Qrcode }) => {
           if (cancelled) return null;
-          const scanner = new Html5Qrcode(readerId);
+          const scanner = new Html5Qrcode(readerId, {
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+          });
           scannerRef.current = scanner;
+          const vw =
+            typeof window !== "undefined" ? Math.min(window.innerWidth, 720) : 420;
+          const boxW = Math.round(Math.min(300, vw * 0.78));
           return scanner.start(
             { facingMode: facingRef.current },
-            { fps: 10, qrbox: { width: 260, height: 140 } },
+            { fps: 15, qrbox: { width: boxW, height: Math.round(boxW * 0.5) } },
             (decodedText) => {
               const text = decodedText.trim();
               if (!text) return;
               onDetectedRef.current?.(text);
+              playBarcodeSuccess();
               setFlash(true);
               try {
                 navigator.vibrate?.(120);
@@ -55,12 +65,14 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
                 /* e'tiborsiz */
               }
               setTimeout(() => setFlash(false), 350);
-              // Duplikat urilmasligi uchun qisqa pauza
+              // Duplikat urilmasligi uchun qisqa pauza.
+              // Uzluksiz rejimda pauza qisqa — tezkor ketma-ket skanerlash.
+              const pauseMs = continuousRef.current ? 550 : 1300;
               try {
                 scannerRef.current?.pause(true);
                 setTimeout(() => {
                   if (scannerRef.current && open) scannerRef.current?.resume();
-                }, 1300);
+                }, pauseMs);
               } catch {
                 /* e'tiborsiz */
               }
@@ -73,9 +85,10 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
         })
         .catch(() => {
           if (!cancelled) {
-setError("Skaner ochilmadi. Brauzer ruxsat so'raganda «Ruxsat berish»ni bosing.");
-        }
-      });
+            playBarcodeError();
+            setError("Skaner ochilmadi. Brauzer ruxsat so'raganda «Ruxsat berish»ni bosing.");
+          }
+        });
     };
 
     startScanner();
@@ -130,22 +143,29 @@ setError("Skaner ochilmadi. Brauzer ruxsat so'raganda «Ruxsat berish»ni bosing
     scannerRef.current = null;
     import("html5-qrcode")
       .then(({ Html5Qrcode }) => {
-        const scanner = new Html5Qrcode(readerId);
+        const scanner = new Html5Qrcode(readerId, {
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+        });
         scannerRef.current = scanner;
+        const vw =
+          typeof window !== "undefined" ? Math.min(window.innerWidth, 720) : 420;
+        const boxW = Math.round(Math.min(300, vw * 0.78));
         return scanner.start(
           { facingMode: next },
-          { fps: 10, qrbox: { width: 260, height: 140 } },
+          { fps: 15, qrbox: { width: boxW, height: Math.round(boxW * 0.5) } },
           (decodedText) => {
             const text = decodedText.trim();
             if (!text) return;
             onDetectedRef.current?.(text);
+            playBarcodeSuccess();
             setFlash(true);
             setTimeout(() => setFlash(false), 350);
+            const pauseMs = continuousRef.current ? 550 : 1300;
             try {
               scannerRef.current?.pause(true);
               setTimeout(() => {
                 if (scannerRef.current && open) scannerRef.current?.resume();
-              }, 1300);
+              }, pauseMs);
             } catch {
               /* e'tiborsiz */
             }
@@ -164,19 +184,28 @@ setError("Skaner ochilmadi. Brauzer ruxsat so'raganda «Ruxsat berish»ni bosing
         <h3>Shtrix-kod skaneri</h3>
         <div className="flex" style={{ gap: 8 }}>
           <button
+            className={`ghost-btn ${continuous ? "active" : ""}`}
+            onClick={() => setContinuous((v) => !v)}
+            title="Uzluksiz skanerlash — mahsulotlarni ketma-ket qo'shish"
+            aria-pressed={continuous}
+            style={{ color: continuous ? "var(--brand-light)" : "inherit" }}
+          >
+            <Icon name="zap" /> {continuous ? "Uzluksiz: YONIQ" : "Uzluksiz"}
+          </button>
+          <button
             className="ghost-btn"
             onClick={toggleTorch}
             title={torch ? "Fonarni o'chirish" : "Fonarni yoqish"}
             aria-label="Fonar"
             style={{ color: torch ? "var(--warn)" : "inherit" }}
           >
-            <Icon name="zap" /> Fonar
+            <Icon name="fire" /> Fonar
           </button>
           <button className="ghost-btn" onClick={switchCamera} title="Oldi/orqa kamera">
             <Icon name="refresh" /> {facing === "environment" ? "Orqa" : "Oldi"}
           </button>
           <button className="ghost-btn" onClick={onClose}>
-            <Icon name="trash" /> Yopish
+            <Icon name="x" /> Yopish
           </button>
         </div>
       </div>
