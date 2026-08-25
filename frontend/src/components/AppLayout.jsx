@@ -136,7 +136,7 @@ export function AppLayout({ children }) {
           onClick={goScan}
           aria-label="QR / shtrix-kod skanerlash"
         >
-          <Icon name="qr" size={26} />
+          <Icon name="scanbar" size={26} />
         </button>
 
         {MOBILE_LINKS.slice(2).map((l) => (

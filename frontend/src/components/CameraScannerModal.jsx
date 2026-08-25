@@ -233,7 +233,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
     <Modal open={open} onClose={onClose} size="lg">
       <div className="flex spread" style={{ marginBottom: 14 }}>
         <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Icon name="qr" /> Shtrix-kod skaneri
+          <Icon name="scanbar" /> Shtrix-kod skaneri
         </h3>
         <div className="flex" style={{ gap: 8 }}>
           <button

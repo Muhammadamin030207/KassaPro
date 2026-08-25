@@ -394,7 +394,7 @@ export function CashierPage() {
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
             >
-              <Icon name="qr" /> <span className="cam-lbl">Skaner</span>
+              <Icon name="scanbar" /> <span className="cam-lbl">Skaner</span>
             </motion.button>
           </div>
 
