@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   ResponsiveContainer,
@@ -17,6 +17,8 @@ import {
 } from "recharts";
 
 import { api } from "../api/client";
+import { Modal } from "../components/Modal";
+import { useToast } from "../components/Toast";
 import { daysAgoISO, formatMoney, todayISO } from "../utils/format";
 import { useCountUp } from "../hooks/useCountUp";
 
@@ -44,6 +46,22 @@ function AnimatedStat({ label, value, plain }) {
  */
 export function ReportsPage() {
   const [from, setFrom] = useState(daysAgoISO(6));
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearConfirm, setClearConfirm] = useState("");
+  const queryClient = useQueryClient();
+  const { show } = useToast();
+
+  const clearMutation = useMutation({
+    mutationFn: () =>
+      api.del(`reports/clear/?confirm=${encodeURIComponent(clearConfirm.trim())}`),
+    onSuccess: (res) => {
+      show(`Barcha savdo tarixi tozalandi (${res?.deleted ?? 0} ta savdo).`, "success");
+      setClearOpen(false);
+      setClearConfirm("");
+      queryClient.invalidateQueries();
+    },
+    onError: (e) => show(e.message, "error"),
+  });
   const [to, setTo] = useState(todayISO());
 
   const { data, isLoading } = useQuery({
@@ -87,6 +105,14 @@ export function ReportsPage() {
           <div className="sub">Savdo natijalari va tahlil</div>
         </div>
         <div className="flex">
+          <button
+            className="btn btn-danger"
+            style={{ alignSelf: "end", marginBottom: 0 }}
+            onClick={() => { setClearOpen(true); setClearConfirm(""); }}
+            title="Barcha savdo tarixini o'chirish"
+          >
+            🗑 Savdoni tozalash
+          </button>
           <div className="field" style={{ marginBottom: 0 }}>
             <label className="label">Dan</label>
             <input type="date" className="input" value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -237,6 +263,41 @@ export function ReportsPage() {
           </div>
         </>
       )}
+
+      <Modal open={clearOpen} onClose={() => setClearOpen(false)}>
+        <div>
+          <h3>Barcha savdoni o'chirish</h3>
+          <p className="muted" style={{ marginTop: 8 }}>
+            Diqqat! Do'kondagi <b>BARCHA savdo tarixi</b> butunlay o'chiriladi —
+            jami savdo, foyda, grafiklar <b>0</b> bo'ladi. Mahsulotlar va
+            qarzlar tegilmaydi. Bu amalni <b>qaytarib bo'lmaydi</b>.
+          </p>
+          <div className="field" style={{ marginTop: 14 }}>
+            <label>
+              Tasdiqlash uchun <b className="mono">O'CHIRISH</b> deb yozing:
+            </label>
+            <input
+              className="input"
+              value={clearConfirm}
+              onChange={(e) => setClearConfirm(e.target.value)}
+              placeholder="O'CHIRISH"
+              autoFocus
+            />
+          </div>
+          <div className="grid-2" style={{ marginTop: 16 }}>
+            <button className="btn btn-ghost" onClick={() => setClearOpen(false)}>
+              Bekor qilish
+            </button>
+            <button
+              className="btn btn-danger"
+              disabled={clearConfirm.trim().toUpperCase() !== "O'CHIRISH" || clearMutation.isPending}
+              onClick={() => clearMutation.mutate()}
+            >
+              {clearMutation.isPending ? "Tozalanmoqda..." : "Ha, hammasini o'chirish"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

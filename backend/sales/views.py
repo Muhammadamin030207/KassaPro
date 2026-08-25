@@ -145,6 +145,48 @@ class DailyReportView(views.APIView):
         )
 
 
+class SalesClearView(views.APIView):
+    """DANGEROUS: do'kondagi BARCHA savdolarni o'chirish (0'ga reset).
+
+    DELETE /api/reports/clear/  body: {"confirm": "O'CHIRISH"}
+    Faqat do'kon egasi/admin. Audit log yoziladi. Mahsulotlar va qarzlar
+    tegilmaydi — faqat savdo tarixi (Sale + SaleItem) tozalanadi.
+    """
+
+    permission_classes = [IsShopMember]
+
+    def delete(self, request):
+        confirm = (
+            (request.data.get("confirm")
+             or request.query_params.get("confirm")
+             or "")
+        ).strip().strip('"').upper()
+        if confirm != "O'CHIRISH":
+            return response.Response(
+                {"detail": "Tasdiqlash so'zi noto'g'ri. O'CHIRISH deb yozing."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        shop = getattr(request.user, "shop", None)
+        if shop is None:
+            return response.Response(
+                {"detail": "Do'kon topilmadi."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        count = Sale.objects.filter(shop=shop).count()
+        Sale.objects.filter(shop=shop).delete()
+        try:
+            from shops.models import AuditLog
+
+            AuditLog.objects.create(
+                actor=request.user,
+                shop=shop,
+                action="sales.cleared",
+                detail=f"Barcha savdolar o'chirildi ({count} ta).",
+            )
+        except Exception:  # noqa: BLE001 — audit muhim, lekin o'chirishni to'smaydi
+            pass
+        return response.Response({"deleted": count})
+
+
 class SummaryReportView(views.APIView):
     """Davr bo'yicha hisobot: jami, foyda, kassir kesimida."""
 

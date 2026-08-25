@@ -4,6 +4,7 @@ from sales.views import (
     DailyReportView,
     SaleDetailView,
     SaleListCreateView,
+    SalesClearView,
     SummaryReportView,
 )
 
@@ -12,4 +13,5 @@ urlpatterns = [
     path("sales/<int:pk>/", SaleDetailView.as_view(), name="sale-detail"),
     path("reports/daily/", DailyReportView.as_view(), name="report-daily"),
     path("reports/summary/", SummaryReportView.as_view(), name="report-summary"),
+    path("reports/clear/", SalesClearView.as_view(), name="report-clear"),
 ]

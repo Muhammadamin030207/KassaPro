@@ -21,6 +21,8 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
   const [torch, setTorch] = useState(false);
   const [continuous, setContinuous] = useState(false);
   const [lastCode, setLastCode] = useState("");
+  const [zoomCaps, setZoomCaps] = useState(null);
+  const [zoom, setZoom] = useState(1);
   const continuousRef = useRef(continuous);
   continuousRef.current = continuous;
   const scannerRef = useRef(null);
@@ -30,6 +32,30 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
   facingRef.current = facing;
   const torchRef = useRef(torch);
   torchRef.current = torch;
+
+
+  const readZoomCaps = (scanner) => {
+    try {
+      const caps = scanner.getRunningTrackCapabilities?.() || {};
+      const zc = caps.zoom;
+      if (zc && typeof zc.max === "number" && zc.max > 1) {
+        setZoomCaps({ min: zc.min || 1, max: zc.max, step: zc.step || 1 });
+      } else {
+        setZoomCaps(null);
+      }
+    } catch {
+      setZoomCaps(null);
+    }
+  };
+
+  const applyZoom = async (scanner, value) => {
+    try {
+      await scanner?.applyVideoConstraints({ advanced: [{ zoom: value }] });
+      setZoom(value);
+    } catch {
+      /* bu kamera zoom qo'llab-quvvatlamaydi */
+    }
+  };
 
   const [readerId] = useState(() => `camera-reader-${++scanUID}`);
 
@@ -176,10 +202,20 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
           () => {}
         );
       })
+      .then(() => {
+        readZoomCaps(scannerRef.current);
+        if (zoom !== 1) applyZoom(scannerRef.current, zoom);
+      })
       .catch(() => {
         setError("Skaner almashmadi, lekin yangi kamera ochilmadi.");
       });
   };
+
+  const zoomLevels = [];
+  if (zoomCaps) {
+    const maxL = Math.min(10, Math.max(2, Math.floor(zoomCaps.max)));
+    for (let i = 1; i <= maxL; i += 1) zoomLevels.push(i);
+  }
 
   return (
     <Modal open={open} onClose={onClose} size="lg">
@@ -217,6 +253,21 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
         <div id={readerId} className="camera-view" />
         <div className="camera-beam" />
       </div>
+
+      {zoomLevels.length > 1 && (
+        <div className="zoom-row" role="group" aria-label="Kamera zoom">
+          {zoomLevels.map((l) => (
+            <button
+              key={l}
+              type="button"
+              className={`zoom-chip ${zoom === l ? "on" : ""}`}
+              onClick={() => applyZoom(scannerRef.current, l)}
+            >
+              {l}x
+            </button>
+          ))}
+        </div>
+      )}
 
       {error ? (
         <div className="empty" style={{ marginTop: 12 }}>

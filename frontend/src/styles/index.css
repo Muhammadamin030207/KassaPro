@@ -4681,3 +4681,34 @@ html, body, #root {
     bottom: calc(74px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* ================= SCANNER ZOOM CHIPS ================= */
+.zoom-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.zoom-chip {
+  min-width: 46px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.zoom-chip:hover {
+  border-color: rgba(99, 102, 241, 0.5);
+}
+.zoom-chip.on {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+}
