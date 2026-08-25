@@ -2,6 +2,8 @@ import logging
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.core.cache import cache
+
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -101,6 +103,11 @@ class LoginView(TokenObtainPairView):
                     last_login_at=now,
                 )
             else:
+                if device.is_removed:
+                    # Qurilma o'chirilgan edi — qayta login = qayta aktivlash
+                    updates["is_removed"] = False
+                    updates["removed_at"] = None
+                    cache.delete(f"devrev:{user.id}:{device.device_id}")
                 updates = {
                     "browser": browser,
                     "browser_version": bv,
@@ -210,6 +217,21 @@ class DeviceDetailView(APIView):
         data = DeviceSerializer(device).data
         data["device_model"] = _model_display(data["device_type"], data["device_model"])
         return Response(data)
+
+    def delete(self, request, pk):
+        """Qurilmni o'chirish (kick): tombstone qo'yiladi — shu qurilmaning
+        aktiv sessiyasi 401 oladi (middleware). Qayta login bo'lsa qayta
+        aktivlashadi."""
+        device = self._get_device(request, pk)
+        if not device:
+            return Response(
+                {"detail": "Qurilma topilmadi."}, status=status.HTTP_404_NOT_FOUND
+            )
+        Device.objects.filter(pk=device.pk).update(
+            is_removed=True, removed_at=timezone.now()
+        )
+        cache.delete(f"devrev:{request.user.id}:{device.device_id}")
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def patch(self, request, pk):
         device = self._get_device(request, pk)

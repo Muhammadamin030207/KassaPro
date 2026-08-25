@@ -14,6 +14,17 @@ class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         data = super().validate(attrs)
+        request = self.context.get("request")
+        device_id = ""
+        if request is not None:
+            device_id = ((getattr(request, "data", {}) or {}).get("device_id") or "").strip()[:64]
+        if device_id:
+            from rest_framework_simplejwt.tokens import RefreshToken
+
+            refresh = RefreshToken(data["refresh"])
+            refresh["device_id"] = device_id
+            data["refresh"] = str(refresh)
+            data["access"] = str(refresh.access_token)
         data["user"] = UserSerializer(self.user).data
         return data
 

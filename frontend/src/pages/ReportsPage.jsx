@@ -107,6 +107,12 @@ export function ReportsPage() {
             <AnimatedStat label="Foyda" value={data?.total_profit} />
             <AnimatedStat label="Sotuvlar soni" value={data?.sale_count} plain />
             <AnimatedStat label="Mahsulotlar" value={data?.items_sold} plain />
+            <AnimatedStat
+              label="O'rtacha chek"
+              value={
+                data?.sale_count ? Math.round((data.total_revenue || 0) / data.sale_count) : 0
+              }
+            />
           </div>
 
           {/* Qarzdorlik xulosasi */}

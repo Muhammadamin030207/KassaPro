@@ -6,15 +6,15 @@ import { Scene3D } from "./Scene3D";
 import { useAuthStore } from "../stores/authStore";
 import { api } from "../api/client";
 
-/** Mobile-only bottom navigation links (4 main + extra via sheet) */
+/** Mobil bottom-nav: 3 ta asosiy bo'lim + QR markazda + Menyu (drawer) */
 const MOBILE_LINKS = [
   { to: "/", label: "Kassa", icon: "scan", end: true, key: "kassa" },
   { to: "/products", label: "Mahsulotlar", icon: "bag", key: "mahsulotlar" },
-  { to: "/debts", label: "Qarzdorlik", icon: "money", key: "qarzdorlik" },
   { to: "/reports", label: "Hisobotlar", icon: "chart", key: "hisobotlar" },
 ];
 
 const EXTRA_LINKS = [
+  { to: "/debts", label: "Qarzdorlik", icon: "money", key: "qarzdorlik" },
   { to: "/staff", label: "Kassirlar", icon: "users", ownerOnly: true, key: "kassirlar" },
   { to: "/devices", label: "Qurilmalar", icon: "devices", superAdminOnly: true, key: "qurilmalar" },
   { to: "/settings", label: "Sozlamalar", icon: "settings", ownerOnly: true, key: "sozlamalar" },
@@ -25,11 +25,6 @@ const EXTRA_LINKS = [
 function useBottomNav() {
   const navigate = useNavigate();
   const [activeKey, setActiveKey] = useState(MOBILE_LINKS[0].key);
-  const [showExtra, setShowExtra] = useState(false);
-
-  const toggleExtra = () => setShowExtra((v) => !v);
-
-  /* Drawer state for mobile */
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const toggleDrawer = () => setDrawerOpen((v) => !v);
@@ -69,7 +64,7 @@ function useBottomNav() {
     navigate(key);
   };
 
-  return { activeKey, setActive, showExtra, toggleExtra, toggleDrawer, drawerOpen };
+  return { activeKey, setActive, toggleDrawer, drawerOpen };
 }
 
 /** Mobil header — hamburger O'CHIRIQLANGAN, o'za o'ng nav bar qo'shilgan. */
@@ -77,7 +72,7 @@ export function AppLayout({ children }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
-  const { activeKey, setActive, showExtra, toggleExtra, toggleDrawer, drawerOpen } = useBottomNav();
+  const { setActive, toggleDrawer, drawerOpen } = useBottomNav();
 
   const isAdmin = user?.role === "super_admin" || user?.is_admin;
   const roleLabel =
@@ -94,6 +89,11 @@ export function AppLayout({ children }) {
       (!l.ownerOnly || user?.role === "owner" || isAdmin) &&
       (!l.superAdminOnly || user?.role === "super_admin" || isAdmin)
   );
+
+  const goScan = () => {
+    setActive(MOBILE_LINKS[0].key);
+    navigate("/?scan=1");
+  };
 
   const onLogout = () => {
     setActive(MOBILE_LINKS[0].key);
@@ -112,61 +112,57 @@ export function AppLayout({ children }) {
       <Scene3D />
 
       {/* ==== MOBIL: pastki navigatsiya panelishi (bottom navigation) ==== */}
-      <div className="hamburger-container">
-  <button
-    className={`hamburger-btn ${drawerOpen ? "is-open" : ""}`}
-    onClick={toggleDrawer}
-    aria-expanded={drawerOpen}
-    aria-label="Menyuni ochish/yopish"
-  >
-    <div className="hamburger-icon">
-      <div className="hamburger-ico">
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
-    </div>
-  </button>
-</div>
-
-<div className="mobile-bottom-nav">
-        {MOBILE_LINKS.map((l) => (
+      {/* ==== MOBIL: pastda zamonaviy bottom-nav (QR markazda) ==== */}
+      <nav className="mobile-bottom-nav" aria-label="Asosiy navigatsiya">
+        {MOBILE_LINKS.slice(0, 2).map((l) => (
           <NavLink
             key={l.key}
-            className={`bottom-nav-item ${activeKey === l.key ? "active" : ""}`}
-            onClick={() => setActive(l.key)}
+            to={l.to}
+            end={l.end}
+            className={({ isActive }) =>
+              `bottom-nav-item ${isActive ? "active" : ""}`
+            }
           >
             <Icon name={l.icon} />
             <span className="bottom-nav-label">{l.label}</span>
           </NavLink>
         ))}
-        {showExtra && (
-          <div className="bottom-sheet" onClick={toggleExtra}>
-            <div className="sheet-header">
-              <span className="sheet-title">Ko'proq</span>
-              <button className="sheet-close" onClick={toggleExtra}>✕</button>
-            </div>
-            <nav className="sheet-nav">
-              {EXTRA_LINKS.map((l) => (
-                <NavLink
-                  key={l.key}
-                  to={l.to}
-                  className={({ isActive }) =>
-                    `sheet-nav-link ${isActive ? "active" : ""}`
-                  }
-                >
-                  <Icon name={l.icon} />
-                  <span>{l.label}</span>
-                </NavLink>
-              ))}
-            </nav>
-          </div>
-        )}
-      </div>
 
+        <button
+          type="button"
+          className="bottom-qr"
+          onClick={goScan}
+          aria-label="QR / shtrix-kod skanerlash"
+        >
+          <Icon name="scan" size={26} />
+        </button>
 
+        {MOBILE_LINKS.slice(2).map((l) => (
+          <NavLink
+            key={l.key}
+            to={l.to}
+            end={l.end}
+            className={({ isActive }) =>
+              `bottom-nav-item ${isActive ? "active" : ""}`
+            }
+          >
+            <Icon name={l.icon} />
+            <span className="bottom-nav-label">{l.label}</span>
+          </NavLink>
+        ))}
 
-      {/* Mobile drawer when hamburger is open */}
+        <button
+          type="button"
+          className="bottom-menu-btn"
+          onClick={toggleDrawer}
+          aria-label="Menyu"
+        >
+          <Icon name="menu" />
+          <span className="bottom-nav-label">Menyu</span>
+        </button>
+      </nav>
+
+      {/* Mobile drawer — Menyu tugmasi orqali ochiladi */}
       {drawerOpen && (
         <div className="drawer-menu" onClick={toggleDrawer}>
           <div className="drawer-inner" onClick={(e) => e.stopPropagation()}>

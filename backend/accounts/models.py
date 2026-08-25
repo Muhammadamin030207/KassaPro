@@ -77,6 +77,8 @@ class Device(models.Model):
     browser_version = models.CharField(max_length=32, blank=True)
     is_name_manual = models.BooleanField(default=False)
     is_model_manual = models.BooleanField(default=False)
+    is_removed = models.BooleanField(default=False)
+    removed_at = models.DateTimeField(null=True, blank=True)
     first_seen_at = models.DateTimeField(auto_now_add=True)
     last_active_at = models.DateTimeField(auto_now_add=True)
     last_login_at = models.DateTimeField(null=True, blank=True)

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { api } from "../api/client";
@@ -57,6 +58,14 @@ export function CashierPage() {
   const [lastCash, setLastCash] = useState(null);
 
   const inputRef = useRef(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("scan") === "1") {
+      setCamOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   const quickNameRef = useRef(null);
   const quickPriceRef = useRef(null);
   // Sotuv yakunlashda dublikat so'rov oldini oladi (double-submit).

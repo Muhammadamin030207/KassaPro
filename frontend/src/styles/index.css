@@ -4599,3 +4599,85 @@ html, body, #root {
     background: rgba(239, 68, 68, 0.2);
   }
 }
+
+/* ================= BOTTOM NAV v2 — QR markazda FAB ================= */
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    position: fixed !important;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 74px 1fr 1fr;
+    align-items: stretch;
+    min-height: 64px;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+    background: var(--panel) !important;
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.28);
+    z-index: 90;
+  }
+
+  .main {
+    padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .bottom-nav-item,
+  .bottom-menu-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 2px;
+    border: none;
+    background: none;
+    color: var(--ink-faint);
+    font-size: 11px;
+    text-decoration: none;
+    cursor: pointer;
+    min-height: 48px;
+    transition: color 0.15s ease;
+  }
+  .bottom-nav-item svg,
+  .bottom-menu-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+  .bottom-nav-item.active,
+  .bottom-menu-btn:active {
+    color: var(--brand-light, #818cf8);
+  }
+  .bottom-nav-item.active .bottom-nav-label,
+  .bottom-menu-btn .bottom-nav-label {
+    font-weight: 600;
+  }
+
+  /* Markazdagi QR — ko'tarilgan doira */
+  .bottom-qr {
+    align-self: start;
+    justify-self: center;
+    width: 58px;
+    height: 58px;
+    margin-top: -24px;
+    border-radius: 50%;
+    border: 4px solid var(--bg, #0f1115);
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 22px rgba(99, 102, 241, 0.45);
+    transition: transform 0.12s ease, box-shadow 0.15s ease;
+  }
+  .bottom-qr:active {
+    transform: scale(0.94);
+  }
+
+  /* Kassadagi sticky To'lov tugmasi bottom-nav ustiga chiqmasin */
+  .cashier-layout .pay-zone {
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+  }
+}

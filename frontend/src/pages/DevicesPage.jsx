@@ -101,6 +101,16 @@ export function DevicesPage() {
     onError: (e) => show(e.message, "error"),
   });
 
+  const removeMutation = useMutation({
+    mutationFn: (id) => api.del(`devices/${id}/`),
+    onSuccess: () => {
+      show("Qurilma o'chirildi — shu qurilmaning sessiyasi yopildi.", "success");
+      setDetail(null);
+      refresh();
+    },
+    onError: (e) => show(e.message, "error"),
+  });
+
   const all = devicesQuery.data?.results || [];
 
   const filtered = useMemo(() => {
@@ -297,6 +307,23 @@ export function DevicesPage() {
               </div>
               <button className="ghost-btn" onClick={() => setEditing(!editing)} title="Tahrirlash">
                 <Icon name="edit" size={16} /> <span>{editing ? "Bekor" : "Tahrirlash"}</span>
+              </button>
+              <button
+                className="ghost-btn"
+                style={{ color: "#f87171", borderColor: "rgba(239,68,68,.4)" }}
+                disabled={removeMutation.isPending}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `"${detail.device_name || "Qurilma"}" o'chirilsinmi? Shu qurilmaning kirish sessiyasi darhol yopiladi (qayta login qila oladi).`
+                    )
+                  ) {
+                    removeMutation.mutate(detail.id);
+                  }
+                }}
+                title="Qurilmni o'chirish (sessiyani yopish)"
+              >
+                <Icon name="trash" size={16} /> <span>O'chirish</span>
               </button>
             </div>
 
