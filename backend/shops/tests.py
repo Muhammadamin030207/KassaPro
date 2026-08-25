@@ -18,6 +18,7 @@ class ApplicationCreateViewTests(APITestCase):
             "store_name": "Test Do'kon",
             "owner_name": "Aliyev Alisher",
             "phone": "+998 90 123 45 67",
+            "email": "aliyev@example.com",
             "address": "Toshkent, Chilonzor",
         }
         data.update(overrides)
@@ -64,6 +65,12 @@ class ApplicationCreateViewTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(StoreApplication.objects.count(), 0)
         self.assertIn("Do'kon nomi", str(resp.data))
+
+    def test_missing_email_rejected(self):
+        resp = self.client.post(self.URL, self._payload(email=""), format="json")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(StoreApplication.objects.count(), 0)
+        self.assertIn("email", resp.data)
 
     def test_missing_owner_name_rejected(self):
         resp = self.client.post(self.URL, self._payload(owner_name=""), format="json")

@@ -93,7 +93,8 @@ export function LoginPage() {
     if (!apply.phone.trim()) errors.phone = "Telefon raqami kiritilmagan";
     else if (!/^\+?[0-9][0-9 ()-]{7,}$/.test(apply.phone.trim()))
       errors.phone = "Telefon raqami noto'g'ri formatda";
-    if (apply.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(apply.email.trim()))
+    if (!apply.email.trim()) errors.email = "Email kiritilish shart — login/parol shu emailga yuboriladi";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(apply.email.trim()))
       errors.email = "Email noto'g'ri formatda";
     if (Object.keys(errors).length) {
       setApplyErrors(errors);
@@ -292,7 +293,7 @@ export function LoginPage() {
             </div>
 
             <div className="field">
-              <label>Email (login/parol shu yerga yuboriladi)</label>
+              <label>Email * <span className="muted" style={{ fontWeight: 400, fontSize: 11 }}>(tasdiqlangach login/parol shu emailga keladi)</span></label>
               <input
                 className="input"
                 type="email"
@@ -300,6 +301,7 @@ export function LoginPage() {
                 onChange={applyField("email")}
                 placeholder="example@gmail.com"
                 maxLength={254}
+                required
               />
               {applyErrors.email && <div className="field-error">{applyErrors.email}</div>}
             </div>
