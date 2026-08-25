@@ -148,3 +148,57 @@ class CategoryListView(generics.ListAPIView):
 
     def get_queryset(self):
         return Category.objects.filter(shop=self.request.user.shop)
+
+class ProductGlobalLookupView(views.APIView):
+    """Noma'lum shtrix-kodni global bazadan avtomatik taniydi.
+
+    GET /api/products/lookup/{code}/
+    Manba: Open Food Facts (bepul, kalit talab qilinmaydi, EAN-13/UPC).
+    Natija 24 soat keshlanadi. Hech qachon asosiy oqimni to'smaydi —
+    topilmasa {"found": false} qaytadi.
+    """
+
+    permission_classes = [IsShopMember]
+
+    def get(self, request, code):
+        import json as _json
+        import urllib.request as _ur
+
+        from django.core.cache import cache
+
+        code = str(code or "").strip()
+        if not code.isdigit() or len(code) < 8:
+            return response.Response({"found": False})
+
+        cache_key = f"off-lookup:{code}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return response.Response(cached)
+
+        result = {"found": False}
+        try:
+            url = f"https://world.openfoodfacts.org/api/v2/product/{code}.json?fields=product_name,brands,quantity"
+            req = _ur.Request(url, headers={"User-Agent": "KassaPro-POS/1.0"})
+            with _ur.urlopen(req, timeout=6) as resp:
+                payload = _json.loads(resp.read().decode("utf-8", errors="ignore"))
+            product = (payload or {}).get("product") or {}
+            name = (product.get("product_name") or "").strip()
+            brand = (product.get("brands") or "").split(",")[0].strip()
+            qty = (product.get("quantity") or "").strip()
+            if name:
+                full = f"{brand} {name}".strip() if brand and brand.lower() not in name.lower() else name
+                if qty:
+                    full = f"{full} ({qty})" if qty.lower() not in full.lower() else full
+                result = {
+                    "found": True,
+                    "name": full[:150],
+                    "brand": brand[:80],
+                    "quantity": qty[:30],
+                    "barcode": code,
+                    "source": "openfoodfacts",
+                }
+        except Exception:  # noqa: BLE001 — tashqi xizmat muammosi oqimni to'smaydi
+            result = {"found": False}
+
+        cache.set(cache_key, result, 60 * 60 * 24)
+        return response.Response(result)

@@ -4,12 +4,18 @@ from catalog.views import (
     CategoryListView,
     ProductByBarcodeView,
     ProductDetailView,
+    ProductGlobalLookupView,
     ProductListCreateView,
     ProductUpsertByBarcodeView,
 )
 
 urlpatterns = [
     path("products/", ProductListCreateView.as_view(), name="product-list"),
+    path(
+        "products/lookup/<str:code>/",
+        ProductGlobalLookupView.as_view(),
+        name="product-global-lookup",
+    ),
     path(
         "products/by-barcode/<str:code>/",
         ProductByBarcodeView.as_view(),
