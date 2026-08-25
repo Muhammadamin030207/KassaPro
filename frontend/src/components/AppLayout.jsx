@@ -169,30 +169,35 @@ export function AppLayout({ children }) {
       {/* Mobile drawer when hamburger is open */}
       {drawerOpen && (
         <div className="drawer-menu" onClick={toggleDrawer}>
-          <nav onClick={(e) => e.stopPropagation()}>
-            <ul>
-              {MOBILE_LINKS.map((l) => (
-                <li key={l.key} className="nav-item">
-                  <a
-                    className="nav-link"
-                    href={l.to}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      toggleDrawer();
-                      navigate(l.to);
-                    }}
-                  >
-                    <Icon name={l.icon} />
-                    <span>{l.label}</span>
-                  </a>
-                </li>
-              ))}
-              {EXTRA_LINKS.map((l) => {
-                const canView =
-                  (!l.ownerOnly || user?.role === "owner" || isAdmin) &&
-                  (!l.superAdminOnly || user?.role === "super_admin" || isAdmin);
-                if (!canView) return null;
-                return (
+          <div className="drawer-inner" onClick={(e) => e.stopPropagation()}>
+            <div className="drawer-head">
+              <span className="drawer-brand">
+                <img src="/favicon.svg" alt="" />
+                KassaPro
+              </span>
+              <button
+                className="drawer-close"
+                onClick={toggleDrawer}
+                aria-label="Yopish"
+              >
+                <Icon name="x" />
+              </button>
+            </div>
+
+            <div className="drawer-user">
+              <span className="drawer-avatar">{first}</span>
+              <span className="drawer-user-meta">
+                <b>{user?.username}</b>
+                <small>
+                  {roleLabel}
+                  {user?.shop_name ? ` · ${user.shop_name}` : ""}
+                </small>
+              </span>
+            </div>
+
+            <nav className="drawer-nav">
+              <ul>
+                {MOBILE_LINKS.map((l) => (
                   <li key={l.key} className="nav-item">
                     <a
                       className="nav-link"
@@ -207,10 +212,36 @@ export function AppLayout({ children }) {
                       <span>{l.label}</span>
                     </a>
                   </li>
-                );
-              })}
-            </ul>
-          </nav>
+                ))}
+                {EXTRA_LINKS.map((l) => {
+                  const canView =
+                    (!l.ownerOnly || user?.role === "owner" || isAdmin) &&
+                    (!l.superAdminOnly || user?.role === "super_admin" || isAdmin);
+                  if (!canView) return null;
+                  return (
+                    <li key={l.key} className="nav-item">
+                      <a
+                        className="nav-link"
+                        href={l.to}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          toggleDrawer();
+                          navigate(l.to);
+                        }}
+                      >
+                        <Icon name={l.icon} />
+                        <span>{l.label}</span>
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
+
+            <button className="drawer-logout" onClick={onLogout}>
+              <Icon name="logOut" /> Chiqish
+            </button>
+          </div>
         </div>
       )}
 
