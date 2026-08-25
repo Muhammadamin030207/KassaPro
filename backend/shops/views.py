@@ -311,33 +311,43 @@ class StoreAdminView(views.APIView):
                 "Parolni o'zgartirish uchun profilda Admin bilan bog'laning.",
             )
 
-        # Telegram bo'lmasa — email fallback (SMTP sozlangan bo'lsa).
+        # Telegram bo'lmasa — email fallback (SMTP haqiqatan sozlangan bo'lsa).
+        # Fake success yo'q: console backend yoki bo'sh SMTP = yuborilmadi hisoblanadi.
+        from django.conf import settings as dj_settings
+
+        smtp_ready = dj_settings.EMAIL_BACKEND.endswith(
+            "smtp.EmailBackend"
+        ) and bool(dj_settings.EMAIL_HOST and dj_settings.EMAIL_HOST_USER)
         email_sent = False
         email_error = ""
         delivery_channel = "telegram" if chat_id else "email"
         if not chat_id and app_email:
-            from django.core.mail import send_mail
+            if not smtp_ready:
+                email_error = "SMTP sozlanmagan (EMAIL_HOST/EMAIL_HOST_USER Render env'da yo'q)"
+                logger.warning("credential email skipped for app %s: %s", application_id, email_error)
+            else:
+                from django.core.mail import send_mail
 
-            try:
-                send_mail(
-                    subject="KassaPro hisobingiz tayyor",
-                    message=(
-                        "Assalomu alaykum!\n\n"
-                        "KassaPro'ga arizangiz tasdiqlandi.\n\n"
-                        f"Do'kon: {data['store_name']}\n"
-                        f"Kirish: https://smartkassa-1.onrender.com/login\n\n"
-                        f"Login: {data['username']}\n"
-                        f"Parol: {data['password']}\n\n"
-                        "Birinchi kirishdan keyin parolingizni almashtiring."
-                    ),
-                    from_email=None,
-                    recipient_list=[app_email],
-                    fail_silently=False,
-                )
-                email_sent = True
-            except Exception as exc:  # noqa: BLE001
-                logger.exception("credential email failed")
-                email_error = str(exc)[:300]
+                try:
+                    send_mail(
+                        subject="KassaPro hisobingiz tayyor",
+                        message=(
+                            "Assalomu alaykum!\n\n"
+                            "KassaPro'ga arizangiz tasdiqlandi.\n\n"
+                            f"Do'kon: {data['store_name']}\n"
+                            f"Kirish: https://smartkassa-1.onrender.com/login\n\n"
+                            f"Login: {data['username']}\n"
+                            f"Parol: {data['password']}\n\n"
+                            "Birinchi kirishdan keyin parolingizni almashtiring."
+                        ),
+                        from_email=None,
+                        recipient_list=[app_email],
+                        fail_silently=False,
+                    )
+                    email_sent = True
+                except Exception as exc:  # noqa: BLE001
+                    logger.exception("credential email failed")
+                    email_error = str(exc)[:300]
         elif not chat_id and not app_email:
             delivery_channel = "none"
 
