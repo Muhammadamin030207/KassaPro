@@ -378,3 +378,84 @@ class NotificationReadAllView(APIView):
             read_at=timezone.now()
         )
         return Response({"ok": True})
+
+
+class ProfileUpdateView(APIView):
+    """PATCH /api/auth/profile/ — profil ma'lumotlari.
+
+    first_name, last_name, phone, avatar (base64 data URL, <=300KB),
+    shop_name (faqat owner).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        user = request.user
+        data = request.data or {}
+
+        if "first_name" in data:
+            user.first_name = (data.get("first_name") or "").strip()[:150]
+        if "last_name" in data:
+            user.last_name = (data.get("last_name") or "").strip()[:150]
+        if "phone" in data:
+            from customers.utils import normalize_phone
+
+            phone = (data.get("phone") or "").strip()
+            if phone:
+                normalized = normalize_phone(phone)
+                if not normalized:
+                    return Response(
+                        {"phone": "Telefon raqam noto'g'ri."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                phone = normalized
+            user.phone = phone
+        if "avatar" in data:
+            avatar = (data.get("avatar") or "").strip()
+            if avatar and not avatar.startswith("data:image/"):
+                return Response(
+                    {"avatar": "Faqat rasm fayli (data URL) qabul qilinadi."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if len(avatar) > 400_000:
+                return Response(
+                    {"avatar": "Rasm juda katta (max ~300KB)."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.avatar = avatar
+
+        shop_name = (data.get("shop_name") or "").strip()
+        if shop_name:
+            if user.role != "owner" or user.shop is None:
+                return Response(
+                    {"shop_name": "Faqat do'kon egasi nomni o'zgartiradi."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            user.shop.name = shop_name[:150]
+            user.shop.save(update_fields=["name"])
+
+        user.save()
+        return Response(UserSerializer(user).data)
+
+
+class ChangePasswordView(APIView):
+    """POST /api/auth/change-password/ — joriy parol bilan."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        current = request.data.get("current_password") or ""
+        new = request.data.get("new_password") or ""
+        if not request.user.check_password(current):
+            return Response(
+                {"current_password": "Joriy parol noto'g'ri."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if len(new) < 6:
+            return Response(
+                {"new_password": "Yangi parol kamida 6 belgidan iborat bo'lsin."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        request.user.set_password(new)
+        request.user.save()
+        return Response({"ok": True, "detail": "Parol o'zgartirildi."})

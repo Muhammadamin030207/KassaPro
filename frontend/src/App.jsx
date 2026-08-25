@@ -142,6 +142,7 @@ export default function App() {
       <Route path="/" element={<Protected><CashierPage /></Protected>} />
       <Route path="/products" element={<Protected><ProductsPage /></Protected>} />
       <Route path="/reports" element={<Protected><ReportsPage /></Protected>} />
+      <Route path="/profile" element={<Protected><ProfilePage /></Protected>} />
       <Route
         path="/debts"
         element={

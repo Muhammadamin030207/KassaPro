@@ -33,9 +33,14 @@ class UserSerializer(serializers.ModelSerializer):
     shop_name = serializers.CharField(source="shop.name", read_only=True)
     is_admin = serializers.SerializerMethodField()
 
+    avatar = serializers.SerializerMethodField()
+
     class Meta:
         model = UserModel
-        fields = ["id", "username", "first_name", "last_name", "phone", "role", "shop", "shop_name", "is_admin"]
+        fields = ["id", "username", "first_name", "last_name", "phone", "avatar", "role", "shop", "shop_name", "is_admin"]
+
+    def get_avatar(self, obj):
+        return bool(getattr(obj, "avatar", ""))
         read_only_fields = ["id"]
 
     def get_is_admin(self, obj):

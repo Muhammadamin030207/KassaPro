@@ -2,7 +2,9 @@ from django.urls import path
 
 from accounts.views import (
     DeviceDetailView,
+    ChangePasswordView,
     NotificationListView,
+    ProfileUpdateView,
     NotificationReadAllView,
     NotificationReadView,
     DeviceListView,
@@ -21,6 +23,12 @@ urlpatterns = [
     path("auth/logout/", LogoutView.as_view(), name="logout"),
     path("auth/register/", RegisterOwnerView.as_view(), name="register"),
     path("auth/me/", MeView.as_view(), name="me"),
+    path("auth/profile/", ProfileUpdateView.as_view(), name="profile-update"),
+    path(
+        "auth/change-password/",
+        ChangePasswordView.as_view(),
+        name="change-password",
+    ),
     path("devices/", DeviceListView.as_view(), name="devices"),
     path("devices/<int:pk>/", DeviceDetailView.as_view(), name="device-detail"),
     path("notifications/", NotificationListView.as_view(), name="notifications"),

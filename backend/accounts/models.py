@@ -22,6 +22,8 @@ class User(AbstractUser):
         blank=True,
     )
     phone = models.CharField(max_length=20, blank=True)
+    # Avatar base64 data URL sifatida (Render ephemeral disk — fayl emas, DB'da)
+    avatar = models.TextField(blank=True)
 
     @property
     def is_admin(self):
