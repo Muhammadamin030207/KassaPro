@@ -312,43 +312,28 @@ class StoreAdminView(views.APIView):
                 "Parolni o'zgartirish uchun profilda Admin bilan bog'laning.",
             )
 
-        # Telegram bo'lmasa — email fallback (SMTP haqiqatan sozlangan bo'lsa).
-        # Fake success yo'q: console backend yoki bo'sh SMTP = yuborilmadi hisoblanadi.
-        from django.conf import settings as dj_settings
-
-        smtp_ready = dj_settings.EMAIL_BACKEND.endswith(
-            "smtp.EmailBackend"
-        ) and bool(dj_settings.EMAIL_HOST and dj_settings.EMAIL_HOST_USER)
+        # Telegram bo'lmasa — email fallback (Brevo HTTP API / SMTP).
+        # Fake success yo'q: yuboruv natijasi real provider javobiga asoslanadi.
         email_sent = False
         email_error = ""
         delivery_channel = "telegram" if chat_id else "email"
         if not chat_id and app_email:
-            if not smtp_ready:
-                email_error = "SMTP sozlanmagan (EMAIL_HOST/EMAIL_HOST_USER Render env'da yo'q)"
-                logger.warning("credential email skipped for app %s: %s", application_id, email_error)
-            else:
-                from django.core.mail import send_mail
-
-                try:
-                    send_mail(
-                        subject="KassaPro hisobingiz tayyor",
-                        message=(
-                            "Assalomu alaykum!\n\n"
-                            "KassaPro'ga arizangiz tasdiqlandi.\n\n"
-                            f"Do'kon: {data['store_name']}\n"
-                            f"Kirish: https://smartkassa-1.onrender.com/login\n\n"
-                            f"Login: {data['username']}\n"
-                            f"Parol: {data['password']}\n\n"
-                            "Birinchi kirishdan keyin parolingizni almashtiring."
-                        ),
-                        from_email=None,
-                        recipient_list=[app_email],
-                        fail_silently=False,
-                    )
-                    email_sent = True
-                except Exception as exc:  # noqa: BLE001
-                    logger.exception("credential email failed")
-                    email_error = str(exc)[:300]
+            email_sent, email_error = _send_credentials_email(
+                app_email,
+                "KassaPro hisobingiz tayyor",
+                (
+                    "Assalomu alaykum!\n\n"
+                    "KassaPro'ga arizangiz tasdiqlandi.\n\n"
+                    f"Do'kon: {data['store_name']}\n"
+                    "Kirish: https://smartkassa-1.onrender.com/login\n\n"
+                    f"Login: {data['username']}\n"
+                    f"Parol: {data['password']}\n\n"
+                    "Birinchi kirishdan keyin parolingizni almashtiring.\n\n"
+                    "— KassaPro jamoasi"
+                ),
+            )
+            if not email_sent:
+                logger.warning("credential email failed for app %s: %s", application_id, email_error)
         elif not chat_id and not app_email:
             delivery_channel = "none"
 
@@ -480,6 +465,61 @@ class StoreReopenView(views.APIView):
             detail="Barcha a'zolar qayta faollashtirildi.",
         )
         return response.Response(StoreAdminSerializer(shop).data)
+
+def _send_credentials_email(to_email, subject, body):
+    """Email yuborish. Render standart SMTP portlarni (25/587/465) bloklaydi —
+    shuning uchun Brevo HTTP API (HTTPS) ishlatiladi. BREVO_API_KEY bo'lmasa
+    SMTP fallback. Qaytaradi: (sent: bool, error: str)."""
+    import json as _json
+    import os as _os
+    import urllib.error as _ue
+    import urllib.request as _ur
+
+    from django.conf import settings as _dj
+
+    api_key = _os.environ.get("BREVO_API_KEY", "")
+    if api_key:
+        sender_email = _dj.EMAIL_HOST_USER or to_email
+        payload = _json.dumps(
+            {
+                "sender": {"name": "KassaPro", "email": sender_email},
+                "to": [{"email": to_email}],
+                "subject": subject,
+                "textContent": body,
+            }
+        ).encode()
+        req = _ur.Request(
+            "https://api.brevo.com/v3/smtp/email",
+            data=payload,
+            headers={
+                "api-key": api_key,
+                "content-type": "application/json",
+                "accept": "application/json",
+            },
+        )
+        try:
+            with _ur.urlopen(req, timeout=20) as resp:
+                if resp.status in (200, 201):
+                    return True, ""
+                return False, f"Brevo HTTP {resp.status}"
+        except _ue.HTTPError as exc:
+            return False, f"Brevo HTTP {exc.code}: {exc.read()[:200].decode(errors='ignore')}"
+        except Exception as exc:  # noqa: BLE001
+            return False, f"Brevo ulanmadi: {exc}"
+
+    if not _dj.EMAIL_BACKEND.endswith("smtp.EmailBackend") or not (
+        _dj.EMAIL_HOST and _dj.EMAIL_HOST_USER
+    ):
+        return False, "BREVO_API_KEY ham SMTP ham sozlanmagan"
+
+    from django.core.mail import send_mail
+
+    try:
+        send_mail(subject=subject, message=body, from_email=None, recipient_list=[to_email], fail_silently=False)
+        return True, ""
+    except Exception as exc:  # noqa: BLE001
+        return False, str(exc)[:300]
+
 
 class ApplicationStatusView(views.APIView):
     """Ochiq: foydalanuvchi o'z arizasi holatini tracking_code bilan kuzatadi.
