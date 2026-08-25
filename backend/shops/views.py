@@ -76,6 +76,22 @@ class ApplicationCreateView(views.APIView):
             status=StoreApplication.Status.PENDING,
         )
         sent = send_admin_notification(format_application_message(app))
+        try:
+            from accounts.models import Notification
+            from django.contrib.auth import get_user_model as _gum
+
+            _User = _gum()
+            for admin in _User.objects.filter(
+                role="super_admin", is_active=True
+            )[:5]:
+                Notification.objects.create(
+                    user=admin,
+                    ntype="application",
+                    title=f"Yangi ariza: {app.store_name}",
+                    body=f"{app.owner_name} · {app.phone}",
+                )
+        except Exception:  # noqa: BLE001
+            pass
         if not sent:
             BotLog.objects.create(
                 chat_id=None,
@@ -336,6 +352,18 @@ class StoreAdminView(views.APIView):
                 logger.warning("credential email failed for app %s: %s", application_id, email_error)
         elif not chat_id and not app_email:
             delivery_channel = "none"
+
+        try:
+            from accounts.models import notify
+
+            notify(
+                user,
+                "application",
+                "Hisobingiz tasdiqlandi ✓",
+                f"Do'kon: {data['store_name']} · login: {data['username']}",
+            )
+        except Exception:  # noqa: BLE001
+            pass
 
         # Holat kuzatuvi uchun arizada qaysi kanal ishlatilgani saqlanadi
         if application_id:

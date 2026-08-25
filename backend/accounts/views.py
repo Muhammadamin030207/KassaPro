@@ -22,6 +22,7 @@ from accounts.device_utils import (
     parse_user_agent,
 )
 from accounts.models import Device
+from accounts.models import Notification
 from accounts.permissions import IsAdmin, IsOwner
 from accounts.serializers import (
     DeviceSerializer,
@@ -231,6 +232,17 @@ class DeviceDetailView(APIView):
             is_removed=True, removed_at=timezone.now()
         )
         cache.delete(f"devrev:{request.user.id}:{device.device_id}")
+        try:
+            from accounts.models import notify
+
+            notify(
+                request.user,
+                "device",
+                f"Qurilma o'chirildi: {device.device_name or device.device_id[:12]}",
+                "Shu qurilmaning sessiyasi yopildi. Qayta login qilsa qayta faollashadi.",
+            )
+        except Exception:  # noqa: BLE001
+            pass
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def patch(self, request, pk):
@@ -318,3 +330,51 @@ class StaffDeleteView(APIView):
             )
         user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class NotificationListView(APIView):
+    """GET /api/notifications/ — ro'yxat + unread count (oxirgi 50)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = Notification.objects.filter(user=request.user)
+        unread = qs.filter(read_at__isnull=True).count()
+        items = [
+            {
+                "id": n.id,
+                "ntype": n.ntype,
+                "title": n.title,
+                "body": n.body,
+                "read": n.read_at is not None,
+                "created_at": n.created_at,
+            }
+            for n in qs[:50]
+        ]
+        return Response({"unread": unread, "results": items})
+
+
+class NotificationReadView(APIView):
+    """POST /api/notifications/<id>/read/"""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        n = Notification.objects.filter(pk=pk, user=request.user).first()
+        if not n:
+            return Response({"detail": "Topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+        if n.read_at is None:
+            n.read_at = timezone.now()
+            n.save(update_fields=["read_at"])
+        return Response({"ok": True})
+
+
+class NotificationReadAllView(APIView):
+    """POST /api/notifications/read-all/"""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        Notification.objects.filter(user=request.user, read_at__isnull=True).update(
+            read_at=timezone.now()
+        )
+        return Response({"ok": True})

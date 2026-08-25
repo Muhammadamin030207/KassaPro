@@ -363,6 +363,18 @@ class DebtPaymentView(views.APIView):
                     "remaining": str(new_remaining),
                 },
             )
+        try:
+            from accounts.models import notify_shop_owner
+
+            notify_shop_owner(
+                request.user.shop,
+                "debt",
+                f"Qarz to'lovi: {amount:,.0f} so'm".replace(",", " "),
+                f"Mijoz: {debt.customer.name} · qoldiq: {new_remaining:,.0f} so'm".replace(",", " "),
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
         return response.Response(
             DebtDetailSerializer(debt).data, status=status.HTTP_201_CREATED
         )

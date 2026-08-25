@@ -2,6 +2,9 @@ from django.urls import path
 
 from accounts.views import (
     DeviceDetailView,
+    NotificationListView,
+    NotificationReadAllView,
+    NotificationReadView,
     DeviceListView,
     LoginView,
     LogoutView,
@@ -20,6 +23,17 @@ urlpatterns = [
     path("auth/me/", MeView.as_view(), name="me"),
     path("devices/", DeviceListView.as_view(), name="devices"),
     path("devices/<int:pk>/", DeviceDetailView.as_view(), name="device-detail"),
+    path("notifications/", NotificationListView.as_view(), name="notifications"),
+    path(
+        "notifications/<int:pk>/read/",
+        NotificationReadView.as_view(),
+        name="notification-read",
+    ),
+    path(
+        "notifications/read-all/",
+        NotificationReadAllView.as_view(),
+        name="notification-read-all",
+    ),
     path("staff/", StaffListCreateView.as_view(), name="staff-list"),
     path("staff/<int:pk>/", StaffDeleteView.as_view(), name="staff-delete"),
 ]

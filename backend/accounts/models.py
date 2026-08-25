@@ -100,3 +100,55 @@ class Device(models.Model):
 
     def __str__(self):
         return self.device_name or self.device_id
+
+
+class Notification(models.Model):
+    """Foydalanuvchi bildirishnomalari (in-app, barcha qurilmalarda ko'rinadi)."""
+
+    class Type(models.TextChoices):
+        SALE = "sale", "Savdo"
+        DEBT = "debt", "Qarz"
+        DEVICE = "device", "Qurilma"
+        APPLICATION = "application", "Ariza"
+        SYSTEM = "system", "Tizim"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+    ntype = models.CharField(
+        max_length=16, choices=Type.choices, default=Type.SYSTEM, db_index=True
+    )
+    title = models.CharField(max_length=120)
+    body = models.CharField(max_length=255, blank=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "read_at"], name="notif_user_read_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id}:{self.title}"
+
+
+def notify(user, ntype, title, body=""):
+    """Xatolsik bildirishnoma yaratish (asosiy oqimni to'smaydi)."""
+    try:
+        if user is None:
+            return None
+        return Notification.objects.create(
+            user=user, ntype=ntype, title=title[:120], body=(body or "")[:255]
+        )
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def notify_shop_owner(shop, ntype, title, body=""):
+    try:
+        return notify(getattr(shop, "owner", None), ntype, title, body)
+    except Exception:  # noqa: BLE001
+        return None

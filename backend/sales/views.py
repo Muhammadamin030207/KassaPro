@@ -69,6 +69,20 @@ class SaleListCreateView(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         sale = serializer.save()
+        try:
+            from accounts.models import notify_shop_owner
+
+            seller = getattr(request, "user", None)
+            owner = getattr(getattr(sale, "shop", None), "owner", None)
+            if owner and seller and seller.id != owner.id:
+                notify_shop_owner(
+                    sale.shop,
+                    "sale",
+                    f"Yangi savdo: {sale.total:,.0f} so'm".replace(",", " "),
+                    f"Kassir {seller.username} savdo qildi (chek #{sale.id}).",
+                )
+        except Exception:  # noqa: BLE001
+            pass
         return response.Response(
             SaleDetailSerializer(sale).data, status=status.HTTP_201_CREATED
         )

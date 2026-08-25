@@ -51,12 +51,20 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
   };
 
   const applyZoom = async (scanner, value) => {
-    try {
-      await scanner?.applyVideoConstraints({ advanced: [{ zoom: value }] });
-      setZoom(value);
-    } catch {
-      /* bu kamera zoom qo'llab-quvvatlamaydi */
+    if (zoomCaps) {
+      try {
+        await scanner?.applyVideoConstraints({ advanced: [{ zoom: value }] });
+      } catch {
+        /* hardware zoom yo'q — CSS digital zoom ishlaydi */
+      }
     }
+    const video = document.getElementById(readerId)?.querySelector("video");
+    if (video) {
+      video.style.transition = "transform 0.18s ease";
+      video.style.transformOrigin = "center center";
+      video.style.transform = `scale(${value})`;
+    }
+    setZoom(value);
   };
 
   const [readerId] = useState(() => `camera-reader-${++scanUID}`);
@@ -112,7 +120,11 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
           );
         })
         .then(() => {
-          if (!cancelled) setFlash(false);
+          if (!cancelled) {
+            setFlash(false);
+            readZoomCaps(scannerRef.current);
+            if (zoom !== 1) applyZoom(scannerRef.current, zoom);
+          }
         })
         .catch(() => {
           if (!cancelled) {
@@ -215,11 +227,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
       });
   };
 
-  const zoomLevels = [];
-  if (zoomCaps) {
-    const maxL = Math.min(10, Math.max(2, Math.floor(zoomCaps.max)));
-    for (let i = 1; i <= maxL; i += 1) zoomLevels.push(i);
-  }
+  const zoomLevels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
   return (
     <Modal open={open} onClose={onClose} size="lg">
@@ -288,11 +296,13 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
         </div>
       )}
 
-      <div className="grid-2" style={{ marginTop: 14 }}>
-        <button className="btn btn-primary" onClick={onClose}>
-          Tayyor
-        </button>
-      </div>
+      <button
+        className="btn btn-ghost"
+        style={{ marginTop: 14, width: "100%", minHeight: 48 }}
+        onClick={onClose}
+      >
+        <Icon name="x" /> Yopish
+      </button>
     </Modal>
   );
 }

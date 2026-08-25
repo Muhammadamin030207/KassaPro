@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import Icon from "./Icon";
+import { NotificationBell } from "./NotificationBell";
 import { Scene3D } from "./Scene3D";
 import { useAuthStore } from "../stores/authStore";
 import { api } from "../api/client";
@@ -171,13 +172,16 @@ export function AppLayout({ children }) {
                 <img src="/favicon.svg" alt="" />
                 KassaPro
               </span>
-              <button
-                className="drawer-close"
-                onClick={toggleDrawer}
-                aria-label="Yopish"
-              >
-                <Icon name="x" />
-              </button>
+              <span className="drawer-head-actions">
+                <NotificationBell />
+                <button
+                  className="drawer-close"
+                  onClick={toggleDrawer}
+                  aria-label="Yopish"
+                >
+                  <Icon name="x" />
+                </button>
+              </span>
             </div>
 
             <div className="drawer-user">
@@ -276,6 +280,9 @@ export function AppLayout({ children }) {
           </NavLink>
         ))}
         <div className="spacer" />
+        <div className="sidebar-notif">
+          <NotificationBell />
+        </div>
         <div className="user-box">
           <span>
             <b>{user?.username}</b> {user?.shop_name ? `— ${user.shop_name}` : ""}
