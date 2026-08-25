@@ -20,6 +20,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
   const [facing, setFacing] = useState("environment");
   const [torch, setTorch] = useState(false);
   const [continuous, setContinuous] = useState(false);
+  const [lastCode, setLastCode] = useState("");
   const continuousRef = useRef(continuous);
   continuousRef.current = continuous;
   const scannerRef = useRef(null);
@@ -57,6 +58,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
               const text = decodedText.trim();
               if (!text) return;
               onDetectedRef.current?.(text);
+              setLastCode(text);
               playBarcodeSuccess();
               setFlash(true);
               try {
@@ -157,6 +159,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
             const text = decodedText.trim();
             if (!text) return;
             onDetectedRef.current?.(text);
+            setLastCode(text);
             playBarcodeSuccess();
             setFlash(true);
             setTimeout(() => setFlash(false), 350);
@@ -221,7 +224,13 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
         </div>
       ) : (
         <div className="sub" style={{ marginTop: 12, textAlign: "center" }}>
-          Shtrix kodni &laquo;ramka&raquo; ichiga qaratib turing...
+          {lastCode ? (
+            <>
+              Oxirgi kod: <b className="mono">{lastCode}</b> — chekka qo'shildi ✓
+            </>
+          ) : (
+            <>Shtrix kodni &laquo;ramka&raquo; ichiga qaratib turing...</>
+          )}
         </div>
       )}
 

@@ -70,6 +70,7 @@ class ApplicationCreateView(views.APIView):
             phone=serializer.validated_data["phone"],
             email=(serializer.validated_data.get("email") or "").strip(),
             address=serializer.validated_data.get("address", ""),
+            source=StoreApplication.Source.WEB,
             telegram_username=serializer.validated_data.get("telegram_username", "")
             or "",
             status=StoreApplication.Status.PENDING,

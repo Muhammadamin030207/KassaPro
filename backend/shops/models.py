@@ -75,6 +75,14 @@ class StoreApplication(models.Model):
     phone = models.CharField(max_length=20, blank=True)
     email = models.EmailField(blank=True)
     address = models.CharField(max_length=255, blank=True)
+
+    class Source(models.TextChoices):
+        BOT = "bot", "Telegram bot"
+        WEB = "web", "Websayt"
+
+    source = models.CharField(
+        max_length=10, choices=Source.choices, default=Source.WEB
+    )
     tracking_code = models.CharField(max_length=24, unique=True, blank=True)
     delivery_channel = models.CharField(max_length=20, blank=True)
     telegram_chat_id = models.BigIntegerField(null=True, blank=True)

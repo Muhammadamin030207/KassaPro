@@ -424,10 +424,29 @@ export function AdminPanelPage() {
             >
               <div className="app-card-head">
                 <div>
-                  <h3>{app.store_name}</h3>
+                  <h3>
+                    <span
+                      className="status-pill"
+                      style={{
+                        background:
+                          app.source === "bot"
+                            ? "rgba(99,102,241,.15)"
+                            : "rgba(34,197,94,.15)",
+                        color: app.source === "bot" ? "#818cf8" : "#22c55e",
+                        marginRight: 8,
+                        fontSize: 11,
+                      }}
+                    >
+                      {app.source === "bot" ? "🤖 Bot" : "🌐 Websayt"}
+                    </span>
+                    {app.store_name}
+                  </h3>
                   <div className="muted">
                     {app.owner_name} · {app.phone || "Tel yo'q"}
-                    {app.telegram_chat_id ? " · Telegramda" : ""}
+                  </div>
+                  <div className="muted small">
+                    {app.email ? `📧 ${app.email}` : "📧 email yo'q"}
+                    {app.telegram_chat_id ? " · 💬 Telegram ulangan" : ""}
                   </div>
                   <div className="muted small">{app.address || "Manzil berilmagan"}</div>
                 </div>
@@ -580,8 +599,13 @@ export function AdminPanelPage() {
             </h3>
             {approveApp && (
               <p className="muted small" style={{ marginTop: 6 }}>
-                Arizadan ma'lumotlar ko'chirildi. Login/parol avtomatik yaratiladi
-                va quyidagi yo'nalishga avtomatik yuboriladi.
+                Manba:{" "}
+                <b>{approveApp.source === "bot" ? "🤖 Telegram bot" : "🌐 Websayt"}</b>
+                {" — "}
+                {approveApp.source === "bot"
+                  ? "chat ID avtomatik ulandi, bot o'zi yuboradi"
+                  : "emailga avtomatik yuboriladi"}
+                .
               </p>
             )}
             <form onSubmit={createStore}>
