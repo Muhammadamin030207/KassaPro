@@ -240,5 +240,7 @@ class ProductGlobalLookupView(views.APIView):
                     result["last_price"] = str(mem.last_price)
             except Exception:  # noqa: BLE001
                 pass
-        cache.set(cache_key, result, 60 * 60 * 24)
+        # Topilgan natija 24 soat, topilmagan — faqat 60 soniya keshlanadi
+        # (yangi sotuv/narx-xotira darhol ko'rinishi uchun).
+        cache.set(cache_key, result, 60 * 60 * 24 if result.get("found") else 60)
         return response.Response(result)
