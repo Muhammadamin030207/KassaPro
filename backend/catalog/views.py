@@ -178,6 +178,7 @@ class ProductGlobalLookupView(views.APIView):
         import urllib.request as _ur
 
         from django.core.cache import cache
+        from catalog.models import BarcodePriceMemory
 
         code = str(code or "").strip()
         if not code.isdigit() or len(code) < 8:
@@ -188,59 +189,61 @@ class ProductGlobalLookupView(views.APIView):
         if cached is not None:
             return response.Response(cached)
 
-        result = {"found": False}
-        try:
-            from catalog.models import BarcodePriceMemory
+        # 1) Narx-xotira (do'kon ichida allaqachon sotilgan bo'lsa)
+        result = None
+        mem = BarcodePriceMemory.objects.filter(
+            shop=request.user.shop, barcode=code
+        ).first()
+        if mem:
+            result = {
+                "found": True,
+                "name": mem.name or "Mahsulot",
+                "last_price": str(mem.last_price),
+                "barcode": code,
+                "source": "memory",
+            }
 
-            mem = BarcodePriceMemory.objects.filter(
-                shop=request.user.shop, barcode=code
-            ).first()
-            if mem:
-                result = {
-                    "found": True,
-                    "name": mem.name or "Mahsulot",
-                    "last_price": str(mem.last_price),
-                    "barcode": code,
-                    "source": "memory",
-                }
-        except Exception:  # noqa: BLE001
-            pass
-        try:
-            url = f"https://world.openfoodfacts.org/api/v2/product/{code}.json?fields=product_name,brands,quantity"
-            req = _ur.Request(url, headers={"User-Agent": "KassaPro-POS/1.0"})
-            with _ur.urlopen(req, timeout=6) as resp:
-                payload = _json.loads(resp.read().decode("utf-8", errors="ignore"))
-            product = (payload or {}).get("product") or {}
-            name = (product.get("product_name") or "").strip()
-            brand = (product.get("brands") or "").split(",")[0].strip()
-            qty = (product.get("quantity") or "").strip()
-            if name:
-                full = f"{brand} {name}".strip() if brand and brand.lower() not in name.lower() else name
-                if qty:
-                    full = f"{full} ({qty})" if qty.lower() not in full.lower() else full
-                result = {
-                    "found": True,
-                    "name": full[:150],
-                    "brand": brand[:80],
-                    "quantity": qty[:30],
-                    "barcode": code,
-                    "source": "openfoodfacts",
-                }
-        except Exception:  # noqa: BLE001 — tashqi xizmat muammosi oqimni to'smaydi
+        # 2) Global baza (Open Food Facts) — faqat xotirada yo'q bo'lsa
+        if result is None:
+            try:
+                url = (
+                    "https://world.openfoodfacts.org/api/v2/product/"
+                    f"{code}.json?fields=product_name,brands,quantity"
+                )
+                req = _ur.Request(url, headers={"User-Agent": "KassaPro-POS/1.0"})
+                with _ur.urlopen(req, timeout=6) as resp:
+                    payload = _json.loads(
+                        resp.read().decode("utf-8", errors="ignore")
+                    )
+                product = (payload or {}).get("product") or {}
+                name = (product.get("product_name") or "").strip()
+                brand = (product.get("brands") or "").split(",")[0].strip()
+                qty = (product.get("quantity") or "").strip()
+                if name:
+                    full = f"{brand} {name}".strip() if brand and brand.lower() not in name.lower() else name
+                    if qty and qty.lower() not in full.lower():
+                        full = f"{full} ({qty})"
+                    result = {
+                        "found": True,
+                        "name": full[:150],
+                        "brand": brand[:80],
+                        "quantity": qty[:30],
+                        "barcode": code,
+                        "source": "openfoodfacts",
+                    }
+            except Exception:  # noqa: BLE001
+                result = None
+
+        # 3) Xotira narxi global natijaga ham qo'shiladi
+        if result and result.get("found") and not result.get("last_price") and mem:
+            result["last_price"] = str(mem.last_price)
+
+        if result is None:
             result = {"found": False}
 
-        if result.get("found") and not result.get("last_price"):
-            try:
-                from catalog.models import BarcodePriceMemory
-
-                mem = BarcodePriceMemory.objects.filter(
-                    shop=request.user.shop, barcode=code
-                ).first()
-                if mem:
-                    result["last_price"] = str(mem.last_price)
-            except Exception:  # noqa: BLE001
-                pass
-        # Topilgan natija 24 soat, topilmagan — faqat 60 soniya keshlanadi
-        # (yangi sotuv/narx-xotira darhol ko'rinishi uchun).
-        cache.set(cache_key, result, 60 * 60 * 24 if result.get("found") else 60)
+        # Topilgan 24 soat, topilmagan 60 soniya keshlanadi
+        cache.set(
+            cache_key, result, 60 * 60 * 24 if result.get("found") else 60
+        )
+        return response.Response(result)
         return response.Response(result)
