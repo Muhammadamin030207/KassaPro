@@ -377,7 +377,7 @@ export function CashierPage() {
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
             >
-              <Icon name="camera" /> <span className="cam-lbl">Skaner</span>
+              <Icon name="qr" /> <span className="cam-lbl">Skaner</span>
             </motion.button>
           </div>
 
@@ -543,7 +543,6 @@ export function CashierPage() {
         onDetected={async (barcode) => {
           await processBarcode(barcode);
           setCode("");
-          setCamOpen(false);
           focusInput();
         }}
       />

@@ -28,6 +28,8 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
   const scannerRef = useRef(null);
   const onDetectedRef = useRef(onDetected);
   onDetectedRef.current = onDetected;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const facingRef = useRef(facing);
   facingRef.current = facing;
   const torchRef = useRef(torch);
@@ -86,6 +88,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
               onDetectedRef.current?.(text);
               setLastCode(text);
               playBarcodeSuccess();
+              if (!continuousRef.current) onCloseRef.current?.();
               setFlash(true);
               try {
                 navigator.vibrate?.(120);
@@ -187,6 +190,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
             onDetectedRef.current?.(text);
             setLastCode(text);
             playBarcodeSuccess();
+            if (!continuousRef.current) onCloseRef.current?.();
             setFlash(true);
             setTimeout(() => setFlash(false), 350);
             const pauseMs = continuousRef.current ? 550 : 1300;
@@ -220,7 +224,9 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
   return (
     <Modal open={open} onClose={onClose} size="lg">
       <div className="flex spread" style={{ marginBottom: 14 }}>
-        <h3>Shtrix-kod skaneri</h3>
+        <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Icon name="qr" /> Shtrix-kod skaneri
+        </h3>
         <div className="flex" style={{ gap: 8 }}>
           <button
             className={`ghost-btn ${continuous ? "active" : ""}`}
@@ -238,13 +244,10 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
             aria-label="Fonar"
             style={{ color: torch ? "var(--warn)" : "inherit" }}
           >
-            <Icon name="fire" /> Fonar
+            <Icon name="zap" /> Fonar
           </button>
           <button className="ghost-btn" onClick={switchCamera} title="Oldi/orqa kamera">
             <Icon name="refresh" /> {facing === "environment" ? "Orqa" : "Oldi"}
-          </button>
-          <button className="ghost-btn" onClick={onClose}>
-            <Icon name="x" /> Yopish
           </button>
         </div>
       </div>

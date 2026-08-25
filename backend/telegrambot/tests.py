@@ -36,14 +36,15 @@ class CommandHandlerTests(TestCase):
         run_message(self.view, "/start")
         text, kwargs = mock_send.call_args[0][1], mock_send.call_args[1]
         self.assertIn("Assalomu alaykum", text)
-        self.assertIn("KassaPro botiga xush kelibsiz", text)
+        self.assertIn("botiga xush kelibsiz", text)
         kb = kwargs["reply_markup"]["inline_keyboard"]
         flat = [b for row in kb for b in row]
         data = {b.get("callback_data") for b in flat}
-        self.assertIn("app_new", data)
-        self.assertIn("app_status", data)
+        self.assertIn("store_start", data)
+        self.assertIn("store_status", data)
         self.assertIn("help", data)
         self.assertIn("contact", data)
+        self.assertNotIn("app_new", data)  # dublikat ariza tugmasi olib tashlandi
 
     @mock.patch("telegrambot.views.send_message")
     def test_application_starts_flow(self, mock_send):

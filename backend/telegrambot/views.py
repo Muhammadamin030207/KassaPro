@@ -117,22 +117,19 @@ class TelegramWebhookView(APIView):
         return inline_keyboard(
             [
                 [
-                    {"text": "📝 Ariza yuborish", "callback_data": "app_new"},
-                    {"text": "📋 Arizamni tekshirish", "callback_data": "app_status"},
+                    {"text": "🏬 Do'kon ochish (ariza)", "callback_data": "store_start"},
+                    {"text": "📋 Arizam holati", "callback_data": "store_status"},
                 ],
                 [
-                    {"text": "📖 Yordam", "callback_data": "help"},
-                    {"text": "📞 Bog'lanish", "callback_data": "contact"},
-                ],
-                [
-                    {"text": "🏬 Do'kon arizasi", "callback_data": "store_start"},
                     {"text": "🖥 Sayt", "url": f"{SITE_URL}/login"},
-                ],
-                [
                     {
                         "text": "⚡️ Ilova (Mini App)",
                         "web_app": {"url": f"{SITE_URL}/mini-app"},
                     }
+                ],
+                [
+                    {"text": "📞 Bog'lanish", "callback_data": "contact"},
+                    {"text": "📖 Yordam", "callback_data": "help"},
                 ],
             ]
         )
@@ -208,10 +205,10 @@ class TelegramWebhookView(APIView):
             chat_id,
             "🚀 Assalomu alaykum"
             + (f", @{username}" if username else "")
-            + "!\n\nKassaPro botiga xush kelibsiz.\n\n"
-            "🛒 Kassa\n📦 Mahsulotlar\n📊 Hisobotlar\n💰 Qarzdorlik\n🤖 Arizalar\n\n"
-            "bilan bog‘liq xizmatlardan foydalanishingiz mumkin.\n\n"
-            "Quyidagi tugmalardan birini tanlang:",
+            + "!\n\n<b>KassaPro</b> botiga xush kelibsiz.\n\n"
+            "Do'koningizni ro'yxatdan o'tkazish uchun "
+            "<b>🏬 Do'kon ochish</b> tugmasini bosing.\n\n"
+            "Arizangiz holatini <b>📋 Arizam holati</b> bilan kuzatib borasiz.",
             reply_markup=self._main_keyboard(),
         )
 
@@ -656,6 +653,7 @@ class TelegramWebhookView(APIView):
             telegram_chat_id=chat_id,
             telegram_username=session.telegram_username or "",
             status=StoreApplication.Status.PENDING,
+            source=StoreApplication.Source.BOT,
         )
         send_message(
             chat_id,
