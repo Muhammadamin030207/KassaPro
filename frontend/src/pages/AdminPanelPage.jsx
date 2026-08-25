@@ -45,6 +45,7 @@ export function AdminPanelPage() {
     store_name: "",
     owner_name: "",
     phone: "",
+    email: "",
     address: "",
     telegram_chat_id: "",
   });
@@ -164,6 +165,7 @@ export function AdminPanelPage() {
       store_name: app.store_name,
       owner_name: app.owner_name,
       phone: app.phone || "",
+      email: app.email || "",
       address: app.address || "",
       telegram_chat_id: app.telegram_chat_id ? String(app.telegram_chat_id) : "",
     });
@@ -184,7 +186,7 @@ export function AdminPanelPage() {
       // Modal YOPILMAYDI — kredensiallar ekranda ko'rsatilishi shart.
       // (Login/parolni saqlash imkoniyati bo'lmasa, parol tiklash qiyin.)
       setApproveApp(null);
-      setForm({ store_name: "", owner_name: "", phone: "", address: "", telegram_chat_id: "" });
+      setForm({ store_name: "", owner_name: "", phone: "", email: "", address: "", telegram_chat_id: "" });
       loadStores();
       loadApps();
     } catch (err) {
@@ -578,21 +580,8 @@ export function AdminPanelPage() {
             </h3>
             {approveApp && (
               <p className="muted small" style={{ marginTop: 6 }}>
-                Arizadan ma'lumotlar ko'chirildi. Login/parol avtomatik yaratiladi.
-                {approveApp.email ? (
-                  <>
-                    <br />
-                    📧 Email: <b>{approveApp.email}</b>
-                    {approveApp.telegram_chat_id
-                      ? " — ✅ Telegram ulangan (botga yuboriladi)"
-                      : " — Telegram ulanmagan (emailga yuboriladi)"}
-                  </>
-                ) : approveApp.telegram_chat_id ? (
-                  <>
-                    <br />
-                    💬 Telegram ulangan — bot avtomatik yuboradi
-                  </>
-                ) : null}
+                Arizadan ma'lumotlar ko'chirildi. Login/parol avtomatik yaratiladi
+                va quyidagi yo'nalishga avtomatik yuboriladi.
               </p>
             )}
             <form onSubmit={createStore}>
@@ -631,13 +620,32 @@ export function AdminPanelPage() {
                 />
               </div>
               <div className="field">
-                <label>Telegram chat ID (ixtiyoriy — bo'lsa login/parol u yerga boradi)</label>
-                <input
+                <label>Yetkazib berish yo'nalishi (avtomatik)</label>
+                <div
                   className="input"
-                  value={form.telegram_chat_id}
-                  onChange={(e) => setForm({ ...form, telegram_chat_id: e.target.value })}
-                  placeholder="123456789"
-                />
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    background: "rgba(99,102,241,.08)",
+                    borderColor: "rgba(99,102,241,.35)",
+                    minHeight: 44,
+                  }}
+                >
+                  {form.telegram_chat_id ? (
+                    <>
+                      💬 <b>Telegram botga</b> yuboriladi (chat ID: {form.telegram_chat_id})
+                    </>
+                  ) : form.email ? (
+                    <>
+                      📧 <b>Emailga</b> yuboriladi: {form.email}
+                    </>
+                  ) : (
+                    <>
+                      ⚠️ Telegram ham email ham yo'q — kredensiallarni <b>qo'lda</b> yuborishingiz kerak
+                    </>
+                  )}
+                </div>
               </div>
               <div className="grid-2">
                 <button className="btn btn-ghost" type="button" onClick={() => { setApproveApp(null); setCreateOpen(false); }}>
