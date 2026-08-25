@@ -10,6 +10,7 @@ import MiniAppPage from "./pages/MiniAppPage";
 import CashierPage from "./pages/CashierPage";
 import ProductsPage from "./pages/ProductsPage";
 import ReportsPage from "./pages/ReportsPage";
+import ProfilePage from "./pages/ProfilePage";
 import StaffPage from "./pages/StaffPage";
 import DebtsPage from "./pages/DebtsPage";
 import SettingsPage from "./pages/SettingsPage";
