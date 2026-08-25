@@ -61,7 +61,7 @@ export function NotificationBell() {
         onClick={() => setOpen((v) => !v)}
         aria-label="Bildirishnomalar"
       >
-        <Icon name="alert" size={20} />
+        <Icon name="bell" size={20} />
         {unread > 0 && <span className="notif-badge">{unread > 9 ? "9+" : unread}</span>}
       </button>
 
