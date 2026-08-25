@@ -157,8 +157,14 @@ export function CashierPage() {
           const g = await api.get(`products/lookup/${encodeURIComponent(barcode)}/`);
           if (g?.found && g.name) {
             setQuickName(g.name);
-            show(`🌍 Avtomatik topildi: ${g.name}`, "success", 2600);
-            setTimeout(() => quickPriceRef.current?.focus(), 140);
+            if (g.last_price) {
+              setQuickPrice(String(Number(g.last_price)));
+              show(`🌍 Avtomatik topildi: ${g.name} — narx ham eslab qolindi`, "success", 2600);
+              setTimeout(() => quickPriceRef.current?.select?.(), 160);
+            } else {
+              show(`🌍 Avtomatik topildi: ${g.name}`, "success", 2600);
+              setTimeout(() => quickPriceRef.current?.focus(), 140);
+            }
           }
         } catch {
           /* global bazada ham yo'q yoki tarmoq — qo'lda kiritiladi */

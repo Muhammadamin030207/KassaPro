@@ -10,12 +10,16 @@ import { api } from "../api/client";
 /** Mobil bottom-nav: 3 ta asosiy bo'lim + QR markazda + Menyu (drawer) */
 const MOBILE_LINKS = [
   { to: "/", label: "Kassa", icon: "scan", end: true, key: "kassa" },
-  { to: "/products", label: "Mahsulotlar", icon: "bag", key: "mahsulotlar" },
+  { to: "/debts", label: "Qarzdorlik", icon: "money", key: "qarzdorlik" },
   { to: "/reports", label: "Hisobotlar", icon: "chart", key: "hisobotlar" },
 ];
 
+const DESKTOP_ONLY_LINKS = [
+  { to: "/products", label: "Mahsulotlar", icon: "bag", key: "mahsulotlar" },
+];
+
 const EXTRA_LINKS = [
-  { to: "/debts", label: "Qarzdorlik", icon: "money", key: "qarzdorlik" },
+  { to: "/staff", label: "Kassirlar", icon: "users", ownerOnly: true, key: "kassirlar" },
   { to: "/staff", label: "Kassirlar", icon: "users", ownerOnly: true, key: "kassirlar" },
   { to: "/devices", label: "Qurilmalar", icon: "devices", superAdminOnly: true, key: "qurilmalar" },
   { to: "/settings", label: "Sozlamalar", icon: "settings", ownerOnly: true, key: "sozlamalar" },
@@ -85,7 +89,9 @@ export function AppLayout({ children }) {
 
   // Faqat mobildagi 4 ta asosiy linikal (extra bo'lmagan)
   /* Barcha 8 bo'limni birga: 4 ta asosiy + 4 ta admin bo'lim */
-  const allLinks = MOBILE_LINKS.concat(EXTRA_LINKS).filter(
+  const allLinks = DESKTOP_ONLY_LINKS.concat(MOBILE_LINKS)
+    .concat(EXTRA_LINKS)
+    .filter(
     (l) =>
       (!l.ownerOnly || user?.role === "owner" || isAdmin) &&
       (!l.superAdminOnly || user?.role === "super_admin" || isAdmin)

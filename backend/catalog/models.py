@@ -47,3 +47,29 @@ class Product(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.barcode})"
+
+class BarcodePriceMemory(models.Model):
+    """Do'kon bo'yicha barcode → oxirgi sotilgan narx xotirasi.
+
+    Global bazadan taniigan mahsulot qayta skanerlanganda narx ham
+    avtomatik to'ladi (oxirgi marta qancha sotilgan bo'lsa).
+    """
+
+    shop = models.ForeignKey(
+        Shop, on_delete=models.CASCADE, related_name="barcode_memories"
+    )
+    barcode = models.CharField(max_length=64, db_index=True)
+    name = models.CharField(max_length=255, blank=True)
+    last_price = models.DecimalField(max_digits=12, decimal_places=2)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["shop", "barcode"], name="catalog_bpm_shop_barcode_uniq"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.barcode} → {self.last_price}"

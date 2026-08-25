@@ -134,6 +134,19 @@ class ProductUpsertByBarcodeView(views.APIView):
             serializer.is_valid(raise_exception=True)
             serializer.save()
 
+        try:
+            from catalog.models import BarcodePriceMemory
+
+            BarcodePriceMemory.objects.update_or_create(
+                shop=request.user.shop,
+                barcode=str(serializer.instance.barcode),
+                defaults={
+                    "name": serializer.instance.name,
+                    "last_price": serializer.instance.price,
+                },
+            )
+        except Exception:  # noqa: BLE001
+            pass
         _auto_delete_zero_stock(serializer.instance)
 
         status_code = status.HTTP_201_CREATED if is_new else status.HTTP_200_OK
@@ -177,6 +190,22 @@ class ProductGlobalLookupView(views.APIView):
 
         result = {"found": False}
         try:
+            from catalog.models import BarcodePriceMemory
+
+            mem = BarcodePriceMemory.objects.filter(
+                shop=request.user.shop, barcode=code
+            ).first()
+            if mem:
+                result = {
+                    "found": True,
+                    "name": mem.name or "Mahsulot",
+                    "last_price": str(mem.last_price),
+                    "barcode": code,
+                    "source": "memory",
+                }
+        except Exception:  # noqa: BLE001
+            pass
+        try:
             url = f"https://world.openfoodfacts.org/api/v2/product/{code}.json?fields=product_name,brands,quantity"
             req = _ur.Request(url, headers={"User-Agent": "KassaPro-POS/1.0"})
             with _ur.urlopen(req, timeout=6) as resp:
@@ -200,5 +229,16 @@ class ProductGlobalLookupView(views.APIView):
         except Exception:  # noqa: BLE001 — tashqi xizmat muammosi oqimni to'smaydi
             result = {"found": False}
 
+        if result.get("found") and not result.get("last_price"):
+            try:
+                from catalog.models import BarcodePriceMemory
+
+                mem = BarcodePriceMemory.objects.filter(
+                    shop=request.user.shop, barcode=code
+                ).first()
+                if mem:
+                    result["last_price"] = str(mem.last_price)
+            except Exception:  # noqa: BLE001
+                pass
         cache.set(cache_key, result, 60 * 60 * 24)
         return response.Response(result)

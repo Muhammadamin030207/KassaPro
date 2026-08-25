@@ -4851,3 +4851,36 @@ html, body, #root {
   align-items: center;
   gap: 8px;
 }
+
+/* ================= NOTIF PANEL — mobil fix (oq-oq ko'rinmasligi) ================= */
+@media (max-width: 768px) {
+  .notif-panel {
+    position: fixed;
+    top: 76px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: 72vh;
+    background: #151821 !important;
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.6);
+    z-index: 500;
+  }
+  .notif-head b {
+    color: #f3f4f6;
+  }
+  .notif-item {
+    color: #e5e7eb;
+  }
+  .notif-item.unread {
+    background: rgba(99, 102, 241, 0.18);
+  }
+  .notif-body b {
+    color: #f3f4f6;
+  }
+  .notif-body small,
+  .notif-body time,
+  .notif-empty {
+    color: #9ca3af;
+  }
+}

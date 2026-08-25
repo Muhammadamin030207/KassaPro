@@ -70,6 +70,21 @@ class SaleListCreateView(generics.ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         sale = serializer.save()
         try:
+            from catalog.models import BarcodePriceMemory
+
+            for it in sale.items.all():
+                if it.barcode_snapshot:
+                    BarcodePriceMemory.objects.update_or_create(
+                        shop=sale.shop,
+                        barcode=it.barcode_snapshot,
+                        defaults={
+                            "name": it.product_name_snapshot,
+                            "last_price": it.price_snapshot,
+                        },
+                    )
+        except Exception:  # noqa: BLE001
+            pass
+        try:
             from accounts.models import notify_shop_owner
 
             seller = getattr(request, "user", None)
