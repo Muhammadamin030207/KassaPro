@@ -31,7 +31,31 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const [applyOpen, setApplyOpen] = useState(false);
-  const [apply, setApply] = useState({ store_name: "", owner_name: "", phone: "", address: "" });
+  const [apply, setApply] = useState({ store_name: "", owner_name: "", phone: "", email: "", address: "" });
+  const [appStatus, setAppStatus] = useState(null);
+  const TRACKING_KEY = "kassapro-apply-code";
+
+  const fetchStatus = async (code) => {
+    try {
+      const data = await api.get(`applications/status/?code=${encodeURIComponent(code)}`);
+      setAppStatus(data);
+      return data;
+    } catch {
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    const saved = localStorage.getItem(TRACKING_KEY);
+    if (saved) fetchStatus(saved);
+  }, []);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(TRACKING_KEY);
+    if (!saved) return undefined;
+    const t = setInterval(() => fetchStatus(saved), 30000);
+    return () => clearInterval(t);
+  }, []);
   const [applyErrors, setApplyErrors] = useState({});
   const [sending, setSending] = useState(false);
   const [applyResult, setApplyResult] = useState(null);
@@ -69,6 +93,8 @@ export function LoginPage() {
     if (!apply.phone.trim()) errors.phone = "Telefon raqami kiritilmagan";
     else if (!/^\+?[0-9][0-9 ()-]{7,}$/.test(apply.phone.trim()))
       errors.phone = "Telefon raqami noto'g'ri formatda";
+    if (apply.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(apply.email.trim()))
+      errors.email = "Email noto'g'ri formatda";
     if (Object.keys(errors).length) {
       setApplyErrors(errors);
       return;
@@ -81,11 +107,16 @@ export function LoginPage() {
         store_name: apply.store_name.trim(),
         owner_name: apply.owner_name.trim(),
         phone: apply.phone.trim(),
+        email: apply.email.trim(),
         address: apply.address.trim(),
       });
+      if (res && res.tracking_code) {
+        localStorage.setItem(TRACKING_KEY, res.tracking_code);
+        fetchStatus(res.tracking_code);
+      }
       if (res && res.telegram_sent) {
         setApplyResult({ ok: true, message: res.message || "Ariza muvaffaqiyatli yuborildi!" });
-        setApply({ store_name: "", owner_name: "", phone: "", address: "" });
+        setApply({ store_name: "", owner_name: "", phone: "", email: "", address: "" });
         setApplyOpen(false);
         show("Ariza muvaffaqiyatli yuborildi!", "success");
       } else {
@@ -261,6 +292,19 @@ export function LoginPage() {
             </div>
 
             <div className="field">
+              <label>Email (login/parol shu yerga yuboriladi)</label>
+              <input
+                className="input"
+                type="email"
+                value={apply.email}
+                onChange={applyField("email")}
+                placeholder="example@gmail.com"
+                maxLength={254}
+              />
+              {applyErrors.email && <div className="field-error">{applyErrors.email}</div>}
+            </div>
+
+            <div className="field">
               <label>Manzil (ixtiyoriy)</label>
               <input
                 className="input"
@@ -281,6 +325,77 @@ export function LoginPage() {
               </div>
             )}
           </motion.form>
+        )}
+
+        {appStatus && (
+          <div
+            className="apply-status-card"
+            style={{
+              marginTop: 14,
+              padding: "14px 16px",
+              borderRadius: 12,
+              border: `1px solid ${
+                appStatus.status === "rejected"
+                  ? "rgba(239,68,68,.4)"
+                  : appStatus.status === "approved"
+                    ? "rgba(34,197,94,.4)"
+                    : "rgba(99,102,241,.4)"
+              }`,
+              background:
+                appStatus.status === "rejected"
+                  ? "rgba(239,68,68,.08)"
+                  : appStatus.status === "approved"
+                    ? "rgba(34,197,94,.08)"
+                    : "rgba(99,102,241,.08)",
+              textAlign: "left",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <b style={{ fontSize: 14 }}>Arizam holati</b>
+              <span className="mono muted small">{appStatus.tracking_code}</span>
+            </div>
+            {appStatus.status === "pending" && (
+              <div style={{ fontSize: 13, marginTop: 6 }}>
+                ⏳ Arizangiz admin ko'rib chiqilmoqda — tasdiqlansa login/parol yuboriladi.
+              </div>
+            )}
+            {appStatus.status === "approved" && (
+              <div style={{ fontSize: 13, marginTop: 6 }}>
+                {appStatus.delivered_to === "email" && (
+                  <>✅ Tasdiqlandi — login va parol emailingizga yuborildi. Spam papkasini ham tekshiring.</>
+                )}
+                {appStatus.delivered_to === "telegram" && (
+                  <>✅ Tasdiqlandi — login va parol Telegram botga yuborildi.</>
+                )}
+                {!appStatus.delivered_to && (
+                  <>✅ Tasdiqlandi — kirish ma'lumotlari admin tomonidan alohida yuboriladi.</>
+                )}
+              </div>
+            )}
+            {appStatus.status === "rejected" && (
+              <>
+                <div style={{ fontSize: 13, marginTop: 6 }}>
+                  ❌ Arizangiz rad etildi
+                  {appStatus.note ? (
+                    <>
+                      : <i>{appStatus.note}</i>
+                    </>
+                  ) : null}
+                </div>
+                <button
+                  className="btn btn-primary btn-sm"
+                  style={{ marginTop: 10 }}
+                  onClick={() => {
+                    localStorage.removeItem(TRACKING_KEY);
+                    setAppStatus(null);
+                    setApplyOpen(true);
+                  }}
+                >
+                  Qayta ariza yuborish
+                </button>
+              </>
+            )}
+          </div>
         )}
 
         <div className="barcode-deco" />

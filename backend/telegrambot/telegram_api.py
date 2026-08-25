@@ -126,12 +126,16 @@ def format_application_message(app, base_url="https://smartkassa-1.onrender.com"
     """Yangi ariza haqida admin Telegram xabari (professional format)."""
     now = app.processed_at or app.created_at or timezone.now()
     address = (app.address or "").strip() or "—"
+    email = (getattr(app, "email", "") or "").strip()
+    tg = "✅ Ulangan" if getattr(app, "telegram_chat_id", None) else "❌ Ulanmagan"
     return (
         "📩 <b>YANGI ARIZA</b>\n"
         "━━━━━━━━━━━━━━\n"
         f"🏬 Do'kon: <b>{app.store_name}</b>\n"
         f"👤 Egas: <code>{app.owner_name}</code>\n"
         f"📞 Telefon: <code>{app.phone or '—'}</code>\n"
+        + (f"📧 Email: <code>{email}</code>\n" if email else "")
+        + f"💬 Telegram: {tg}\n"
         f"📍 Manzil: {address}\n"
         f"🕐 Vaqt: {_format_uz_datetime(now)}\n"
         "━━━━━━━━━━━━━━\n"

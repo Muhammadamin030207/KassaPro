@@ -73,7 +73,10 @@ class StoreApplication(models.Model):
     store_name = models.CharField(max_length=150)
     owner_name = models.CharField(max_length=255)
     phone = models.CharField(max_length=20, blank=True)
+    email = models.EmailField(blank=True)
     address = models.CharField(max_length=255, blank=True)
+    tracking_code = models.CharField(max_length=24, unique=True, blank=True)
+    delivery_channel = models.CharField(max_length=20, blank=True)
     telegram_chat_id = models.BigIntegerField(null=True, blank=True)
     telegram_username = models.CharField(max_length=255, blank=True)
     status = models.CharField(
@@ -104,6 +107,10 @@ class StoreApplication(models.Model):
         normalized = normalize_phone(self.phone)
         if normalized:
             self.phone = normalized
+        if not self.tracking_code:
+            import secrets
+
+            self.tracking_code = f"TRK-{secrets.token_hex(5).upper()}"
         super().save(*args, **kwargs)
 
     def __str__(self):

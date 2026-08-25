@@ -36,6 +36,7 @@ class ApplicationCreateSerializer(serializers.Serializer):
     store_name = serializers.CharField(max_length=150, allow_blank=True)
     owner_name = serializers.CharField(max_length=255, allow_blank=True)
     phone = serializers.CharField(max_length=20, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
     address = serializers.CharField(max_length=255, required=False, allow_blank=True)
     telegram_username = serializers.CharField(
         max_length=255, required=False, allow_blank=True

@@ -5,6 +5,7 @@ from shops.views import (
     ApplicationDetailView,
     ApplicationListView,
     ApplicationRejectView,
+    ApplicationStatusView,
     ShopSettingsView,
     StoreAdminView,
     StoreCloseView,
@@ -14,6 +15,11 @@ from shops.views import (
 urlpatterns = [
     path("stores/settings/", ShopSettingsView.as_view(), name="store-settings"),
     path("applications/", ApplicationCreateView.as_view(), name="web-application-create"),
+    path(
+        "applications/status/",
+        ApplicationStatusView.as_view(),
+        name="web-application-status",
+    ),
     path("admin/applications/", ApplicationListView.as_view(), name="admin-applications"),
     path(
         "admin/applications/<int:pk>/",

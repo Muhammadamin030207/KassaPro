@@ -1,4 +1,10 @@
+import logging
+
 from django.utils import timezone
+from django.urls import path
+
+logger = logging.getLogger(__name__)
+
 from rest_framework import generics, response, status, views
 from rest_framework.exceptions import NotFound
 from rest_framework.permissions import AllowAny
@@ -62,6 +68,7 @@ class ApplicationCreateView(views.APIView):
             store_name=serializer.validated_data["store_name"],
             owner_name=serializer.validated_data["owner_name"],
             phone=serializer.validated_data["phone"],
+            email=(serializer.validated_data.get("email") or "").strip(),
             address=serializer.validated_data.get("address", ""),
             telegram_username=serializer.validated_data.get("telegram_username", "")
             or "",
@@ -83,8 +90,10 @@ class ApplicationCreateView(views.APIView):
                 "store_name": app.store_name,
                 "owner_name": app.owner_name,
                 "phone": app.phone,
+                "email": app.email,
                 "address": app.address,
                 "status": app.status,
+                "tracking_code": app.tracking_code,
                 "telegram_sent": sent,
                 "message": (
                     "Ariza muvaffaqiyatli yuborildi."
@@ -247,13 +256,16 @@ class StoreAdminView(views.APIView):
         user = serializer.save()
         vd = serializer.validated_data
 
-        # Arizadan tasdiqlanganda chat_id avtomatik olinadi (admin ko'rsatmasa)
+        # Arizadan tasdiqlanganda chat_id va email avtomatik olinadi
         chat_id = vd.get("telegram_chat_id")
         application_id = vd.get("application_id")
-        if not chat_id and application_id:
+        app_email = ""
+        if application_id:
             app = StoreApplication.objects.filter(id=application_id).first()
             if app:
-                chat_id = app.telegram_chat_id
+                if not chat_id:
+                    chat_id = app.telegram_chat_id
+                app_email = (app.email or "").strip()
 
         data = {
             "store_name": vd["store_name"],
@@ -298,7 +310,50 @@ class StoreAdminView(views.APIView):
                 f"Parol: <code>{data['password']}</code>\n\n"
                 "Parolni o'zgartirish uchun profilda Admin bilan bog'laning.",
             )
+
+        # Telegram bo'lmasa — email fallback (SMTP sozlangan bo'lsa).
+        email_sent = False
+        email_error = ""
+        delivery_channel = "telegram" if chat_id else "email"
+        if not chat_id and app_email:
+            from django.core.mail import send_mail
+
+            try:
+                send_mail(
+                    subject="KassaPro hisobingiz tayyor",
+                    message=(
+                        "Assalomu alaykum!\n\n"
+                        "KassaPro'ga arizangiz tasdiqlandi.\n\n"
+                        f"Do'kon: {data['store_name']}\n"
+                        f"Kirish: https://smartkassa-1.onrender.com/login\n\n"
+                        f"Login: {data['username']}\n"
+                        f"Parol: {data['password']}\n\n"
+                        "Birinchi kirishdan keyin parolingizni almashtiring."
+                    ),
+                    from_email=None,
+                    recipient_list=[app_email],
+                    fail_silently=False,
+                )
+                email_sent = True
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("credential email failed")
+                email_error = str(exc)[:300]
+        elif not chat_id and not app_email:
+            delivery_channel = "none"
+
+        # Holat kuzatuvi uchun arizada qaysi kanal ishlatilgani saqlanadi
+        if application_id:
+            StoreApplication.objects.filter(id=application_id).update(
+                delivery_channel=delivery_channel if (sent or email_sent) else ""
+            )
+
         data["telegram_sent"] = sent
+        data["email_sent"] = email_sent
+        data["delivery_channel"] = delivery_channel
+        if email_sent:
+            data["sent_to_email"] = app_email
+        if email_error:
+            data["email_error"] = email_error
         return response.Response(data, status=status.HTTP_201_CREATED)
 
 
@@ -414,3 +469,54 @@ class StoreReopenView(views.APIView):
             detail="Barcha a'zolar qayta faollashtirildi.",
         )
         return response.Response(StoreAdminSerializer(shop).data)
+
+class ApplicationStatusView(views.APIView):
+    """Ochiq: foydalanuvchi o'z arizasi holatini tracking_code bilan kuzatadi.
+
+    GET /api/applications/status/?code=TRK-XXXXXXXX
+    Faqat xavfsiz maydonlar qaytadi — login/parol HECH QACHON qaytmaydi.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        code = (request.query_params.get("code") or "").strip().upper()
+        if not code:
+            return response.Response(
+                {"detail": "tracking_code kiritilmagan."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        app = StoreApplication.objects.filter(tracking_code=code).first()
+        if not app:
+            return response.Response(
+                {"detail": "Ariza topilmadi."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        status_text = {
+            StoreApplication.Status.PENDING: "Kutilmoqda",
+            StoreApplication.Status.APPROVED: "Tasdiqlangan",
+            StoreApplication.Status.REJECTED: "Rad etilgan",
+        }.get(app.status, app.status)
+
+        delivered_to = ""
+        if app.status == StoreApplication.Status.APPROVED and app.delivery_channel:
+            delivered_to = (
+                "email" if app.delivery_channel == "email" else "telegram"
+                if app.delivery_channel == "telegram"
+                else ""
+            )
+
+        return response.Response(
+            {
+                "tracking_code": app.tracking_code,
+                "store_name": app.store_name,
+                "status": app.status,
+                "status_display": status_text,
+                "note": app.note or "",
+                "delivery_channel": app.delivery_channel,
+                "delivered_to": delivered_to,
+                "created_at": app.created_at,
+                "processed_at": app.processed_at,
+            }
+        )

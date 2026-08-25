@@ -545,7 +545,19 @@ export function AdminPanelPage() {
                 <span>Parol</span> <b>{createdUser.password}</b>
               </div>
               {createdUser.telegram_sent && (
-                <div className="muted small">Telegram'ga yuborildi ✅</div>
+                <div className="muted small">✅ Telegram botga yuborildi</div>
+              )}
+              {createdUser.email_sent ? (
+                <div className="muted small">✅ Emailga yuborildi: {createdUser.sent_to_email || ""}</div>
+              ) : createdUser.delivery_channel === "email" ? (
+                <div className="muted small" style={{ color: "#ef4444" }}>
+                  ❌ Emailga yuborilmadi{createdUser.email_error ? ` (${createdUser.email_error})` : " — SMTP sozlanmagan"} — kredensiallarni qo'lda yuboring
+                </div>
+              ) : null}
+              {!createdUser.telegram_sent && !createdUser.email_sent && createdUser.delivery_channel === "none" && (
+                <div className="muted small" style={{ color: "#eab308" }}>
+                  ⚠️ Telegram va email mavjud emas — kredensiallarni qo'lda yuboring
+                </div>
               )}
             </div>
             <div className="grid-2" style={{ marginTop: 18 }}>
@@ -567,6 +579,20 @@ export function AdminPanelPage() {
             {approveApp && (
               <p className="muted small" style={{ marginTop: 6 }}>
                 Arizadan ma'lumotlar ko'chirildi. Login/parol avtomatik yaratiladi.
+                {approveApp.email ? (
+                  <>
+                    <br />
+                    📧 Email: <b>{approveApp.email}</b>
+                    {approveApp.telegram_chat_id
+                      ? " — ✅ Telegram ulangan (botga yuboriladi)"
+                      : " — Telegram ulanmagan (emailga yuboriladi)"}
+                  </>
+                ) : approveApp.telegram_chat_id ? (
+                  <>
+                    <br />
+                    💬 Telegram ulangan — bot avtomatik yuboradi
+                  </>
+                ) : null}
               </p>
             )}
             <form onSubmit={createStore}>
