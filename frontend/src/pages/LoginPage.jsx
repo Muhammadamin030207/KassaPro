@@ -140,6 +140,14 @@ export function LoginPage() {
   const applyField = (name) => (e) =>
     setApply((prev) => ({ ...prev, [name]: e.target.value }));
 
+  // Email avto-toldirish: "@" yozilmagan bo'lsa @gmail.com qo'shish
+  const completeGmailDomain = () => {
+    const v = apply.email.trim();
+    if (v && !v.includes("@")) {
+      setApply((s) => ({ ...s, email: `${v}@gmail.com` }));
+    }
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -299,10 +307,22 @@ export function LoginPage() {
                 type="email"
                 value={apply.email}
                 onChange={applyField("email")}
+                onBlur={completeGmailDomain}
+                onKeyDown={(e) => {
+                  if (e.key === "Tab") {
+                    e.preventDefault();
+                    completeGmailDomain();
+                  }
+                }}
                 placeholder="example@gmail.com"
                 maxLength={254}
                 required
               />
+              {apply.email.trim() && !apply.email.includes("@") && (
+                <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+                  Tab bosing → @gmail.com avtomatik qo'shiladi
+                </div>
+              )}
               {applyErrors.email && <div className="field-error">{applyErrors.email}</div>}
             </div>
 
