@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate , useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 
 import { api } from "../api/client";
@@ -27,8 +27,20 @@ const fieldBase = {
  */
 export function LoginPage() {
   const [username, setUsername] = useState("");
+  const [autoLogin, setAutoLogin] = useState(false);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (autoLogin && username && password && !loading) {
+      setAutoLogin(false);
+      // form submit'ni dasturiy chaqiramiz
+      const t = setTimeout(() => {
+        document.getElementById("kassa-login-submit")?.click();
+      }, 250);
+      return () => clearTimeout(t);
+    }
+  }, [autoLogin, username, password, loading]);
 
   const [applyOpen, setApplyOpen] = useState(false);
   const [apply, setApply] = useState({ store_name: "", owner_name: "", phone: "", email: "", address: "" });
@@ -61,6 +73,21 @@ export function LoginPage() {
   const [applyResult, setApplyResult] = useState(null);
 
   const login = useAuthStore((s) => s.login);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  /* Email'dagi "Avtomatik kirish" linki: ?u=...&p=... → to'ldirib yuboramiz */
+  useEffect(() => {
+    const u = searchParams.get("u");
+    const p = searchParams.get("p");
+    if (u && p) {
+      setUsername(u.trim());
+      setPassword(p.trim());
+      setAutoLogin(true);
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const kickMessage = useAuthStore((s) => s.kickMessage);
   const setKickMessage = useAuthStore((s) => s.setKickMessage);
   const navigate = useNavigate();
@@ -155,8 +182,8 @@ export function LoginPage() {
       const deviceType = detectDeviceType();
       const deviceModel = await getDeviceModel();
       const data = await api.post("auth/login/", {
-        username,
-        password,
+        username: username.trim(),
+        password: password.trim(),
         device_id: getDeviceId(),
         device_name: getDeviceName(username, deviceType),
         device_model: deviceModel,
@@ -218,7 +245,7 @@ export function LoginPage() {
             />
           </motion.div>
           <motion.div {...fieldBase} transition={{ ...fieldBase.transition, delay: 0.26 }}>
-            <button className="btn btn-primary btn-block btn-lg" disabled={loading}>
+            <button id="kassa-login-submit" className="btn btn-primary btn-block btn-lg" disabled={loading}>
               {loading ? "Kirmoqda..." : "Kirish"}
             </button>
           </motion.div>

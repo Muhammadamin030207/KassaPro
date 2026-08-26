@@ -13,6 +13,11 @@ class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
     """Login javobiga foydalanuvchi ma'lumotlarini ham qo'shadi."""
 
     def validate(self, attrs):
+        # Boshida/oxirida tashlab ketilgan bo'shliqlar hisobga olinmaydi
+        if "username" in attrs and isinstance(attrs["username"], str):
+            attrs["username"] = attrs["username"].strip()
+        if "password" in attrs and isinstance(attrs["password"], str):
+            attrs["password"] = attrs["password"].strip()
         data = super().validate(attrs)
         request = self.context.get("request")
         device_id = ""

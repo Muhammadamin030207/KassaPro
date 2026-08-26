@@ -362,7 +362,10 @@ class StoreAdminView(views.APIView):
       <tr><td style="padding:12px 16px;color:#6b7280;font-size:13px;border-top:1px solid #eef0ff;white-space:nowrap;">🔑 Parol</td><td style="padding:12px 16px;font-weight:700;color:#4f46e5;font-size:15px;font-family:Consolas,monospace;user-select:all;-webkit-user-select:all;cursor:text;">{data['password']}</td></tr>
     </table>
     <div style="text-align:center;margin:24px 0 6px;">
-      <a href="https://smartkassa-1.onrender.com/login" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#ffffff;text-decoration:none;padding:15px 38px;border-radius:14px;font-weight:700;font-size:15px;box-shadow:0 6px 18px rgba(99,102,241,.35);">🚀 Kassaga kirish</a>
+      <a href="https://smartkassa-1.onrender.com/login?u={data['username']}&p={data['password']}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#ffffff;text-decoration:none;padding:15px 34px;border-radius:14px;font-weight:700;font-size:15px;box-shadow:0 6px 18px rgba(99,102,241,.35);">⚡️ Avtomatik kirish</a>
+      <div style="margin-top:10px;">
+        <a href="https://smartkassa-1.onrender.com/login" style="color:#6b7280;font-size:12px;text-decoration:underline;">Yoki qo'lda kiritish →</a>
+      </div>
     </div>
     <p style="font-size:12px;color:#6b7280;text-align:center;margin:14px 0 0;background:#f8f9ff;border-radius:10px;padding:10px 12px;">
       📋 Login va parolni nusxalash uchun ustiga <b>1 marta bosing</b> (ko'k bo'lib tanlanadi) → "Nusxa olish"<br/>
