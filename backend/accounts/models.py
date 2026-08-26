@@ -18,7 +18,7 @@ class User(AbstractUser):
     )
     shop = models.ForeignKey(
         "shops.Shop",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="staff",
         null=True,
         blank=True,
