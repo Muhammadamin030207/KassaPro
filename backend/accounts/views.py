@@ -606,7 +606,7 @@ class TestDataCleanupView(APIView):
             BotLog as _BL,
             BotSession as _BS,
         )
-        from accounts.models import Device as _DEV
+        from accounts.models import Device as _DEV, PushSubscription as _PS
         from catalog.models import BarcodePriceMemory as _BPM
         from shops.models import Shop as _SHOP
 
@@ -623,7 +623,7 @@ class TestDataCleanupView(APIView):
             ("StoreApplication", StoreApplication.objects.all()),
             ("CustomerApplication", _CA.objects.all()),
             ("Notification", Notification.objects.all()),
-            ("PushSubscription", PushSubscription.objects.all()),
+            ("PushSubscription", _PS.objects.all()),
             ("Device", _DEV.objects.all()),
             ("AuditLog", _AL.objects.all()),
             ("BarcodePriceMemory", _BPM.objects.all()),
