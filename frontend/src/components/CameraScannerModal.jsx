@@ -95,15 +95,9 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
           const vw =
             typeof window !== "undefined" ? Math.min(window.innerWidth, 720) : 420;
           const boxW = Math.round(Math.min(340, vw * 0.86));
-          return scanner.start(
-            {
-              facingMode: facingRef.current,
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-            },
-            { fps: 25, qrbox: { width: boxW, height: Math.round(boxW * 0.55) } },
-            (decodedText) => {
-              const text = decodedText.trim();
+          const onScan = (decodedText) => {
+            try {
+              const text = (decodedText || "").trim();
               if (!text) return;
               onDetectedRef.current?.(text);
               setLastCode(text);
@@ -116,8 +110,6 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
                 /* e'tiborsiz */
               }
               setTimeout(() => setFlash(false), 350);
-              // Duplikat urilmasligi uchun qisqa pauza.
-              // Uzluksiz rejimda pauza qisqa — tezkor ketma-ket skanerlash.
               const pauseMs = continuousRef.current ? 150 : 700;
               try {
                 scannerRef.current?.pause(true);
@@ -127,9 +119,31 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
               } catch {
                 /* e'tiborsiz */
               }
-            },
-            () => {}
-          );
+            } catch {
+              /* callback xatosi skanerni to'xtatmasin */
+            }
+          };
+          // 1-urinish: HD + tez sozlamalar; 2-urinish: minimal (har qanday qurilma)
+          return scanner
+            .start(
+              {
+                facingMode: facingRef.current,
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+              },
+              { fps: 25, qrbox: { width: boxW, height: Math.round(boxW * 0.55) } },
+              onScan,
+              () => {}
+            )
+            .catch(() => {
+              if (cancelled) return null;
+              return scanner.start(
+                { facingMode: facingRef.current },
+                { fps: 15, qrbox: { width: 240, height: 140 } },
+                onScan,
+                () => {}
+              );
+            });
         })
         .then(() => {
           if (!cancelled) {
@@ -156,9 +170,20 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
       const s = scannerRef.current;
       scannerRef.current = null;
       if (s) {
-        s.stop()
-          .then(() => s.clear())
-          .catch(() => s.clear().catch(() => {}));
+        try {
+          Promise.resolve(s.isRunning?.() ?? true)
+            .then((running) => (running ? s.stop() : null))
+            .then(() => s.clear())
+            .catch(() => {
+              try {
+                s.clear();
+              } catch {
+                /* e'tiborsiz */
+              }
+            });
+        } catch {
+          /* e'tiborsiz */
+        }
       }
     };
   }, [open, readerId]);
@@ -214,15 +239,9 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
         const vw =
           typeof window !== "undefined" ? Math.min(window.innerWidth, 720) : 420;
         const boxW = Math.round(Math.min(340, vw * 0.86));
-        return scanner.start(
-          {
-            facingMode: next,
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-          { fps: 25, qrbox: { width: boxW, height: Math.round(boxW * 0.55) } },
-          (decodedText) => {
-            const text = decodedText.trim();
+        const onScan2 = (decodedText) => {
+          try {
+            const text = (decodedText || "").trim();
             if (!text) return;
             onDetectedRef.current?.(text);
             setLastCode(text);
@@ -239,9 +258,29 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
             } catch {
               /* e'tiborsiz */
             }
-          },
-          () => {}
-        );
+          } catch {
+            /* e'tiborsiz */
+          }
+        };
+        return scanner
+          .start(
+            {
+              facingMode: next,
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+            { fps: 25, qrbox: { width: boxW, height: Math.round(boxW * 0.55) } },
+            onScan2,
+            () => {}
+          )
+          .catch(() => {
+            return scanner.start(
+              { facingMode: next },
+              { fps: 15, qrbox: { width: 240, height: 140 } },
+              onScan2,
+              () => {}
+            );
+          });
       })
       .then(() => {
         readZoomCaps(scannerRef.current);
