@@ -16,6 +16,7 @@ let scanUID = 0;
  */
 export function CameraScannerModal({ open, onClose, onDetected }) {
   const [error, setError] = useState(null);
+  const [starting, setStarting] = useState(false);
   const [flash, setFlash] = useState(false);
   const [facing, setFacing] = useState("environment");
   const [torch, setTorch] = useState(false);
@@ -67,6 +68,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
   };
 
   const [readerId] = useState(() => `camera-reader-${++scanUID}`);
+  const startScannerRef = useRef(null);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -75,6 +77,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
 
     const startScanner = () => {
       if (cancelled) return Promise.resolve(null);
+      setStarting(true);
       // html5-qrcode faqat kamera ochilganda yuklanadi (asosiy bundle'ni yengillashtiradi)
       return import("html5-qrcode")
         .then(({ Html5Qrcode, Html5QrcodeSupportedFormats }) => {
@@ -152,14 +155,24 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
             if (zoom !== 1) applyZoom(scannerRef.current, zoom);
           }
         })
-        .catch(() => {
+        .catch((err) => {
           if (!cancelled) {
             playBarcodeError();
-            setError("Skaner ochilmadi. Brauzer ruxsat so'raganda «Ruxsat berish»ni bosing.");
+            const msg =
+              err?.name === "NotAllowedError"
+                ? "Kamera ruxsati berilmadi — brauzer sozlamasidan kamera ruxsatini yoqing."
+                : err?.name === "NotFoundError"
+                  ? "Kamera topilmadi — qurilmada kamera mavjudligini tekshiring."
+                  : `Skaner ochilmadi: ${err?.message || err || "noma'lum xato"}`;
+            setError(msg);
           }
+        })
+        .finally(() => {
+          if (!cancelled) setStarting(false);
         });
     };
 
+    startScannerRef.current = startScanner;
     startScanner();
 
     return () => {
@@ -286,8 +299,8 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
         readZoomCaps(scannerRef.current);
         if (zoom !== 1) applyZoom(scannerRef.current, zoom);
       })
-      .catch(() => {
-        setError("Skaner almashmadi, lekin yangi kamera ochilmadi.");
+      .catch((err) => {
+        setError(`Kamera almashmadi: ${err?.message || err || "noma'lum"}`);
       });
   };
 
@@ -353,7 +366,21 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
 
       {error ? (
         <div className="empty" style={{ marginTop: 12 }}>
-          <div className="anti">{error}</div>
+          <div className="anti" style={{ color: "#f87171" }}>{error}</div>
+          <button
+            className="btn btn-primary btn-sm"
+            style={{ marginTop: 10 }}
+            onClick={() => {
+              setError(null);
+              startScannerRef.current?.();
+            }}
+          >
+            🔄 Qayta urinish
+          </button>
+        </div>
+      ) : starting ? (
+        <div className="sub" style={{ marginTop: 12, textAlign: "center" }}>
+          ⏳ Kamera ochilmoqda...
         </div>
       ) : (
         <div className="sub" style={{ marginTop: 12, textAlign: "center" }}>
