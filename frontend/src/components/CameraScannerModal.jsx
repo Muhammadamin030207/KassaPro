@@ -52,21 +52,15 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
     }
   };
 
-  const applyZoom = async (scanner, value) => {
-    if (zoomCaps) {
-      try {
-        await scanner?.applyVideoConstraints({ advanced: [{ zoom: value }] });
-      } catch {
-        /* hardware zoom yo'q — CSS digital zoom ishlaydi */
-      }
-    }
+  const applyZoom = async (_scanner, value) => {
+    const v = Math.min(5, Math.max(1, value));
     const video = document.getElementById(readerId)?.querySelector("video");
     if (video) {
       video.style.transition = "transform 0.18s ease";
       video.style.transformOrigin = "center center";
-      video.style.transform = `scale(${value})`;
+      video.style.transform = `scale(${v})`;
     }
-    setZoom(value);
+    setZoom(v);
     setShowZoomBadge(true);
     clearTimeout(applyZoom._t);
     applyZoom._t = setTimeout(() => setShowZoomBadge(false), 900);
@@ -277,7 +271,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
             <Icon name="zap" /> Fonar
           </button>
           <button className="ghost-btn" onClick={switchCamera} title="Oldi/orqa kamera">
-            <Icon name="refresh" /> {facing === "environment" ? "Orqa" : "Oldi"}
+            <Icon name="camera" /> {facing === "environment" ? "Orqa" : "Oldi"}
           </button>
         </div>
       </div>
@@ -295,7 +289,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
             const [a, b] = e.touches;
             const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
             const ratio = dist / pinchRef.current;
-            const next = Math.min(10, Math.max(1, Math.round(zoom * ratio * 2) / 2));
+            const next = Math.min(5, Math.max(1, Math.round(zoom * ratio * 2) / 2));
             pinchRef.current = dist;
             if (next !== zoom) applyZoom(scannerRef.current, next);
           }
@@ -303,7 +297,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
         onTouchEnd={() => {
           pinchRef.current = null;
         }}
-        onDoubleClick={() => applyZoom(scannerRef.current, zoom > 1 ? 1 : 2)}
+        onDoubleClick={() => applyZoom(scannerRef.current, zoom > 1 ? 1 : 2.5)}
       >
         <div id={readerId} className="camera-view" />
         <div className="camera-beam" />

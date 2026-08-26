@@ -55,6 +55,22 @@ export function NotificationBell() {
   const [pushState, setPushState] = useState(
     typeof Notification !== "undefined" ? Notification.permission : "unsupported"
   );
+  const [subscribed, setSubscribed] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        if (typeof Notification === "undefined" || !navigator.serviceWorker) return;
+        if (Notification.permission !== "granted") return;
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) setSubscribed(true);
+        else setPushState("default");
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
 
   const enablePush = async () => {
     try {
@@ -76,7 +92,8 @@ export function NotificationBell() {
           applicationServerKey: urlB64(publicKey),
         }));
       await api.post("push/subscribe/", sub.toJSON());
-      show("Push xabarlar yoqildi! 🔔", "success");
+      setSubscribed(true);
+      show("Push yoqildi — sinov xabari keldi! 🔔", "success");
     } catch {
       show("Push yoqib bo'lmadi", "error");
     }
@@ -102,9 +119,30 @@ export function NotificationBell() {
           <div className="notif-head">
             <b>Bildirishnomalar</b>
             <span style={{ display: "inline-flex", gap: 10, alignItems: "center" }}>
-              {pushState === "default" && (
+              {pushState !== "granted" && (
                 <button type="button" className="notif-readall" onClick={enablePush}>
                   🔔 Telefonga yoqish
+                </button>
+              )}
+              {pushState === "granted" && !subscribed && (
+                <button type="button" className="notif-readall" onClick={enablePush}>
+                  🔔 Pushni faollashtirish
+                </button>
+              )}
+              {subscribed && (
+                <button
+                  type="button"
+                  className="notif-readall"
+                  onClick={async () => {
+                    try {
+                      await api.post("push/test/", {});
+                      show("Sinov xabari yuborildi — telefonni tekshiring", "success");
+                    } catch {
+                      show("Yuborib bo'lmadi", "error");
+                    }
+                  }}
+                >
+                  📤 Sinov
                 </button>
               )}
               {unread > 0 && (

@@ -496,6 +496,33 @@ class PushSubscribeView(APIView):
                 "auth": keys["auth"][:200],
             },
         )
+        # Darhol sinov xabari — foydalanuvchi push ishlayotganini ko'radi
+        try:
+            from accounts.models import _send_webpush
+
+            _send_webpush(
+                request.user,
+                "KassaPro push ulandi ✓",
+                "Endi savdo, qarz va ariza xabarlari shu yerga keladi.",
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        return Response({"ok": True})
+
+
+class PushTestView(APIView):
+    """POST /api/push/test/ — o'z qurilmalariga sinov xabari."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from accounts.models import _send_webpush
+
+        _send_webpush(
+            request.user,
+            "KassaPro sinov xabari ✓",
+            "Push ishlaydi — savdo va qarz xabarlari shu yerga keladi.",
+        )
         return Response({"ok": True})
 
 

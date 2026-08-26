@@ -7,6 +7,7 @@ from accounts.views import (
     ProfileUpdateView,
     PushPublicKeyView,
     PushSubscribeView,
+    PushTestView,
     PushUnsubscribeView,
     NotificationReadAllView,
     NotificationReadView,
@@ -42,6 +43,7 @@ urlpatterns = [
     ),
     path("push/public-key/", PushPublicKeyView.as_view(), name="push-public-key"),
     path("push/subscribe/", PushSubscribeView.as_view(), name="push-subscribe"),
+    path("push/test/", PushTestView.as_view(), name="push-test"),
     path(
         "push/unsubscribe/",
         PushUnsubscribeView.as_view(),
