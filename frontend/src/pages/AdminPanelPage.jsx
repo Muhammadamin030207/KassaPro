@@ -28,6 +28,7 @@ const BOT_STATUS_LABEL = {
  *  - Yangi do'kon + owner qo'lda yaratish
  */
 export function AdminPanelPage() {
+  const [tab, setTab] = useState("pending");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [apps, setApps] = useState([]);
   const [count, setCount] = useState(0);
@@ -61,7 +62,7 @@ export function AdminPanelPage() {
   const loadApps = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const data = await api.list("admin/applications/", { page_size: 100 });
+      const data = await api.list("admin/applications/", { status: tab, page_size: 100 });
       setApps(data.results || []);
       setCount(data.count || 0);
     } catch (err) {
@@ -69,7 +70,7 @@ export function AdminPanelPage() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [show]);
+  }, [tab, show]);
 
   const loadStores = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -107,21 +108,30 @@ export function AdminPanelPage() {
   };
 
   useEffect(() => {
-    loadApps();
-    loadBotApps();
-    loadStores();
-  }, [loadApps, loadStores, loadBotApps]);
+    if (tab === "stores") {
+      loadStores();
+    } else if (tab === "murojaatlar") {
+      loadBotApps();
+    } else {
+      loadApps();
+    }
+  }, [tab, loadApps, loadStores, loadBotApps]);
 
-  // Real-time: har 15 soniyada hammasi yangilanadi
+  // Real-time fallback: WebSocket yo'q bo'lsa — har 15 soniyada yangilash.
+  // Telegram bot arizasi kelishi/yechilishi panelda kutmasdan ko'rinadi.
   useEffect(() => {
     const poll = () => {
-      loadApps(true);
-      loadBotApps(true);
-      loadStores(true);
+      if (tab === "stores") {
+        loadStores(true);
+      } else if (tab === "murojaatlar") {
+        loadBotApps(true);
+      } else {
+        loadApps(true);
+      }
     };
     const t = setInterval(poll, 15000);
     return () => clearInterval(t);
-  }, [loadApps, loadStores, loadBotApps]);
+  }, [tab, loadApps, loadStores, loadBotApps]);
 
   const openReject = (app) => {
     setRejectApp(app);
@@ -229,10 +239,6 @@ export function AdminPanelPage() {
     }
   };
 
-  const pendingApps = apps.filter((a) => a.status === "pending");
-  const approvedApps = apps.filter((a) => a.status === "approved");
-  const rejectedApps = apps.filter((a) => a.status === "rejected");
-
   return (
     <div className="page">
       <div className="page-head">
@@ -248,265 +254,99 @@ export function AdminPanelPage() {
         </button>
       </div>
 
+      {tab === "pending" && (
+        <div className="flex" style={{ gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+          {[
+            { k: "all", label: "Hammasi" },
+            { k: "web", label: "🌐 Websaytdan" },
+            { k: "bot", label: "🤖 Botdan" },
+          ].map((f) => (
+            <button
+              key={f.k}
+              className={`btn btn-sm ${sourceFilter === f.k ? "btn-primary" : "btn-ghost"}`}
+              onClick={() => setSourceFilter(f.k)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-
-      <h2 className="admin-sec-title">🟡 Kutilmoqda arizalar <span className="badge">{pendingApps.length}</span></h2>
-      <div className="flex" style={{ gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+      <div className="tabs">
         {[
-          { k: "all", label: "Hammasi" },
-          { k: "web", label: "🌐 Websaytdan" },
-          { k: "bot", label: "🤖 Botdan" },
-        ].map((f) => (
+          { k: "pending", label: "🟡 Kutilmoqda", count },
+          { k: "approved", label: "✅ Tasdiqlangan", count },
+          { k: "rejected", label: "❌ Rad etilgan", count },
+          { k: "murojaatlar", label: "📨 Murojaatlar", count: botCount },
+          { k: "stores", label: "🏪 Do'konlar", count: stores.length },
+        ].map((t) => (
           <button
-            key={f.k}
-            className={`btn btn-sm ${sourceFilter === f.k ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => setSourceFilter(f.k)}
+            key={t.k}
+            className={`tab ${tab === t.k ? "active" : ""}`}
+            onClick={() => setTab(t.k)}
           >
-            {f.label}
+            {t.label}
+            <span className="badge">{t.count}</span>
           </button>
         ))}
       </div>
-      {loading ? (
-        <div className="empty-state">Yuklanmoqda...</div>
-      ) : pendingApps.length === 0 ? (
-        <div className="empty-state">
-          <div className="big" aria-hidden="true">📁</div>
-          <h3>Bu bo'limda ariza yo'q</h3>
-        </div>
-      ) : (
-        <div className="app-list">
-          {pendingApps
-            .filter((a) => sourceFilter === "all" || a.source === sourceFilter)
-            .map((app) => (
-            <motion.div
-              key={app.id}
-              className="panel app-card"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <div className="app-card-head">
-                <div>
-                  <h3>
-                    <span
-                      className="status-pill"
-                      style={{
-                        background:
-                          app.source === "bot"
-                            ? "rgba(99,102,241,.15)"
-                            : "rgba(34,197,94,.15)",
-                        color: app.source === "bot" ? "#818cf8" : "#22c55e",
-                        marginRight: 8,
-                        fontSize: 11,
-                      }}
-                    >
-                      {app.source === "bot" ? "🤖 Bot" : "🌐 Websayt"}
-                    </span>
-                    {app.store_name}
-                  </h3>
-                  <div className="muted">
-                    {app.owner_name} · {app.phone || "Tel yo'q"}
+
+      {tab === "stores" ? (
+        loading ? (
+          <div className="empty-state">Yuklanmoqda...</div>
+        ) : stores.length === 0 ? (
+          <div className="empty-state">
+            <div className="big">🏪</div>
+            <h3>Do'konlar yo'q</h3>
+          </div>
+        ) : (
+          <div className="app-list">
+            {stores.map((s) => (
+              <motion.div
+                key={s.id}
+                className="panel app-card"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="app-card-head">
+                  <div>
+                    <h3>{s.name}</h3>
+                    <div className="muted">
+                      {s.owner_name || s.owner_username}
+                      {s.owner_phone ? ` · ${s.owner_phone}` : ""} · Login: {s.owner_username}
+                    </div>
+                    <div className="muted small">
+                      {s.product_count} mahsulot · {s.sale_count} savdo · {s.open_debt_count} ochiq qarz
+                      <br />
+                      Arizasi: {s.address ? `Manzil: ${s.address}` : "Manzil yo'q"}
+                    </div>
                   </div>
-                  <div className="muted small">
-                    {app.email ? `📧 ${app.email}` : "📧 email yo'q"}
-                    {app.telegram_chat_id ? " · 💬 Telegram ulangan" : ""}
+                  <span className={`status-pill ${s.is_active ? "status-approved" : "status-rejected"}`}>
+                    {s.status_display}
+                  </span>
+                </div>
+                {s.is_active ? (
+                  <div className="app-card-actions">
+                    <button className="btn btn-danger btn-sm" onClick={() => { setCloseStore(s); setCloseConfirm(""); }}>
+                      Do'konni yopish (o'chirish)
+                    </button>
                   </div>
-                  <div className="muted small">{app.address || "Manzil berilmagan"}</div>
-                </div>
-                <span className={`status-pill status-${app.status}`}>{app.status_display}</span>
-              </div>
-              {app.status === "pending" && (
-                <div className="app-card-actions">
-                  <button className="btn btn-primary btn-sm" onClick={() => openApprove(app)}>
-                    Tasdiqlash
-                  </button>
-                  <button className="btn btn-danger btn-sm" onClick={() => openReject(app)}>
-                    Rad etish
-                  </button>
-                </div>
-              )}
-              {app.status === "rejected" && (
-                <div className="app-card-actions">
-                  <button className="btn btn-primary btn-sm" onClick={() => openApprove(app)}>
-                    Tasdiqlash (fikrni o'zgartirish)
-                  </button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => reconsider(app)}>
-                    Qayta ko'rib chiqish
-                  </button>
-                </div>
-              )}
-              {app.status === "approved" && (
-                <div className="app-card-actions">
-                  <button className="btn btn-ghost btn-sm" onClick={() => reconsider(app)}>
-                    Qayta ko'rib chiqish
-                  </button>
-                  <button className="btn btn-danger btn-sm" onClick={() => openReject(app)}>
-                    Rad etish (fikrni o'zgartirish)
-                  </button>
-                </div>
-              )}
-              {app.note && <div className="muted small">Izoh: {app.note}</div>}
-            </motion.div>
+                ) : (
+                  <div className="app-card-actions">
+                    <div className="muted small" style={{ marginBottom: 8 }}>
+                      Yopiq — egasi kira olmaydi, ma'lumotlar arxivda
+                    </div>
+                    <button className="btn btn-primary btn-sm" onClick={() => reopenStore(s)}>
+                      Do'konni qayta ochish
+                    </button>
+                  </div>
+                )}
+              </motion.div>
             ))}
-        </div>
-      )}
-
-      <h2 className="admin-sec-title">✅ Tasdiqlangan <span className="badge">{approvedApps.length}</span></h2>
-      {approvedApps.length === 0 ? (
-        <div className="empty-state" style={{ padding: "18px 0" }}><span className="muted">Hozircha bo'sh</span></div>
-      ) : (
-        <div className="app-list">
-          {approvedApps.map((app) => (
-            <motion.div
-              key={app.id}
-              className="panel app-card"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <div className="app-card-head">
-                <div>
-                  <h3>
-                    <span
-                      className="status-pill"
-                      style={{
-                        background:
-                          app.source === "bot"
-                            ? "rgba(99,102,241,.15)"
-                            : "rgba(34,197,94,.15)",
-                        color: app.source === "bot" ? "#818cf8" : "#22c55e",
-                        marginRight: 8,
-                        fontSize: 11,
-                      }}
-                    >
-                      {app.source === "bot" ? "🤖 Bot" : "🌐 Websayt"}
-                    </span>
-                    {app.store_name}
-                  </h3>
-                  <div className="muted">
-                    {app.owner_name} · {app.phone || "Tel yo'q"}
-                  </div>
-                  <div className="muted small">
-                    {app.email ? `📧 ${app.email}` : "📧 email yo'q"}
-                    {app.telegram_chat_id ? " · 💬 Telegram ulangan" : ""}
-                  </div>
-                  <div className="muted small">{app.address || "Manzil berilmagan"}</div>
-                </div>
-                <span className={`status-pill status-${app.status}`}>{app.status_display}</span>
-              </div>
-              {app.status === "pending" && (
-                <div className="app-card-actions">
-                  <button className="btn btn-primary btn-sm" onClick={() => openApprove(app)}>
-                    Tasdiqlash
-                  </button>
-                  <button className="btn btn-danger btn-sm" onClick={() => openReject(app)}>
-                    Rad etish
-                  </button>
-                </div>
-              )}
-              {app.status === "rejected" && (
-                <div className="app-card-actions">
-                  <button className="btn btn-primary btn-sm" onClick={() => openApprove(app)}>
-                    Tasdiqlash (fikrni o'zgartirish)
-                  </button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => reconsider(app)}>
-                    Qayta ko'rib chiqish
-                  </button>
-                </div>
-              )}
-              {app.status === "approved" && (
-                <div className="app-card-actions">
-                  <button className="btn btn-ghost btn-sm" onClick={() => reconsider(app)}>
-                    Qayta ko'rib chiqish
-                  </button>
-                  <button className="btn btn-danger btn-sm" onClick={() => openReject(app)}>
-                    Rad etish (fikrni o'zgartirish)
-                  </button>
-                </div>
-              )}
-              {app.note && <div className="muted small">Izoh: {app.note}</div>}
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      <h2 className="admin-sec-title">❌ Rad etilgan <span className="badge">{rejectedApps.length}</span></h2>
-      {rejectedApps.length === 0 ? (
-        <div className="empty-state" style={{ padding: "18px 0" }}><span className="muted">Hozircha bo'sh</span></div>
-      ) : (
-        <div className="app-list">
-          {rejectedApps.map((app) => (
-            <motion.div
-              key={app.id}
-              className="panel app-card"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <div className="app-card-head">
-                <div>
-                  <h3>
-                    <span
-                      className="status-pill"
-                      style={{
-                        background:
-                          app.source === "bot"
-                            ? "rgba(99,102,241,.15)"
-                            : "rgba(34,197,94,.15)",
-                        color: app.source === "bot" ? "#818cf8" : "#22c55e",
-                        marginRight: 8,
-                        fontSize: 11,
-                      }}
-                    >
-                      {app.source === "bot" ? "🤖 Bot" : "🌐 Websayt"}
-                    </span>
-                    {app.store_name}
-                  </h3>
-                  <div className="muted">
-                    {app.owner_name} · {app.phone || "Tel yo'q"}
-                  </div>
-                  <div className="muted small">
-                    {app.email ? `📧 ${app.email}` : "📧 email yo'q"}
-                    {app.telegram_chat_id ? " · 💬 Telegram ulangan" : ""}
-                  </div>
-                  <div className="muted small">{app.address || "Manzil berilmagan"}</div>
-                </div>
-                <span className={`status-pill status-${app.status}`}>{app.status_display}</span>
-              </div>
-              {app.status === "pending" && (
-                <div className="app-card-actions">
-                  <button className="btn btn-primary btn-sm" onClick={() => openApprove(app)}>
-                    Tasdiqlash
-                  </button>
-                  <button className="btn btn-danger btn-sm" onClick={() => openReject(app)}>
-                    Rad etish
-                  </button>
-                </div>
-              )}
-              {app.status === "rejected" && (
-                <div className="app-card-actions">
-                  <button className="btn btn-primary btn-sm" onClick={() => openApprove(app)}>
-                    Tasdiqlash (fikrni o'zgartirish)
-                  </button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => reconsider(app)}>
-                    Qayta ko'rib chiqish
-                  </button>
-                </div>
-              )}
-              {app.status === "approved" && (
-                <div className="app-card-actions">
-                  <button className="btn btn-ghost btn-sm" onClick={() => reconsider(app)}>
-                    Qayta ko'rib chiqish
-                  </button>
-                  <button className="btn btn-danger btn-sm" onClick={() => openReject(app)}>
-                    Rad etish (fikrni o'zgartirish)
-                  </button>
-                </div>
-              )}
-              {app.note && <div className="muted small">Izoh: {app.note}</div>}
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      <h2 className="admin-sec-title">📨 Murojaatlar <span className="badge">{botApps.length}</span></h2>
+          </div>
+        )
+      ) : tab === "murojaatlar" ? (
+        loading ? (
           <div className="empty-state">Yuklanmoqda...</div>
         ) : botApps.length === 0 ? (
           <div className="empty-state">
@@ -592,62 +432,89 @@ export function AdminPanelPage() {
             ))}
           </div>
         )
-
-      <h2 className="admin-sec-title">🏪 Do'konlar <span className="badge">{stores.length}</span></h2>
-        loading ? (
-          <div className="empty-state">Yuklanmoqda...</div>
-        ) : stores.length === 0 ? (
-          <div className="empty-state">
-            <div className="big">🏪</div>
-            <h3>Do'konlar yo'q</h3>
-          </div>
-        ) : (
-          <div className="app-list">
-            {stores.map((s) => (
-              <motion.div
-                key={s.id}
-                className="panel app-card"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <div className="app-card-head">
-                  <div>
-                    <h3>{s.name}</h3>
-                    <div className="muted">
-                      {s.owner_name || s.owner_username}
-                      {s.owner_phone ? ` · ${s.owner_phone}` : ""} · Login: {s.owner_username}
-                    </div>
-                    <div className="muted small">
-                      {s.product_count} mahsulot · {s.sale_count} savdo · {s.open_debt_count} ochiq qarz
-                      <br />
-                      Arizasi: {s.address ? `Manzil: ${s.address}` : "Manzil yo'q"}
-                    </div>
+      ) : loading ? (
+        <div className="empty-state">Yuklanmoqda...</div>
+      ) : apps.length === 0 ? (
+        <div className="empty-state">
+          <div className="big" aria-hidden="true">📁</div>
+          <h3>Bu bo'limda ariza yo'q</h3>
+        </div>
+      ) : (
+        <div className="app-list">
+          {apps
+            .filter((a) => sourceFilter === "all" || a.source === sourceFilter)
+            .map((app) => (
+            <motion.div
+              key={app.id}
+              className="panel app-card"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="app-card-head">
+                <div>
+                  <h3>
+                    <span
+                      className="status-pill"
+                      style={{
+                        background:
+                          app.source === "bot"
+                            ? "rgba(99,102,241,.15)"
+                            : "rgba(34,197,94,.15)",
+                        color: app.source === "bot" ? "#818cf8" : "#22c55e",
+                        marginRight: 8,
+                        fontSize: 11,
+                      }}
+                    >
+                      {app.source === "bot" ? "🤖 Bot" : "🌐 Websayt"}
+                    </span>
+                    {app.store_name}
+                  </h3>
+                  <div className="muted">
+                    {app.owner_name} · {app.phone || "Tel yo'q"}
                   </div>
-                  <span className={`status-pill ${s.is_active ? "status-approved" : "status-rejected"}`}>
-                    {s.status_display}
-                  </span>
+                  <div className="muted small">
+                    {app.email ? `📧 ${app.email}` : "📧 email yo'q"}
+                    {app.telegram_chat_id ? " · 💬 Telegram ulangan" : ""}
+                  </div>
+                  <div className="muted small">{app.address || "Manzil berilmagan"}</div>
                 </div>
-                {s.is_active ? (
-                  <div className="app-card-actions">
-                    <button className="btn btn-danger btn-sm" onClick={() => { setCloseStore(s); setCloseConfirm(""); }}>
-                      Do'konni yopish (o'chirish)
-                    </button>
-                  </div>
-                ) : (
-                  <div className="app-card-actions">
-                    <div className="muted small" style={{ marginBottom: 8 }}>
-                      Yopiq — egasi kira olmaydi, ma'lumotlar arxivda
-                    </div>
-                    <button className="btn btn-primary btn-sm" onClick={() => reopenStore(s)}>
-                      Do'konni qayta ochish
-                    </button>
-                  </div>
-                )}
-              </motion.div>
-            ))}
-          </div>
-        )
-
+                <span className={`status-pill status-${app.status}`}>{app.status_display}</span>
+              </div>
+              {app.status === "pending" && (
+                <div className="app-card-actions">
+                  <button className="btn btn-primary btn-sm" onClick={() => openApprove(app)}>
+                    Tasdiqlash
+                  </button>
+                  <button className="btn btn-danger btn-sm" onClick={() => openReject(app)}>
+                    Rad etish
+                  </button>
+                </div>
+              )}
+              {app.status === "rejected" && (
+                <div className="app-card-actions">
+                  <button className="btn btn-primary btn-sm" onClick={() => openApprove(app)}>
+                    Tasdiqlash (fikrni o'zgartirish)
+                  </button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => reconsider(app)}>
+                    Qayta ko'rib chiqish
+                  </button>
+                </div>
+              )}
+              {app.status === "approved" && (
+                <div className="app-card-actions">
+                  <button className="btn btn-ghost btn-sm" onClick={() => reconsider(app)}>
+                    Qayta ko'rib chiqish
+                  </button>
+                  <button className="btn btn-danger btn-sm" onClick={() => openReject(app)}>
+                    Rad etish (fikrni o'zgartirish)
+                  </button>
+                </div>
+              )}
+              {app.note && <div className="muted small">Izoh: {app.note}</div>}
+            </motion.div>
+          ))}
+        </div>
+      )}
 
       {/* Arizani rad etish — sabab majburiy */}
       <Modal open={!!rejectApp} onClose={() => setRejectApp(null)}>
