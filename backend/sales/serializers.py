@@ -291,11 +291,15 @@ class ExpenseSerializer(serializers.ModelSerializer):
         source="created_by.username", read_only=True
     )
 
+    category_display = serializers.CharField(
+        source="get_category_display", read_only=True
+    )
+
     class Meta:
         model = Expense
         fields = [
-            "id", "title", "supplier", "qty", "total_amount",
-            "note", "created_by_name", "created_at",
+            "id", "category", "category_display", "title", "supplier",
+            "qty", "total_amount", "note", "created_by_name", "created_at",
         ]
         read_only_fields = fields
 
@@ -303,7 +307,7 @@ class ExpenseSerializer(serializers.ModelSerializer):
 class ExpenseCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Expense
-        fields = ["title", "supplier", "qty", "total_amount", "note"]
+        fields = ["category", "title", "supplier", "qty", "total_amount", "note"]
 
     def create(self, validated_data):
         validated_data["shop"] = self.context["request"].user.shop

@@ -5040,3 +5040,127 @@ html, body, #root {
 .panel {
   border-radius: 16px;
 }
+
+/* ================= XARAJATLAR — ideal dizayn ================= */
+.exp-cats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.exp-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 15px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.exp-cat-emoji {
+  font-size: 15px;
+}
+.exp-cat:hover {
+  border-color: rgba(99, 102, 241, 0.5);
+}
+.exp-cat.active {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+.exp-form {
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.exp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.exp-qty {
+  max-width: 160px;
+}
+.exp-form-foot {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 4px;
+}
+.exp-stat {
+  padding: 16px;
+  border-radius: 16px;
+}
+.exp-stat-num {
+  font-size: 22px;
+  font-weight: 800;
+  margin-top: 2px;
+}
+.exp-breakdown {
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  border-radius: 16px;
+}
+.exp-break-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.exp-break-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.exp-break-label {
+  flex: 0 0 150px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.exp-break-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(120, 120, 140, 0.18);
+  overflow: hidden;
+}
+.exp-break-bar > div {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  transition: width 0.3s ease;
+}
+.exp-break-sum {
+  flex: 0 0 110px;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 600;
+}
+.exp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+@media (max-width: 768px) {
+  .exp-grid {
+    grid-template-columns: 1fr;
+  }
+  .exp-qty {
+    max-width: none;
+  }
+  .exp-break-label {
+    flex: 0 0 110px;
+  }
+}

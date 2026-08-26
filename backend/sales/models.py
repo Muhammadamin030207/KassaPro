@@ -68,6 +68,22 @@ class Expense(models.Model):
     shop = models.ForeignKey(
         Shop, on_delete=models.CASCADE, related_name="expenses"
     )
+    class Category(models.TextChoices):
+        XARID = "xarid", "🛒 Xarid"
+        IJARA = "ijara", "🏠 Ijara"
+        KOMMUNAL = "kommunal", "💡 Kommunal"
+        TRANSPORT = "transport", "🚗 Transport"
+        MAOSH = "maosh", "👥 Maosh"
+        YETKAZISH = "yetkazish", "📦 Yetkazib berish"
+        REKLAMA = "reklama", "📣 Reklama"
+        BOSHQA = "boshqa", "🧾 Boshqa"
+
+    category = models.CharField(
+        max_length=16,
+        choices=Category.choices,
+        default=Category.XARID,
+        db_index=True,
+    )
     title = models.CharField(max_length=150)
     supplier = models.CharField(max_length=150, blank=True)
     qty = models.DecimalField(
