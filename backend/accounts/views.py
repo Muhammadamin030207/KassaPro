@@ -592,41 +592,53 @@ class TestDataCleanupView(APIView):
         User = get_user_model()
 
         # TO'LIQ REJIM: faqat admin qoladi
-        if confirm == "HAMMASINI OCHIR":
-            if request.user.username != "admin":
-                return Response(
-                    {"detail": "Faqat admin bajaradi."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-            wiped = {}
-            for model in (
-                "SaleItem", "Sale", "DebtPayment", "Debt", "Customer",
-                "Product", "Category", "Expense", "StoreApplication",
-                "CustomerApplication", "Notification", "PushSubscription",
-                "Device", "AuditLog", "BarcodePriceMemory", "BotLog",
-                "BotSession", "Shop",
-            ):
-                try:
-                    app_label, model_name = None, None
-                    if model in ("SaleItem", "Sale", "Expense"):
-                        app_label = "sales"
-                    elif model in ("DebtPayment", "Debt", "Customer"):
-                        app_label = "customers"
-                    elif model in ("Product", "Category"):
-                        app_label = "catalog"
-                    elif model in ("StoreApplication", "Shop", "AuditLog"):
-                        app_label = "shops"
-                    elif model in ("CustomerApplication", "BotLog", "BotSession"):
-                        app_label = "telegrambot"
-                    else:
-                        app_label = "accounts"
-                    qs = apps_m()[app_label, model].objects.all()
-                    wiped[model] = qs.count()
-                    qs._raw_delete(qs.db)
-                except Exception:  # noqa: BLE001
-                    wiped[model] = "skip"
-            User.objects.exclude(username="admin").delete()
-            return Response({"ok": True, "mode": "FULL", "wiped": wiped})
+        if request.user.username != "admin":
+            return Response(
+                {"detail": "Faqat admin bajaradi."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        from sales.models import SaleItem as _SI, Sale as _S, Expense as _EX
+        from customers.models import DebtPayment as _DP, Debt as _D, Customer as _C
+        from catalog.models import Product as _P, Category as _CAT
+        from shops.models import AuditLog as _AL
+        from telegrambot.models import (
+            CustomerApplication as _CA,
+            BotLog as _BL,
+            BotSession as _BS,
+        )
+        from accounts.models import (
+            BarcodePriceMemory as _BPM,
+            Device as _DEV,
+        )
+        from shops.models import Shop as _SHOP
+
+        wiped = {}
+        for label, qs in (
+            ("SaleItem", _SI.objects.all()),
+            ("Sale", _S.objects.all()),
+            ("DebtPayment", _DP.objects.all()),
+            ("Debt", _D.objects.all()),
+            ("Customer", _C.objects.all()),
+            ("Expense", _EX.objects.all()),
+            ("Product", _P.objects.all()),
+            ("Category", _CAT.objects.all()),
+            ("StoreApplication", StoreApplication.objects.all()),
+            ("CustomerApplication", _CA.objects.all()),
+            ("Notification", Notification.objects.all()),
+            ("PushSubscription", PushSubscription.objects.all()),
+            ("Device", _DEV.objects.all()),
+            ("AuditLog", _AL.objects.all()),
+            ("BarcodePriceMemory", _BPM.objects.all()),
+            ("BotLog", _BL.objects.all()),
+            ("BotSession", _BS.objects.all()),
+            ("Shop", _SHOP.objects.all()),
+        ):
+            wiped[label] = qs.count()
+            qs.delete()
+        User = get_user_model()
+        wiped["Users"] = User.objects.exclude(username="admin").count()
+        User.objects.exclude(username="admin").delete()
+        return Response({"ok": True, "mode": "FULL", "wiped": wiped})
 
         shops = [s for s in Shop.objects.all() if self._match(s.name)]
         shop_ids = [s.id for s in shops]
