@@ -4948,3 +4948,23 @@ html, body, #root {
   pointer-events: none;
   backdrop-filter: blur(4px);
 }
+
+/* ================= ADMIN — bitta sahifa bo'lim sarlavhalari ================= */
+.admin-sec-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 26px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--line);
+}
+.admin-sec-title .badge {
+  font-size: 12px;
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--brand-light, #818cf8);
+  padding: 2px 10px;
+  border-radius: 999px;
+}
