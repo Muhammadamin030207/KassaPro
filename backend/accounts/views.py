@@ -539,3 +539,88 @@ class PushUnsubscribeView(APIView):
 
             PushSubscription.objects.filter(endpoint=endpoint[:500]).delete()
         return Response({"ok": True})
+
+
+class TestDataCleanupView(APIView):
+    """VAQTINCHALIK (super admin): test ma'lumotlarini tozalash.
+
+    POST /api/admin/test-cleanup/
+      {"dry_run": true}  — faqat hisob
+      {"confirm": "TOZALA"} — o'chiradi
+    Real mijozlar (sherzod market, islombek, islom, xoji dokon) TEGILMAYDI.
+    """
+
+    permission_classes = [IsAdmin]
+
+    TEST_PREFIXES = (
+        "E2E", "TEST", "SMTP", "SSL ", "Brevo", "RELAY", "Relay", "GMAIL",
+        "LOGIN FLOW", "MAGIC LINK", "HTML BEAUTY", "FINAL EMAIL",
+        "SOURCE TEST", "Memory Test", "Email Req", "NOTIF TEST",
+        "Test Scan", "TestMarke", "Debug",
+    )
+
+    def _match(self, name):
+        n = (name or "").upper()
+        return any(n.startswith(p.upper()) for p in self.TEST_PREFIXES)
+
+    def post(self, request):
+        dry = bool(request.data.get("dry_run"))
+        confirm = (request.data.get("confirm") or "").strip().upper()
+        if not dry and confirm != "TOZALA":
+            return Response(
+                {"detail": "Tasdiqlash: confirm='TOZALA' yoki dry_run=true"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from shops.models import Shop, StoreApplication
+        from catalog.models import BarcodePriceMemory
+        from telegrambot.models import BotLog, BotSession
+
+        shops = [s for s in Shop.objects.all() if self._match(s.name)]
+        shop_ids = [s.id for s in shops]
+        apps = [
+            a for a in StoreApplication.objects.all()
+            if self._match(a.store_name) or (a.created_shop_id in shop_ids)
+        ]
+        app_ids = [a.id for a in apps]
+
+        owners = [s.owner for s in shops if s.owner_id]
+        mem = [
+            m for m in BarcodePriceMemory.objects.all()
+            if self._match(m.name) or m.barcode in ("4900001234567", "8991002101234")
+        ]
+        botlogs = BotLog.objects.count()
+        botsessions = BotSession.objects.count()
+
+        report = {
+            "shops": [s.name for s in shops],
+            "applications": [a.store_name for a in apps],
+            "owners_deleted": [u.username for u in owners],
+            "barcode_memory": len(mem),
+            "bot_logs": botlogs,
+            "bot_sessions": botsessions,
+            "notifications": Notification.objects.count(),
+        }
+
+        if dry:
+            return Response({"dry_run": True, **report})
+
+        deleted = {"shops": 0, "apps": 0, "owners": 0, "memory": 0}
+        for m in mem:
+            m.delete()
+        deleted["memory"] = len(mem)
+        for a in apps:
+            a.delete()
+        deleted["apps"] = len(apps)
+        for shp in shops:
+            shp.delete()
+        deleted["shops"] = len(shops)
+        for u in owners:
+            if u.username not in ("admin",):
+                u.delete()
+        deleted["owners"] = len(owners)
+        BotLog.objects.all().delete()
+        BotSession.objects.all().delete()
+        Notification.objects.all().delete()
+
+        return Response({"ok": True, "planned": report, "deleted": deleted})
