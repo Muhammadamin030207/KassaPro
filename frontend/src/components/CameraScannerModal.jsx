@@ -77,7 +77,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
       if (cancelled) return Promise.resolve(null);
       // html5-qrcode faqat kamera ochilganda yuklanadi (asosiy bundle'ni yengillashtiradi)
       return import("html5-qrcode")
-        .then(({ Html5Qrcode }) => {
+        .then(({ Html5Qrcode, Html5QrcodeSupportedFormats }) => {
           if (cancelled) return null;
           const scanner = new Html5Qrcode(readerId, {
             experimentalFeatures: { useBarCodeDetectorIfSupported: true },
@@ -193,7 +193,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
 
     scannerRef.current = null;
     import("html5-qrcode")
-      .then(({ Html5Qrcode }) => {
+      .then(({ Html5Qrcode, Html5QrcodeSupportedFormats }) => {
         const scanner = new Html5Qrcode(readerId, {
           experimentalFeatures: { useBarCodeDetectorIfSupported: true },
           formatsToSupport: [
