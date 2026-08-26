@@ -135,8 +135,12 @@ export function NotificationBell() {
                   className="notif-readall"
                   onClick={async () => {
                     try {
-                      await api.post("push/test/", {});
-                      show("Sinov xabari yuborildi — telefonni tekshiring", "success");
+                      const r = await api.post("push/test/", {});
+                      if ((r?.devices || 0) > 0) {
+                        show(`Sinov xabari ${r.devices} ta qurilmaga yuborildi 📤`, "success");
+                      } else {
+                        show("Obuna topilmadi — 'Pushni faollashtirish'ni bosing", "error");
+                      }
                     } catch {
                       show("Yuborib bo'lmadi", "error");
                     }

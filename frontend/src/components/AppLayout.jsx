@@ -124,6 +124,9 @@ export function AppLayout({ children }) {
   return (
     <div className="app-shell">
       <Scene3D />
+      <div className="desktop-bell">
+        <NotificationBell />
+      </div>
 
       {/* ==== MOBIL: pastki navigatsiya panelishi (bottom navigation) ==== */}
       {/* ==== MOBIL: pastda zamonaviy bottom-nav (QR markazda) ==== */}

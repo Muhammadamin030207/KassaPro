@@ -516,14 +516,15 @@ class PushTestView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        from accounts.models import _send_webpush
+        from accounts.models import PushSubscription, _send_webpush
 
+        count = PushSubscription.objects.filter(user=request.user).count()
         _send_webpush(
             request.user,
             "KassaPro sinov xabari ✓",
             "Push ishlaydi — savdo va qarz xabarlari shu yerga keladi.",
         )
-        return Response({"ok": True})
+        return Response({"ok": True, "devices": count})
 
 
 class PushUnsubscribeView(APIView):
