@@ -334,19 +334,46 @@ class StoreAdminView(views.APIView):
         email_error = ""
         delivery_channel = "telegram" if chat_id else "email"
         if not chat_id and app_email:
+            _plain = (
+                "🎉 Assalomu alaykum!\n\n"
+                "KassaPro'ga arizangiz TASDIQLANDI! ✅\n\n"
+                f"🏬 Do'kon: {data['store_name']}\n"
+                f"👤 Login: {data['username']}\n"
+                f"🔑 Parol: {data['password']}\n\n"
+                "🚀 Kirish: https://smartkassa-1.onrender.com/login\n\n"
+                "🔐 Birinchi kirishdan keyin parolni almashtiring.\n\n"
+                "✨ KassaPro — Barcode POS"
+            )
+            _html = f"""
+<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background:#eef1f8;font-family:'Segoe UI',Arial,sans-serif;">
+<div style="max-width:520px;margin:0 auto;padding:24px 14px;">
+  <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:18px 18px 0 0;padding:30px 24px 26px;text-align:center;">
+    <div style="font-size:46px;line-height:1;">🎉</div>
+    <h1 style="color:#ffffff;margin:10px 0 4px;font-size:22px;">Arizangiz tasdiqlandi!</h1>
+    <p style="color:#e0e7ff;margin:0;font-size:14px;">✨ KassaPro — zamonaviy savdo tizimi ✨</p>
+  </div>
+  <div style="background:#ffffff;border-radius:0 0 18px 18px;padding:26px 22px;border:1px solid #e5e7eb;border-top:none;">
+    <p style="font-size:15px;color:#111827;margin:0 0 4px;">Assalomu alaykum! 🙌</p>
+    <p style="font-size:14px;color:#4b5563;margin:0 0 18px;line-height:1.5;">Hisobingiz tayyor — kirish ma'lumotlari quyida 👇</p>
+    <table style="width:100%;border-collapse:separate;border-spacing:0;background:#f8f9ff;border:1px solid #dfe3ff;border-radius:14px;overflow:hidden;">
+      <tr><td style="padding:12px 16px;color:#6b7280;font-size:13px;white-space:nowrap;">🏬 Do'kon</td><td style="padding:12px 16px;font-weight:700;color:#111827;font-size:14px;">{data['store_name']}</td></tr>
+      <tr><td style="padding:12px 16px;color:#6b7280;font-size:13px;border-top:1px solid #eef0ff;white-space:nowrap;">👤 Login</td><td style="padding:12px 16px;font-weight:700;color:#4f46e5;font-size:15px;font-family:Consolas,monospace;">{data['username']}</td></tr>
+      <tr><td style="padding:12px 16px;color:#6b7280;font-size:13px;border-top:1px solid #eef0ff;white-space:nowrap;">🔑 Parol</td><td style="padding:12px 16px;font-weight:700;color:#4f46e5;font-size:15px;font-family:Consolas,monospace;">{data['password']}</td></tr>
+    </table>
+    <div style="text-align:center;margin:24px 0 6px;">
+      <a href="https://smartkassa-1.onrender.com/login" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#ffffff;text-decoration:none;padding:15px 38px;border-radius:14px;font-weight:700;font-size:15px;box-shadow:0 6px 18px rgba(99,102,241,.35);">🚀 Kassaga kirish</a>
+    </div>
+    <p style="font-size:12px;color:#9ca3af;text-align:center;margin:14px 0 0;">🔐 Birinchi kirishdan keyin parolingizni almashtiring</p>
+  </div>
+  <p style="text-align:center;color:#9ca3af;font-size:12px;margin:18px 0 0;line-height:1.6;">✨ <b>KassaPro</b> — Barcode POS<br/>📩 Bu xabar avtomatik yuborildi 🤖</p>
+</div>
+</body></html>"""
             email_sent, email_error = _send_credentials_email(
                 app_email,
-                "KassaPro hisobingiz tayyor",
-                (
-                    "Assalomu alaykum!\n\n"
-                    "KassaPro'ga arizangiz tasdiqlandi.\n\n"
-                    f"Do'kon: {data['store_name']}\n"
-                    "Kirish: https://smartkassa-1.onrender.com/login\n\n"
-                    f"Login: {data['username']}\n"
-                    f"Parol: {data['password']}\n\n"
-                    "Birinchi kirishdan keyin parolingizni almashtiring.\n\n"
-                    "— KassaPro jamoasi"
-                ),
+                "🎉 KassaPro — hisobingiz tayyor!",
+                _plain,
+                html=_html,
             )
             if not email_sent:
                 logger.warning("credential email failed for app %s: %s", application_id, email_error)
@@ -494,7 +521,7 @@ class StoreReopenView(views.APIView):
         )
         return response.Response(StoreAdminSerializer(shop).data)
 
-def _send_credentials_email(to_email, subject, body):
+def _send_credentials_email(to_email, subject, body, html=None):
     """Email yuborish. Render standart SMTP portlarni (25/587/465) bloklaydi —
     shuning uchun Brevo HTTP API (HTTPS) ishlatiladi. BREVO_API_KEY bo'lmasa
     SMTP fallback. Qaytaradi: (sent: bool, error: str)."""
@@ -514,6 +541,7 @@ def _send_credentials_email(to_email, subject, body):
                 "to": [{"email": to_email}],
                 "subject": subject,
                 "textContent": body,
+                **({"htmlContent": html} if html else {}),
             }
         ).encode()
         req = _ur.Request(
@@ -543,7 +571,14 @@ def _send_credentials_email(to_email, subject, body):
     from django.core.mail import send_mail
 
     try:
-        send_mail(subject=subject, message=body, from_email=None, recipient_list=[to_email], fail_silently=False)
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=None,
+            recipient_list=[to_email],
+            fail_silently=False,
+            html_message=html,
+        )
         return True, ""
     except Exception as exc:  # noqa: BLE001
         return False, str(exc)[:300]
