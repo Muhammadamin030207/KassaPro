@@ -76,7 +76,9 @@ class CommandHandlerTests(TestCase):
         self.assertIn("KassaPro bilan bog'lanish", text)
         self.assertIn("@uzb000777uz", text)
         self.assertNotIn("@@", text)  # handle faqat bitta '@' bilan
-        self.assertNotIn("Telefon", text)  # CONTACT_PHONE o'rnatilmagan -> fake yo'q
+        # CONTACT_PHONE o'rnatilmagan -> kontakt qatori ko'rsatilmaydi
+        # (prompt'dagi "Telefon:" placeholderi ruxsat etilgan)
+        self.assertNotIn("📱 Telefon: <code>", text)
 
     def test_main_keyboard_has_all_buttons(self):
         view = TelegramWebhookView()

@@ -280,17 +280,106 @@ class TelegramWebhookView(APIView):
         )
 
     def contact_handler(self, chat_id):
+        """Bog'lanish: admin username + tayyor prompt + to'g'ridan-to'g'ri yozish."""
         info = contact_info()
-        lines = ["📞 <b>KassaPro bilan bog'lanish</b>\n\n", "Savollar yoki muammolar bo'yicha biz bilan bog'lanishingiz mumkin:"]
-        if info["phone"]:
-            lines.append(f"📱 Telefon: <code>{info['phone']}</code>")
-        # Telegram handle faqat bitta '@' bilan ko'rsatiladi (config'da '@' bo'lsin yoki yo'q).
-        telegram = (info["telegram"] or "").lstrip("@")
-        if telegram:
-            lines.append(f"💬 Telegram: <b>@{telegram}</b>")
-        lines.append(f"🌐 Sayt: <a href='{info['website']}'>{info['website']}</a>")
-        lines.append("\nTezroq javob uchun /application orqali ariza qoldiring.")
-        send_message(chat_id, "\n".join(lines))
+        admin_username = (info.get("telegram") or "").lstrip("@") or "admin"
+        prompt = (
+            "Assalomu alaykum! KassaPro bo'yicha murojaatim bor:\n"
+            "👤 Ism: \n"
+            "📞 Telefon: \n"
+            "🏬 Do'kon nomi: \n"
+            "❓ Savol / muammo: \n"
+        )
+        lines = [
+            "📞 <b>KassaPro bilan bog'lanish</b>\n",
+            f"👤 Admin Telegram: <b>@{admin_username}</b>\n",
+            "\n📋 <b>1-USUL — tayyor xabarni nusxalang va adminga yuboring</b> "
+            "(sayt va bot haqidagi barcha savollaringiz uchun):\n",
+            f"<code>{prompt}</code>",
+            f"\n➡️ Yuborish uchun: <a href='https://t.me/{admin_username}'>@{admin_username} ni ochish</a>",
+            "\n✍️ <b>2-USUL — hoziroq shu botda yozing:</b>\n"
+            "Xabaringiz admin panelga tushadi va tezroq ko'rib chiqiladi 👇",
+        ]
+        buttons = [
+            [{"text": "✍️ Xabar yozish (admin panelga)", "callback_data": "app_new"}]
+        ]
+        buttons.append(
+            [{"text": f"✈️ @{admin_username} ni ochish", "url": f"https://t.me/{admin_username}"}]
+        )
+        buttons.append([{"text": "🖥 Websayt", "url": info["website"]}])
+        send_message(chat_id, "\n".join(lines), reply_markup=inline_keyboard(buttons))
+
+    def contact_prompt_handler(self, chat_id):
+        """Foydalanuvchiga adminga yuborish uchun tayyor (nusxalanadigan) matn."""
+        info = contact_info()
+        telegram = (info["telegram"] or "").lstrip("@") or "admin"
+        prompt = (
+            "Assalomu alaykum! Men KassaPro tizimi bilan tanishmoqchiman.\n"
+            "Do'konim uchun zamonaviy kassa (POS) tizimi kerak.\n\n"
+            "Ism familiya: \n"
+            "Telefon: \n"
+            "Do'kon nomi: \n"
+            "Qo'shimcha izoh: "
+        )
+        send_message(
+            chat_id,
+            "📋 <b>Quyidagi matnni nusxalab, adminga yuboring:</b>\n"
+            f"💬 Admin: <b>@{telegram}</b>\n\n"
+            f"<code>{prompt}</code>\n\n"
+            "➡️ Bo'sh joylarni to'ldirib, @"
+            + telegram
+            + " ga yuboring.\n"
+            "Yoki rasmiy ariza sifatida botda qoldirish uchun pastdagi tugmani bosing — "
+            "arizangiz admin panelga tushadi va tezroq ko'rib chiqiladi.",
+            reply_markup=inline_keyboard(
+                [[{"text": "📝 Rasmiy ariza qoldirish", "callback_data": "app_new"}]]
+            ),
+        )
+
+    def _usage_guide(self, chat_id):
+        """Ariza yuborgan foydalanuvchiga avtomatik to'liq qo'llanma."""
+        info = contact_info()
+        site = info.get("website") or "https://smartkassa-1.onrender.com"
+        guide = (
+            "📚 <b>KASSAPRO — TO'LIQ QO'LLANMA</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "🌐 <b>1. SAYTGA KIRISH</b>\n"
+            f"Manzil: {site}\n"
+            "Login va parolingiz tasdiqlanganidan so'ng SHU chatga yuboriladi.\n"
+            "Saytda «Kirish» tugmasi → login/parol kiriting.\n\n"
+            "🛒 <b>2. KASSA (sotuv)</b>\n"
+            "• Shtrix-kod maydoniga skanerlang YOKI kamera 📷 tugmasi bilan skanerlang.\n"
+            "• Mahsulot bazada bo'lsa — avtomatik chekka tushadi (qayta skan = +1).\n"
+            "• Bazada yo'q bo'lsa — panel ochiladi: nomi va narxini yozing, "
+            "«Chekka qo'shish» — mahsulot saqlanadi va darhol chekka tushadi.\n"
+            "• Chek tayyor: to'lov turini tanlang (Naqd/Karta/Nasiya) → "
+            "«To'lovni tasdiqlash» → chek chop etiladi, kassa keyingi mijozga tayyor.\n\n"
+            "📦 <b>3. MAHSULOTLAR</b>\n"
+            "• Yuqoridagi kod maydoniga skanerlang — kod avtomatik yoziladi.\n"
+            "• Nomi, sotish narxi va TANNARXni kiriting (tannarx — foyda hisobi uchun!).\n"
+            "• Bir xil kod ikki marta qabul qilinmaydi (ogohlantirish chiqadi).\n"
+            "• Zahira 0 ga tushgan mahsulot ro'yxatdan avtomatik o'chadi.\n\n"
+            "💰 <b>4. QARZDORLIK (Nasiya)</b>\n"
+            "• Kassada «Nasiya» tanlansa — mijoz telefon raqami bilan topiladi/yaratiladi.\n"
+            "• «Qarzdorlik» bo'limida qisman/to'liq to'lov qabul qilinadi, tarix saqlanadi.\n"
+            "• Muddati o'tgan qarzlar qizil belgilanadi.\n\n"
+            "📊 <b>5. HISOBOTLAR</b>\n"
+            "• Savdo (aylanma) va FOYDA alohida ko'rsatiladi:\n"
+            "  Foyda = (sotish narxi − tannarx) × miqdor.\n"
+            "• Kunlik statistika, top mahsulotlar, kassirlar kesimida ham ko'rinadi.\n\n"
+            "📱 <b>6. TELEGRAM MINI APP</b>\n"
+            f"Bot menyusidagi «⚡️ Ilova» tugmasi orqali saytni Telegram ICHIDA ochasiz.\n"
+            "Ariza holatingizni ham shu yerda kuzatasiz.\n\n"
+            "🤖 <b>7. BOT BUYRUQLARI</b>\n"
+            "/start — bosh menyu\n"
+            "/application — yangi ariza\n"
+            "/status — ariza holati\n"
+            "/help — yordam\n"
+            "/contact — biz bilan bog'lanish\n\n"
+            "❓ Savollar bo'lsa istalgan vaqt /contact orqali yozing. "
+            "Sizga doim yordam beramiz! 🚀"
+        )
+        send_message(chat_id, guide)
 
     def store_start_handler(self, chat_id, session):
         # Duplicate himoya: chatda allaqachon ko'rib chiqilmayotgan (PENDING)
@@ -379,6 +468,8 @@ class TelegramWebhookView(APIView):
             self.help_handler(chat_id)
         elif data == "contact":
             self.contact_handler(chat_id)
+        elif data == "contact_prompt":
+            self.contact_prompt_handler(chat_id)
         elif data == "store_start":
             self.store_start_handler(chat_id, session)
         elif data == "store_status":
@@ -502,6 +593,15 @@ class TelegramWebhookView(APIView):
                 chat_id=chat_id,
                 text="Ariza tasdiqlandi",
                 error="Userga success xabari yuborilmadi.",
+            )
+        # Avtomatik to'liq qo'llanma — sayt + kassa + bot + Mini App ishlatishi.
+        try:
+            self._usage_guide(chat_id)
+        except Exception:  # noqa: BLE001 — qo'llanma yuborilishi arizani to'smaydi
+            BotLog.objects.create(
+                chat_id=chat_id,
+                text="Usage guide yuborilmadi",
+                error="Qo'llanma xabari yuborilmadi (ariza saqlandi).",
             )
         if not send_admin_notification(format_customer_application_message(app)):
             BotLog.objects.create(
@@ -666,6 +766,15 @@ class TelegramWebhookView(APIView):
                 [[{"text": "📋 Arizam holati", "callback_data": "store_status"}]]
             ),
         )
+        # Avtomatik to'liq qo'llanma — sayt + kassa + bot + Mini App ishlatishi.
+        try:
+            self._usage_guide(chat_id)
+        except Exception:  # noqa: BLE001 — qo'llanma yuborilishi arizani to'smaydi
+            BotLog.objects.create(
+                chat_id=chat_id,
+                text="Usage guide yuborilmadi (store)",
+                error="Qo'llanma xabari yuborilmadi (ariza saqlandi).",
+            )
         if not send_admin_notification(format_application_message(app)):
             BotLog.objects.create(
                 chat_id=chat_id,
