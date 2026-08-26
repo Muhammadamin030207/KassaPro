@@ -292,7 +292,7 @@ class SummaryReportView(views.APIView):
                 "total_revenue": totals["total_revenue"] or 0,
                 "total_profit": profit["total_profit"] or 0,
                 "total_expenses": Expense.objects.filter(
-                    shop=shop,
+                    shop=request.user.shop,
                     created_at__date__gte=from_param,
                     created_at__date__lte=to_param,
                 ).aggregate(
@@ -304,7 +304,7 @@ class SummaryReportView(views.APIView):
                 )["t"],
                 "net_profit": (profit["total_profit"] or 0)
                 - Expense.objects.filter(
-                    shop=shop,
+                    shop=request.user.shop,
                     created_at__date__gte=from_param,
                     created_at__date__lte=to_param,
                 ).aggregate(
