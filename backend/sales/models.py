@@ -69,19 +69,18 @@ class Expense(models.Model):
         Shop, on_delete=models.CASCADE, related_name="expenses"
     )
     class Category(models.TextChoices):
-        XARID = "xarid", "🛒 Xarid"
-        IJARA = "ijara", "🏠 Ijara"
-        KOMMUNAL = "kommunal", "💡 Kommunal"
-        TRANSPORT = "transport", "🚗 Transport"
-        MAOSH = "maosh", "👥 Maosh"
-        YETKAZISH = "yetkazish", "📦 Yetkazib berish"
-        REKLAMA = "reklama", "📣 Reklama"
-        BOSHQA = "boshqa", "🧾 Boshqa"
+        IJARA = "ijara", "Ijara"
+        KOMMUNAL = "kommunal", "Kommunal"
+        ISH_HAQI = "ish_haqi", "Ish haqi"
+        TOVAR = "tovar", "Tovar / Yetkazib beruvchi"
+        TRANSPORT = "transport", "Transport"
+        TAMIRLASH = "tamirlash", "Ta'mirlash"
+        BOSHQA = "boshqa", "Boshqa"
 
     category = models.CharField(
         max_length=16,
         choices=Category.choices,
-        default=Category.XARID,
+        default=Category.BOSHQA,
         db_index=True,
     )
     title = models.CharField(max_length=150)
@@ -91,6 +90,10 @@ class Expense(models.Model):
     )
     total_amount = models.DecimalField(max_digits=12, decimal_places=2)
     note = models.CharField(max_length=255, blank=True)
+    # Ijara/kommunal/maosh uchun davr (masalan "2026-08")
+    period = models.CharField(max_length=20, blank=True)
+    # Xarid sanasi (bo'sh bo'lsa created_at)
+    date = models.DateField(null=True, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

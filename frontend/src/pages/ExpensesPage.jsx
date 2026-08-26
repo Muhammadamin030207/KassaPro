@@ -1,92 +1,94 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
 
 import { api } from "../api/client";
 import { formatMoney } from "../utils/format";
 import { useToast } from "../components/Toast";
-import Icon from "../components/Icon";
 
+/** Kategoriyalar — taylarga mos ikonkalar */
 const CATEGORIES = [
-  { k: "xarid", emoji: "🛒", label: "Xarid" },
   { k: "ijara", emoji: "🏠", label: "Ijara" },
-  { k: "kommunal", emoji: "💡", label: "Kommunal" },
+  { k: "kommunal", emoji: "⚡", label: "Kommunal" },
+  { k: "ish_haqi", emoji: "👥", label: "Ish haqi" },
+  { k: "tovar", emoji: "📦", label: "Tovar / Yetkazib beruvchi" },
   { k: "transport", emoji: "🚗", label: "Transport" },
-  { k: "maosh", emoji: "👥", label: "Maosh" },
-  { k: "yetkazish", emoji: "📦", label: "Yetkazib berish" },
-  { k: "reklama", emoji: "📣", label: "Reklama" },
-  { k: "boshqa", emoji: "🧾", label: "Boshqa" },
+  { k: "tamirlash", emoji: "🔧", label: "Ta'mirlash" },
+  { k: "boshqa", emoji: "⋯", label: "Boshqa" },
+];
+
+const CAT_COLORS = [
+  "#f59e0b", "#22d3ee", "#a78bfa", "#34d399",
+  "#f472b6", "#60a5fa", "#fbbf24",
 ];
 
 const catMeta = (k) => CATEGORIES.find((c) => c.k === k) || CATEGORIES[CATEGORIES.length - 1];
+const catColor = (k) => CAT_COLORS[CATEGORIES.findIndex((c) => c.k === k) % CAT_COLORS.length] || "#22d3ee";
 
-/** Har kategoriya uchun O'Z formasi */
+/** Har kategoriya uchun o'z maydonlari */
 const CATEGORY_FORMS = {
-  xarid: {
-    supplier: { label: "🏪 Yetkazuvchi firma *", ph: "Qatiq, Musa, Cheers, Lays..." },
-    title: { label: "Nima olindi *", ph: "Masalan: Qatiq 10 karton" },
-    qty: true,
-    period: false,
-  },
   ijara: {
-    supplier: { label: "🏠 Kimga / qayerga *", ph: "Masalan: Chilonzor tijorat" },
-    title: { label: "Nima uchun *", ph: "Masalan: Do'kon ijarasi" },
+    periodLabel: "IJARA DAVRI",
+    periodPh: "Masalan: Sentabr 2026",
+    title: { label: "NIMA UCHUN", ph: "Masalan: Do'kon ijarasi" },
+    supplier: { label: "KIMGA / QAYERGA", ph: "Masalan: Chilonzor tijorat" },
     qty: false,
-    period: true,
   },
   kommunal: {
-    supplier: { label: "💡 Tashkilot *", ph: "Masalan: Toshkent energo" },
-    title: { label: "Xizmat turi *", ph: "Elektr / Gaz / Suv" },
+    periodLabel: "QAYSI OY",
+    periodPh: "Masalan: Avgust 2026",
+    title: { label: "XIZMAT TURI", ph: "Suv / Elektr / Gaz" },
+    supplier: { label: "TASHKILOT", ph: "Masalan: Toshkent energo" },
     qty: false,
-    period: true,
+  },
+  ish_haqi: {
+    periodLabel: "QAYSI OY",
+    periodPh: "Masalan: Sentabr 2026",
+    title: { label: "KIMGA", ph: "Xodim ismi" },
+    supplier: { label: "IZOH", ph: "Masalan: Oldindan to'lov" },
+    qty: false,
+  },
+  tovar: {
+    periodLabel: null,
+    title: { label: "NIMA OLINDI", ph: "Masalan: Lays 50 quti" },
+    supplier: { label: "YETKAZIB BERUVCHI", ph: "Masalan: Cheers, Ays Tea" },
+    qty: true,
   },
   transport: {
-    supplier: { label: "🚗 Kim / qayerga", ph: "Masalan: Taksi" },
-    title: { label: "Nima uchun *", ph: "Masalan: Yetkazib berish" },
+    periodLabel: null,
+    title: { label: "NIMA UCHUN", ph: "Masalan: Yetkazib berish" },
+    supplier: { label: "KIM / QAYERGA", ph: "Masalan: Taksi" },
     qty: false,
-    period: false,
   },
-  maosh: {
-    supplier: { label: "👥 Kimga *", ph: "Xodim ismi" },
-    title: { label: "Nima uchun *", ph: "Masalan: Avgust oylik" },
+  tamirlash: {
+    periodLabel: null,
+    title: { label: "NIMA TAMIRLANDI", ph: "Masalan: Muzlatgich" },
+    supplier: { label: "USTAXONA / USTA", ph: "Masalan: Refrizerator usta" },
     qty: false,
-    period: true,
-  },
-  yetkazish: {
-    supplier: { label: "📦 Yetkazuvchi *", ph: "Masalan: Olib ketdi" },
-    title: { label: "Nima uchun *", ph: "Yetkazib berish" },
-    qty: false,
-    period: false,
-  },
-  reklama: {
-    supplier: { label: "📣 Qayerda *", ph: "Instagram, Telegram" },
-    title: { label: "Nima uchun *", ph: "Post reklama" },
-    qty: false,
-    period: false,
   },
   boshqa: {
-    supplier: { label: "Kimga / nimga", ph: "—" },
-    title: { label: "Nima uchun *", ph: "Izoh yozing" },
+    periodLabel: null,
+    title: { label: "NIMA UCHUN", ph: "Izoh yozing" },
+    supplier: { label: "KIMGA / NIMGA", ph: "—" },
     qty: false,
-    period: false,
   },
 };
 
-/** Xarajatlar — do'kon xaridlari: yetkazuvchi firmalar (Qatiq, Musa, Cheers...). */
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+/** Xarajatlar — do'kon chiqimlari nazorati (mockup dizayn). */
 export function ExpensesPage() {
   const qc = useQueryClient();
   const { show } = useToast();
 
-  const [category, setCategory] = useState("xarid");
-  const [supplier, setSupplier] = useState("");
+  const [category, setCategory] = useState("ijara");
+  const [period, setPeriod] = useState("");
   const [title, setTitle] = useState("");
+  const [supplier, setSupplier] = useState("");
   const [qty, setQty] = useState("1");
   const [amount, setAmount] = useState("");
+  const [date, setDate] = useState(todayISO());
   const [note, setNote] = useState("");
-  const [period, setPeriod] = useState("");
   const [saving, setSaving] = useState(false);
-  const [filterSupplier, setFilterSupplier] = useState("all");
-  const [filterCat, setFilterCat] = useState("all");
 
   const query = useQuery({
     queryKey: ["expenses"],
@@ -94,36 +96,49 @@ export function ExpensesPage() {
   });
 
   const items = query.data?.results || [];
+  const form = CATEGORY_FORMS[category] || CATEGORY_FORMS.boshqa;
 
-  /** Avval ishlatilgan yetkazuvchilar — tez tanlash uchun */
-  const suppliers = useMemo(() => {
+  const todayStr = todayISO();
+  const todayTotal = items
+    .filter((x) => (x.date || (x.created_at || "").slice(0, 10)) === todayStr)
+    .reduce((s, x) => s + Number(x.total_amount || 0), 0);
+  const monthStr = todayStr.slice(0, 7);
+  const monthItems = items.filter(
+    (x) => (x.date || (x.created_at || "").slice(0, 7)) === monthStr
+  );
+  const grandTotal = items.reduce((s, x) => s + Number(x.total_amount || 0), 0);
+
+  const byCategory = useMemo(() => {
     const m = {};
     for (const x of items) {
-      const sup = (x.supplier || "").trim();
-      if (sup) m[sup] = (m[sup] || 0) + Number(x.total_amount || 0);
+      m[x.category] = (m[x.category] || 0) + Number(x.total_amount || 0);
     }
     return Object.entries(m).sort((a, b) => b[1] - a[1]);
   }, [items]);
 
-  const filtered = useMemo(
-    () =>
-      items.filter(
-        (x) =>
-          (filterSupplier === "all" || x.supplier === filterSupplier) &&
-          (filterCat === "all" || x.category === filterCat)
-      ),
-    [items, filterSupplier, filterCat]
-  );
+  const topCat = byCategory[0] ? catMeta(byCategory[0][0]).label : "—";
 
-  const total = filtered.reduce((s, x) => s + Number(x.total_amount || 0), 0);
-  const grandTotal = items.reduce((s, x) => s + Number(x.total_amount || 0), 0);
+  /** Donut: conic-gradient */
+  const donutSegments = useMemo(() => {
+    let acc = 0;
+    return byCategory.map(([k, sum]) => {
+      const pct = grandTotal ? (sum / grandTotal) * 100 : 0;
+      const seg = { k, pct, from: acc };
+      acc += pct;
+      return seg;
+    });
+  }, [byCategory, grandTotal]);
+  const donutCss = donutSegments
+    .map((s) => `${catColor(s.k)} ${s.from}% ${s.from + s.pct}%`)
+    .join(", ");
 
   const createMutation = useMutation({
     mutationFn: (payload) => api.post("expenses/", payload),
     onSuccess: () => {
-      show("Xarid saqlandi ✓", "success");
-      setSupplier("");
+      show("Xarajat saqlandi ✓", "success");
+      setPeriod("");
       setTitle("");
+      setSupplier("");
       setQty("1");
       setAmount("");
       setNote("");
@@ -143,106 +158,161 @@ export function ExpensesPage() {
 
   const submit = (e) => {
     e.preventDefault();
-    if (!supplier.trim() || !title.trim() || !amount) {
-      show("Yetkazuvchi, nomi va summa shart", "error");
+    if (!title.trim() || !amount) {
+      show("Nima uchun va summa shart", "error");
       return;
     }
     setSaving(true);
     createMutation.mutate({
       category,
-      supplier: supplier.trim(),
       title: title.trim(),
+      supplier: supplier.trim(),
       qty: Number(qty) || 1,
       total_amount: Number(amount),
       period: period.trim(),
+      date: date || todayISO(),
       note: note.trim(),
     });
     setSaving(false);
   };
 
-  const byCategory = useMemo(() => {
-    const m = {};
-    for (const x of filtered) {
-      m[x.category] = (m[x.category] || 0) + Number(x.total_amount || 0);
-    }
-    return Object.entries(m).sort((a, b) => b[1] - a[1]);
-  }, [filtered]);
-
-  const form = CATEGORY_FORMS[category] || CATEGORY_FORMS.boshqa;
-
   return (
-    <div className="page exp-page">
-      <div className="page-head">
-        <div>
-          <h1>Xarajatlar</h1>
-          <div className="sub">Do'kon xaridlari — yetkazuvchi firmalar bo'yicha</div>
+    <div className="page exp2-page">
+      {/* HEADER */}
+      <div className="exp2-head">
+        <div className="exp2-head-left">
+          <span className="exp2-logo">$</span>
+          <div>
+            <h1 className="exp2-title">Xarajatlar</h1>
+            <div className="exp2-sub">DO'KON CHIQIMLARI NAZORATI</div>
+          </div>
+        </div>
+        <div className="exp2-head-right">
+          <div className="exp2-total">{formatMoney(grandTotal)} <span>so'm</span></div>
+          <div className="exp2-total-sub">SHU OY JAMI</div>
         </div>
       </div>
 
-      {/* Yetkazuvchi firmalar — tez tanlash */}
-      {suppliers.length > 0 && (
-        <div className="exp-suppliers">
-          <span className="exp-sup-label">🏪 Yetkazuvchilar:</span>
-          {suppliers.map(([name, sum]) => (
-            <button
-              key={name}
-              type="button"
-              className={`exp-sup-chip ${filterSupplier === name ? "active" : ""}`}
-              onClick={() =>
-                setFilterSupplier((f) => (f === name ? "all" : name))
-              }
-              title={`Jami: ${formatMoney(sum)} so'm`}
-            >
-              {name}
-            </button>
-          ))}
-          {filterSupplier !== "all" && (
-            <button
-              type="button"
-              className="exp-sup-clear"
-              onClick={() => setFilterSupplier("all")}
-            >
-              ✕ Tozalash
-            </button>
-          )}
+      {/* STAT CARDS */}
+      <div className="exp2-stats">
+        <div className="exp2-card">
+          <div className="exp2-card-head">
+            <span className="exp2-ico" style={{ color: "#fb7185" }}>📅</span>
+            BUGUNGI XARAJAT
+          </div>
+          <div className="exp2-num" style={{ color: "#fb7185" }}>
+            {formatMoney(todayTotal)}<small>so'm</small>
+          </div>
         </div>
-      )}
+        <div className="exp2-card">
+          <div className="exp2-card-head">
+            <span className="exp2-ico" style={{ color: "#22d3ee" }}>📋</span>
+            SHU OY YOZUVLAR
+          </div>
+          <div className="exp2-num" style={{ color: "#22d3ee" }}>
+            {monthItems.length}<small>ta</small>
+          </div>
+        </div>
+        <div className="exp2-card">
+          <div className="exp2-card-head">
+            <span className="exp2-ico" style={{ color: "#facc15" }}>⚡</span>
+            ENG KO'P SARFLANGAN
+          </div>
+          <div className="exp2-num" style={{ color: "#facc15" }}>{topCat}</div>
+        </div>
+      </div>
 
-      {/* Xarid qo'shish */}
-      <form className="panel exp-form" onSubmit={submit}>
-        <div className="exp-form-title">🛒 Yangi xarid</div>
-        <div className="exp-grid">
-          {form.supplier && (
-            <div className="field">
-              <label>{form.supplier.label}</label>
+      {/* MAIN GRID */}
+      <div className="exp2-grid">
+        {/* FORM */}
+        <form className="exp2-card exp2-form" onSubmit={submit}>
+          <h3 className="exp2-form-title">Yangi xarajat qo'shish</h3>
+          <p className="exp2-form-sub">
+            Kategoriyani tanlang — forma o'sha turdagi maydon bilan o'zgaradi
+          </p>
+
+          <div className="exp2-tiles">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.k}
+                type="button"
+                className={`exp2-tile ${category === c.k ? "active" : ""}`}
+                onClick={() => setCategory(c.k)}
+              >
+                <span className="exp2-tile-ico">{c.emoji}</span>
+                <span className="exp2-tile-label">{c.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {form.periodLabel && (
+            <div className="exp2-field">
+              <label>{form.periodLabel}</label>
               <input
-                className="input"
-                value={supplier}
-                onChange={(e) => setSupplier(e.target.value)}
-                placeholder={form.supplier.ph}
-                list="exp-suppliers-list"
+                className="exp2-input"
+                value={period}
+                onChange={(e) => setPeriod(e.target.value)}
+                placeholder={form.periodPh}
               />
-              <datalist id="exp-suppliers-list">
-                {suppliers.map(([name]) => (
-                  <option key={name} value={name} />
-                ))}
-              </datalist>
             </div>
           )}
-          <div className="field">
+
+          <div className="exp2-row">
+            <div className="exp2-field" style={{ flex: 1 }}>
+              <label>SUMMA (SO'M)</label>
+              <input
+                className="exp2-input"
+                type="number"
+                min="1"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className="exp2-field" style={{ width: 180 }}>
+              <label>SANA</label>
+              <input
+                className="exp2-input"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="exp2-field">
             <label>{form.title.label}</label>
             <input
-              className="input"
+              className="exp2-input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={form.title.ph}
             />
           </div>
-          {form.qty && (
-            <div className="field exp-qty">
-              <label>Soni</label>
+
+          {form.supplier && (
+            <div className="exp2-field">
+              <label>{form.supplier.label}</label>
               <input
-                className="input mono"
+                className="exp2-input"
+                value={supplier}
+                onChange={(e) => setSupplier(e.target.value)}
+                placeholder={form.supplier.ph}
+                list="exp2-suppliers"
+              />
+              <datalist id="exp2-suppliers">
+                {[...new Set(items.map((x) => x.supplier).filter(Boolean))].map((n) => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
+            </div>
+          )}
+
+          {form.qty && (
+            <div className="exp2-field">
+              <label>SONI</label>
+              <input
+                className="exp2-input"
                 type="number"
                 min="1"
                 value={qty}
@@ -250,180 +320,117 @@ export function ExpensesPage() {
               />
             </div>
           )}
-          {form.period && (
-            <div className="field">
-              <label>Qaysi oy uchun</label>
-              <input
-                className="input"
-                type="month"
-                value={period}
-                onChange={(e) => setPeriod(e.target.value)}
-              />
-            </div>
-          )}
-          <div className="field">
-            <label>Umumiy summa (so'm) *</label>
-            <input
-              className="input mono"
-              type="number"
-              min="1"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0"
+
+          <div className="exp2-field">
+            <label>IZOH (IXTIYORIY)</label>
+            <textarea
+              className="exp2-input"
+              rows={2}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Qo'shimcha izoh..."
             />
           </div>
-        </div>
-        <div className="exp-form-foot">
-          <input
-            className="input"
-            style={{ flex: 1, minWidth: 200 }}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Izoh (ixtiyoriy)"
-          />
-          <button className="btn btn-primary" disabled={saving}>
-            <Icon name="plus" size={16} /> {saving ? "Saqlanmoqda..." : "Qo'shish"}
+
+          <button className="exp2-save" disabled={saving}>
+            {saving ? "Saqlanmoqda..." : "Xarajatni saqlash"}
           </button>
-        </div>
-      </form>
+        </form>
 
-      {/* Statistikalar */}
-      <div className="stat-grid">
-        <div className="panel exp-stat">
-          <div className="muted small">💸 Jami xarid</div>
-          <div className="exp-stat-num" style={{ color: "#f87171" }}>
-            {formatMoney(grandTotal)}
-          </div>
-        </div>
-        <div className="panel exp-stat">
-          <div className="muted small">🏪 Yetkazuvchilar</div>
-          <div className="exp-stat-num">{suppliers.length}</div>
-        </div>
-        <div className="panel exp-stat">
-          <div className="muted small">🧾 Yozuvlar</div>
-          <div className="exp-stat-num">{items.length}</div>
-        </div>
-      </div>
-
-      {/* Yetkazuvchilar bo'yicha taqsimot */}
-      {suppliers.length > 0 && (
-        <div className="panel exp-breakdown">
-          <b style={{ fontSize: 14 }}>🏪 Yetkazuvchilar bo'yicha</b>
-          <div className="exp-break-list">
-            {suppliers.map(([name, sum]) => {
-              const pct = grandTotal ? Math.round((sum / grandTotal) * 100) : 0;
-              return (
-                <div key={name} className="exp-break-row">
-                  <span className="exp-break-label">🏪 {name}</span>
-                  <div className="exp-break-bar">
-                    <div style={{ width: `${pct}%` }} />
+        {/* RIGHT COLUMN */}
+        <div className="exp2-right">
+          {/* Donut */}
+          <div className="exp2-card">
+            <b className="exp2-card-title">Kategoriya bo'yicha taqsimot</b>
+            {grandTotal === 0 ? (
+              <div className="exp2-empty">Hozircha xarajat yo'q</div>
+            ) : (
+              <>
+                <div className="exp2-donut-wrap">
+                  <div
+                    className="exp2-donut"
+                    style={{
+                      background: `conic-gradient(${donutCss})`,
+                    }}
+                  >
+                    <div className="exp2-donut-hole">
+                      <div>{formatMoney(grandTotal)}</div>
+                      <small>JAMI</small>
+                    </div>
                   </div>
-                  <span className="mono exp-break-sum">{formatMoney(sum)}</span>
-                  <span className="muted small">{pct}%</span>
                 </div>
-              );
-            })}
+                <div className="exp2-legend">
+                  {byCategory.map(([k, sum]) => (
+                    <div key={k} className="exp2-legend-row">
+                      <span
+                        className="exp2-dot"
+                        style={{ background: catColor(k) }}
+                      />
+                      <span>{catMeta(k).label}</span>
+                      <b>
+                        {grandTotal
+                          ? Math.round((sum / grandTotal) * 100)
+                          : 0}
+                        %
+                      </b>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-        </div>
-      )}
 
-      {/* Ro'yxat */}
-      <div className="panel" style={{ padding: 6 }}>
-        <div className="flex" style={{ gap: 8, padding: "10px 12px", flexWrap: "wrap" }}>
-          <button
-            type="button"
-            className={`btn btn-sm ${filterCat === "all" ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => setFilterCat("all")}
-          >
-            Hammasi ({filtered.length})
-          </button>
-          {byCategory.map(([k, sum]) => {
-            const meta = catMeta(k);
-            const cnt = filtered.filter((x) => x.category === k).length;
-            return (
-              <button
-                key={k}
-                type="button"
-                className={`btn btn-sm ${filterCat === k ? "btn-primary" : "btn-ghost"}`}
-                onClick={() => setFilterCat(k)}
-              >
-                {meta.emoji} {meta.label} ({cnt})
-              </button>
-            );
-          })}
-        </div>
-
-        {filtered.length === 0 ? (
-          <div className="empty-state">
-            <div className="big" aria-hidden="true">🛒</div>
-            <h3>Xaridlar yo'q</h3>
-            <p className="muted">
-              Yetkazuvchi firma nomini yozing (Qatiq, Musa, Cheers...) va birinchi
-              xaridni qo'shing
-            </p>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>🏪 Yetkazuvchi</th>
-                  <th>Nima olindi</th>
-                  <th>Soni</th>
-                  <th>Summa</th>
-                  <th>Sana</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((x) => {
+          {/* So'nggi */}
+          <div className="exp2-card">
+            <div className="exp2-recent-head">
+              <b className="exp2-card-title">So'nggi xarajatlar</b>
+              <span className="exp2-badge">{items.length} ta</span>
+            </div>
+            {items.length === 0 ? (
+              <div className="exp2-empty">Hozircha yozuv yo'q</div>
+            ) : (
+              <div className="exp2-recent">
+                {items.slice(0, 6).map((x) => {
                   const meta = catMeta(x.category);
                   return (
-                    <motion.tr
-                      key={x.id}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                    >
-                      <td>
-                        <span className="exp-pill">🏪 {x.supplier || "—"}</span>
-                        <div className="muted small" style={{ marginTop: 3 }}>
-                          {meta.emoji} {meta.label}
-                          {x.period ? ` · 📅 ${x.period}` : ""}
-                        </div>
-                      </td>
-                      <td>
-                        <b>{x.title}</b>
-                        {x.note && <div className="muted small">{x.note}</div>}
-                      </td>
-                      <td className="mono">{CATEGORY_FORMS[x.category]?.qty ? Number(x.qty) : "—"}</td>
-                      <td className="mono" style={{ color: "#f87171", fontWeight: 700 }}>
-                        {formatMoney(x.total_amount)}
-                      </td>
-                      <td className="muted small">
-                        {new Date(x.created_at).toLocaleDateString("uz-UZ", {
-                          day: "2-digit",
-                          month: "2-digit",
-                        })}
-                      </td>
-                      <td>
-                        <button
-                          className="ghost-btn"
-                          title="O'chirish"
-                          onClick={() => {
-                            if (window.confirm(`"${x.title}" o'chirilsinmi?`))
-                              deleteMutation.mutate(x.id);
-                          }}
-                        >
-                          <Icon name="trash" size={16} />
-                        </button>
-                      </td>
-                    </motion.tr>
+                    <div key={x.id} className="exp2-recent-row">
+                      <span
+                        className="exp2-recent-ico"
+                        style={{ color: catColor(x.category) }}
+                      >
+                        {meta.emoji}
+                      </span>
+                      <div className="exp2-recent-body">
+                        <b>
+                          {meta.label}
+                          {x.title ? ` — ${x.title}` : ""}
+                        </b>
+                        <small>
+                          {(x.date || (x.created_at || "").slice(0, 10))}
+                          {x.supplier ? ` · ${x.supplier}` : ""}
+                        </small>
+                      </div>
+                      <span className="exp2-recent-sum">
+                        -{formatMoney(x.total_amount)}
+                      </span>
+                      <button
+                        type="button"
+                        className="exp2-del"
+                        title="O'chirish"
+                        onClick={() => {
+                          if (window.confirm(`"${x.title}" o'chirilsinmi?`))
+                            deleteMutation.mutate(x.id);
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
