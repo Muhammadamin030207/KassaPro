@@ -168,6 +168,8 @@ export function ExpensesPage() {
     return Object.entries(m).sort((a, b) => b[1] - a[1]);
   }, [filtered]);
 
+  const form = CATEGORY_FORMS[category] || CATEGORY_FORMS.boshqa;
+
   return (
     <div className="page exp-page">
       <div className="page-head">
@@ -209,7 +211,6 @@ export function ExpensesPage() {
       {/* Xarid qo'shish */}
       <form className="panel exp-form" onSubmit={submit}>
         <div className="exp-form-title">🛒 Yangi xarid</div>
-const form = CATEGORY_FORMS[category] || CATEGORY_FORMS.boshqa;
         <div className="exp-grid">
           {form.supplier && (
             <div className="field">
