@@ -593,6 +593,43 @@ export function AdminPanelPage() {
               <div>
                 <span>Parol</span> <b>{createdUser.password}</b>
               </div>
+              {(() => {
+                const msg = `KassaPro hisobingiz tayyor!\nDo'kon: ${createdUser.store_name}\nLogin: ${createdUser.username}\nParol: ${createdUser.password}\nKirish: https://smartkassa-1.onrender.com/login`;
+                return (
+                  <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(msg);
+                          show("Nusxa olindi — istalgan joyga yopishtiring", "success");
+                        } catch {
+                          show("Nusxa olinmadi — qo'lda ko'chiring", "error");
+                        }
+                      }}
+                    >
+                      📋 Nusxa olish
+                    </button>
+                    <a
+                      className="btn btn-ghost btn-sm"
+                      href={`https://wa.me/?text=${encodeURIComponent(msg)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      💬 WhatsApp
+                    </a>
+                    <a
+                      className="btn btn-ghost btn-sm"
+                      href={`https://t.me/share/url?url=${encodeURIComponent("https://smartkassa-1.onrender.com/login")}&text=${encodeURIComponent(msg)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      ✈️ Telegram
+                    </a>
+                  </div>
+                );
+              })()}
               {createdUser.telegram_sent && (
                 <div className="muted small">✅ Telegram botga yuborildi</div>
               )}
