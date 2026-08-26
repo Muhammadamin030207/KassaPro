@@ -70,3 +70,39 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+/* ===== Web Push — telefon/noutbuk brauzer xabarlari ===== */
+self.addEventListener("push", (event) => {
+  let data = { title: "KassaPro", body: "" };
+  try {
+    data = event.data ? event.data.json() : data;
+  } catch (e) {
+    data.body = event.data ? event.data.text() : "";
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "KassaPro", {
+      body: data.body || "",
+      icon: "/favicon.svg",
+      badge: "/favicon.svg",
+      vibrate: [120, 60, 120],
+      tag: data.tag || "kassapro",
+      renotify: true,
+      data: { url: data.url || "/" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if ("focus" in c) {
+          c.navigate(url).catch(() => {});
+          return c.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    })
+  );
+});

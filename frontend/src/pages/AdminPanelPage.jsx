@@ -29,6 +29,7 @@ const BOT_STATUS_LABEL = {
  */
 export function AdminPanelPage() {
   const [tab, setTab] = useState("pending");
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [apps, setApps] = useState([]);
   const [count, setCount] = useState(0);
   const [botApps, setBotApps] = useState([]);
@@ -250,6 +251,24 @@ export function AdminPanelPage() {
         </button>
       </div>
 
+      {tab === "pending" && (
+        <div className="flex" style={{ gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+          {[
+            { k: "all", label: "Hammasi" },
+            { k: "web", label: "🌐 Websaytdan" },
+            { k: "bot", label: "🤖 Botdan" },
+          ].map((f) => (
+            <button
+              key={f.k}
+              className={`btn btn-sm ${sourceFilter === f.k ? "btn-primary" : "btn-ghost"}`}
+              onClick={() => setSourceFilter(f.k)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="tabs">
         {["pending", "approved", "rejected", "murojaatlar", "stores"].map((s) => (
           <button
@@ -415,7 +434,9 @@ export function AdminPanelPage() {
         </div>
       ) : (
         <div className="app-list">
-          {apps.map((app) => (
+          {apps
+            .filter((a) => sourceFilter === "all" || a.source === sourceFilter)
+            .map((app) => (
             <motion.div
               key={app.id}
               className="panel app-card"

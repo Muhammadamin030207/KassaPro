@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+import json
+
 from django.db import models
 
 
@@ -138,15 +140,47 @@ class Notification(models.Model):
 
 
 def notify(user, ntype, title, body=""):
-    """Xatolsik bildirishnoma yaratish (asosiy oqimni to'smaydi)."""
+    """Bildirishnoma yaratish + web push (telefonga ham yetib boradi)."""
+    if user is None:
+        return None
     try:
-        if user is None:
-            return None
         return Notification.objects.create(
             user=user, ntype=ntype, title=title[:120], body=(body or "")[:255]
         )
     except Exception:  # noqa: BLE001
-        return None
+        pass
+    _send_webpush(user, title, body)
+
+
+def _send_webpush(user, title, body):
+    """Barcha push obunalariga xabar yuborish (xatolar jim o'tkaziladi)."""
+    import os
+
+    vapid_priv = os.environ.get("VAPID_PRIVATE_KEY", "")
+    vapid_pub = os.environ.get("VAPID_PUBLIC_KEY", "")
+    if not (vapid_priv and vapid_pub):
+        return
+    try:
+        from pywebpush import webpush, WebPushException
+
+        for sub in user.push_subscriptions.all():
+            try:
+                webpush(
+                    subscription_info={
+                        "endpoint": sub.endpoint,
+                        "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
+                    },
+                    data=json.dumps({"title": title, "body": body[:200]}),
+                    vapid_private_key=vapid_priv,
+                    vapid_claims={"sub": "mailto:admin@kassapro.uz"},
+                )
+            except WebPushException as exc:
+                if getattr(exc, "response", None) is not None and exc.response.status_code in (404, 410):
+                    sub.delete()
+            except Exception:  # noqa: BLE001
+                pass
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def notify_shop_owner(shop, ntype, title, body=""):
@@ -154,3 +188,20 @@ def notify_shop_owner(shop, ntype, title, body=""):
         return notify(getattr(shop, "owner", None), ntype, title, body)
     except Exception:  # noqa: BLE001
         return None
+
+
+class PushSubscription(models.Model):
+    """Web Push obunasi (telefon/noutbuk brauzer push xabarlari uchun)."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="push_subscriptions",
+    )
+    endpoint = models.CharField(max_length=500, unique=True)
+    p256dh = models.CharField(max_length=200)
+    auth = models.CharField(max_length=200)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user_id}:{self.endpoint[:40]}"

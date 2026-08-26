@@ -73,7 +73,19 @@ function useBottomNav() {
 export function AppLayout({ children }) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const setUser = useAuthStore((s) => s.setUser);
   const navigate = useNavigate();
+
+  /* Profil boshqa qurilmada o'zgarsa — kirganda yangilab olamiz */
+  useEffect(() => {
+    api
+      .get("auth/me/")
+      .then((me) => {
+        if (me && me.username) setUser({ ...user, ...me });
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { setActive, toggleDrawer, drawerOpen } = useBottomNav();
 
   const isAdmin = user?.role === "super_admin" || user?.is_admin;

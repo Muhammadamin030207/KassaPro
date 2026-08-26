@@ -23,6 +23,8 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
   const [lastCode, setLastCode] = useState("");
   const [zoomCaps, setZoomCaps] = useState(null);
   const [zoom, setZoom] = useState(1);
+  const [showZoomBadge, setShowZoomBadge] = useState(false);
+  const pinchRef = useRef(null);
   const continuousRef = useRef(continuous);
   continuousRef.current = continuous;
   const scannerRef = useRef(null);
@@ -65,6 +67,9 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
       video.style.transform = `scale(${value})`;
     }
     setZoom(value);
+    setShowZoomBadge(true);
+    clearTimeout(applyZoom._t);
+    applyZoom._t = setTimeout(() => setShowZoomBadge(false), 900);
   };
 
   const [readerId] = useState(() => `camera-reader-${++scanUID}`);
@@ -227,7 +232,6 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
       });
   };
 
-  const zoomLevels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
   return (
     <Modal open={open} onClose={onClose} size="lg">
@@ -243,7 +247,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
             aria-pressed={continuous}
             style={{ color: continuous ? "var(--brand-light)" : "inherit" }}
           >
-            <Icon name="zap" /> {continuous ? "Uzluksiz: YONIQ" : "Uzluksiz"}
+            <Icon name="refresh" size={16} /> {continuous ? "Uzluksiz: YONIQ" : "Uzluksiz"}
           </button>
           <button
             className="ghost-btn"
@@ -260,25 +264,33 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
         </div>
       </div>
 
-      <div className={`camera-frame ${flash ? "camera-flash" : ""}`}>
+      <div
+        className={`camera-frame ${flash ? "camera-flash" : ""}`}
+        onTouchStart={(e) => {
+          if (e.touches.length === 2) {
+            const [a, b] = e.touches;
+            pinchRef.current = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+          }
+        }}
+        onTouchMove={(e) => {
+          if (e.touches.length === 2 && pinchRef.current) {
+            const [a, b] = e.touches;
+            const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+            const ratio = dist / pinchRef.current;
+            const next = Math.min(10, Math.max(1, Math.round(zoom * ratio * 2) / 2));
+            pinchRef.current = dist;
+            if (next !== zoom) applyZoom(scannerRef.current, next);
+          }
+        }}
+        onTouchEnd={() => {
+          pinchRef.current = null;
+        }}
+        onDoubleClick={() => applyZoom(scannerRef.current, zoom > 1 ? 1 : 2)}
+      >
         <div id={readerId} className="camera-view" />
         <div className="camera-beam" />
+        {showZoomBadge && <div className="zoom-badge">{zoom.toFixed(1)}x</div>}
       </div>
-
-      {zoomLevels.length > 1 && (
-        <div className="zoom-row" role="group" aria-label="Kamera zoom">
-          {zoomLevels.map((l) => (
-            <button
-              key={l}
-              type="button"
-              className={`zoom-chip ${zoom === l ? "on" : ""}`}
-              onClick={() => applyZoom(scannerRef.current, l)}
-            >
-              {l}x
-            </button>
-          ))}
-        </div>
-      )}
 
       {error ? (
         <div className="empty" style={{ marginTop: 12 }}>

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../api/client";
 import Icon from "./Icon";
+import { useToast } from "./Toast";
 
 const TYPE_META = {
   sale: { icon: "money", color: "#22c55e" },
@@ -24,6 +25,7 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
   const queryClient = useQueryClient();
+  const { show } = useToast();
 
   const { data } = useQuery({
     queryKey: ["notifications"],
@@ -50,6 +52,36 @@ export function NotificationBell() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
+  const [pushState, setPushState] = useState(
+    typeof Notification !== "undefined" ? Notification.permission : "unsupported"
+  );
+
+  const enablePush = async () => {
+    try {
+      const perm = await Notification.requestPermission();
+      setPushState(perm);
+      if (perm !== "granted") return;
+      const reg = await navigator.serviceWorker.ready;
+      const { publicKey } = await api.get("push/public-key/");
+      if (!publicKey) return;
+      const urlB64 = (b64) => {
+        const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+        const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+        return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+      };
+      const sub =
+        (await reg.pushManager.getSubscription()) ||
+        (await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlB64(publicKey),
+        }));
+      await api.post("push/subscribe/", sub.toJSON());
+      show("Push xabarlar yoqildi! 🔔", "success");
+    } catch {
+      show("Push yoqib bo'lmadi", "error");
+    }
+  };
+
   const unread = data?.unread || 0;
   const items = data?.results || [];
 
@@ -69,15 +101,22 @@ export function NotificationBell() {
         <div className="notif-panel">
           <div className="notif-head">
             <b>Bildirishnomalar</b>
-            {unread > 0 && (
-              <button
-                type="button"
-                className="notif-readall"
-                onClick={() => readAll.mutate()}
-              >
-                Barchasini o'qildi
-              </button>
-            )}
+            <span style={{ display: "inline-flex", gap: 10, alignItems: "center" }}>
+              {pushState === "default" && (
+                <button type="button" className="notif-readall" onClick={enablePush}>
+                  🔔 Telefonga yoqish
+                </button>
+              )}
+              {unread > 0 && (
+                <button
+                  type="button"
+                  className="notif-readall"
+                  onClick={() => readAll.mutate()}
+                >
+                  Barchasini o'qildi
+                </button>
+              )}
+            </span>
           </div>
           <div className="notif-list">
             {items.length === 0 && (

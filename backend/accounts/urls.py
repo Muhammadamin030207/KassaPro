@@ -5,6 +5,9 @@ from accounts.views import (
     ChangePasswordView,
     NotificationListView,
     ProfileUpdateView,
+    PushPublicKeyView,
+    PushSubscribeView,
+    PushUnsubscribeView,
     NotificationReadAllView,
     NotificationReadView,
     DeviceListView,
@@ -36,6 +39,13 @@ urlpatterns = [
         "notifications/<int:pk>/read/",
         NotificationReadView.as_view(),
         name="notification-read",
+    ),
+    path("push/public-key/", PushPublicKeyView.as_view(), name="push-public-key"),
+    path("push/subscribe/", PushSubscribeView.as_view(), name="push-subscribe"),
+    path(
+        "push/unsubscribe/",
+        PushUnsubscribeView.as_view(),
+        name="push-unsubscribe",
     ),
     path(
         "notifications/read-all/",

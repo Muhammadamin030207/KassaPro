@@ -111,6 +111,18 @@ export function DevicesPage() {
     onError: (e) => show(e.message, "error"),
   });
 
+  const removeOthersMutation = useMutation({
+    mutationFn: async (ids) => {
+      for (const id of ids) await api.del(`devices/${id}/`);
+    },
+    onSuccess: (_d, ids) => {
+      show(`${ids.length} ta boshqa qurilma o'chirildi — ularning sessiyalari yopildi.`, "success");
+      setDetail(null);
+      refresh();
+    },
+    onError: (e) => show(e.message, "error"),
+  });
+
   const all = devicesQuery.data?.results || [];
 
   const filtered = useMemo(() => {
@@ -243,6 +255,28 @@ export function DevicesPage() {
             {currentDevice ? typeLabel(currentDevice.device_type) : "—"}
           </div>
         </div>
+        {(() => {
+          const others = all.filter((d) => d.device_id !== myDeviceId);
+          if (others.length === 0) return null;
+          return (
+            <button
+              className="btn btn-danger btn-sm"
+              style={{ marginTop: 10 }}
+              disabled={removeOthersMutation.isPending}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Boshqa ${others.length} ta qurilma o'chirilsinmi? Ularning barcha sessiyalari darhol yopiladi (Telegram "boshqa sessiyalarni yopish" kabi).`
+                  )
+                ) {
+                  removeOthersMutation.mutate(others.map((d) => d.id));
+                }
+              }}
+            >
+              🚪 Boshqa {others.length} ta qurilmadan chiqish
+            </button>
+          );
+        })()}
       </div>
 
       <div className="device-toolbar">

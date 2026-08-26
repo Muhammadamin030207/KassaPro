@@ -4435,7 +4435,7 @@ html, body, #root {
 @media (max-width: 768px) {
   /* Hamburger (fixed top-left) kontent bilan ustma-ust tushmasin */
   .main {
-    padding-top: 68px;
+    padding-top: calc(10px + env(safe-area-inset-top, 0px));
   }
 
   .drawer-open .drawer-menu,
@@ -4656,8 +4656,8 @@ html, body, #root {
 
   /* Markazdagi QR — ko'tarilgan doira */
   .bottom-qr {
-    align-self: start;
-    justify-self: center;
+    place-self: center;
+    margin-top: -22px;
     width: 58px;
     height: 58px;
     margin-top: -24px;
@@ -4897,4 +4897,21 @@ html, body, #root {
     max-height: 70vh;
     z-index: 500;
   }
+}
+
+/* ================= SCANNER ZOOM BADGE (kamera uslubida) ================= */
+.zoom-badge {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
 }

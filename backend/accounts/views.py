@@ -459,3 +459,55 @@ class ChangePasswordView(APIView):
         request.user.set_password(new)
         request.user.save()
         return Response({"ok": True, "detail": "Parol o'zgartirildi."})
+
+
+class PushPublicKeyView(APIView):
+    """GET /api/push/public-key/ — VAPID public key (frontend subscribe uchun)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        import os
+
+        return Response({"publicKey": os.environ.get("VAPID_PUBLIC_KEY", "")})
+
+
+class PushSubscribeView(APIView):
+    """POST /api/push/subscribe/ — push obunasini saqlash."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        sub = request.data or {}
+        endpoint = (sub.get("endpoint") or "").strip()
+        keys = sub.get("keys") or {}
+        if not endpoint or not keys.get("p256dh") or not keys.get("auth"):
+            return Response(
+                {"detail": "Obuna ma'lumotlari to'liq emas."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        from accounts.models import PushSubscription
+
+        PushSubscription.objects.update_or_create(
+            endpoint=endpoint[:500],
+            defaults={
+                "user": request.user,
+                "p256dh": keys["p256dh"][:200],
+                "auth": keys["auth"][:200],
+            },
+        )
+        return Response({"ok": True})
+
+
+class PushUnsubscribeView(APIView):
+    """POST /api/push/unsubscribe/"""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        endpoint = (request.data.get("endpoint") or "").strip()
+        if endpoint:
+            from accounts.models import PushSubscription
+
+            PushSubscription.objects.filter(endpoint=endpoint[:500]).delete()
+        return Response({"ok": True})

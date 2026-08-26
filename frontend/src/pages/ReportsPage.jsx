@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -47,6 +47,7 @@ function AnimatedStat({ label, value, plain }) {
 export function ReportsPage() {
   const [from, setFrom] = useState(daysAgoISO(6));
   const [clearOpen, setClearOpen] = useState(false);
+  const secretTapsRef = useRef({ n: 0, t: 0 });
   const [clearConfirm, setClearConfirm] = useState("");
   const queryClient = useQueryClient();
   const { show } = useToast();
@@ -101,18 +102,25 @@ export function ReportsPage() {
     <div>
       <div className="page-head">
         <div>
-          <h1>Hisobotlar</h1>
+          <h1
+            style={{ cursor: "default", userSelect: "none" }}
+            onClick={() => {
+              const now = Date.now();
+              const st = secretTapsRef.current;
+              st.n = now - st.t < 1500 ? st.n + 1 : 1;
+              st.t = now;
+              if (st.n >= 5) {
+                st.n = 0;
+                setClearOpen(true);
+                setClearConfirm("");
+              }
+            }}
+          >
+            Hisobotlar
+          </h1>
           <div className="sub">Savdo natijalari va tahlil</div>
         </div>
         <div className="flex">
-          <button
-            className="btn btn-danger"
-            style={{ alignSelf: "end", marginBottom: 0 }}
-            onClick={() => { setClearOpen(true); setClearConfirm(""); }}
-            title="Barcha savdo tarixini o'chirish"
-          >
-            🗑 Savdoni tozalash
-          </button>
           <div className="field" style={{ marginBottom: 0 }}>
             <label className="label">Dan</label>
             <input type="date" className="input" value={from} onChange={(e) => setFrom(e.target.value)} />
