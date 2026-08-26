@@ -20,19 +20,20 @@ const CATEGORIES = [
 
 const catMeta = (k) => CATEGORIES.find((c) => c.k === k) || CATEGORIES[CATEGORIES.length - 1];
 
-/** Xarajatlar — kategoriyali xarid va chiqimlar hisobi. */
+/** Xarajatlar — do'kon xaridlari: yetkazuvchi firmalar (Qatiq, Musa, Cheers...). */
 export function ExpensesPage() {
   const qc = useQueryClient();
   const { show } = useToast();
 
   const [category, setCategory] = useState("xarid");
-  const [title, setTitle] = useState("");
   const [supplier, setSupplier] = useState("");
+  const [title, setTitle] = useState("");
   const [qty, setQty] = useState("1");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [filter, setFilter] = useState("all");
+  const [filterSupplier, setFilterSupplier] = useState("all");
+  const [filterCat, setFilterCat] = useState("all");
 
   const query = useQuery({
     queryKey: ["expenses"],
@@ -40,19 +41,36 @@ export function ExpensesPage() {
   });
 
   const items = query.data?.results || [];
+
+  /** Avval ishlatilgan yetkazuvchilar — tez tanlash uchun */
+  const suppliers = useMemo(() => {
+    const m = {};
+    for (const x of items) {
+      const sup = (x.supplier || "").trim();
+      if (sup) m[sup] = (m[sup] || 0) + Number(x.total_amount || 0);
+    }
+    return Object.entries(m).sort((a, b) => b[1] - a[1]);
+  }, [items]);
+
   const filtered = useMemo(
-    () => (filter === "all" ? items : items.filter((x) => x.category === filter)),
-    [items, filter]
+    () =>
+      items.filter(
+        (x) =>
+          (filterSupplier === "all" || x.supplier === filterSupplier) &&
+          (filterCat === "all" || x.category === filterCat)
+      ),
+    [items, filterSupplier, filterCat]
   );
+
   const total = filtered.reduce((s, x) => s + Number(x.total_amount || 0), 0);
   const grandTotal = items.reduce((s, x) => s + Number(x.total_amount || 0), 0);
 
   const createMutation = useMutation({
     mutationFn: (payload) => api.post("expenses/", payload),
     onSuccess: () => {
-      show("Xarajat saqlandi ✓", "success");
-      setTitle("");
+      show("Xarid saqlandi ✓", "success");
       setSupplier("");
+      setTitle("");
       setQty("1");
       setAmount("");
       setNote("");
@@ -72,15 +90,15 @@ export function ExpensesPage() {
 
   const submit = (e) => {
     e.preventDefault();
-    if (!title.trim() || !amount) {
-      show("Nomi va summa shart", "error");
+    if (!supplier.trim() || !title.trim() || !amount) {
+      show("Yetkazuvchi, nomi va summa shart", "error");
       return;
     }
     setSaving(true);
     createMutation.mutate({
       category,
-      title: title.trim(),
       supplier: supplier.trim(),
+      title: title.trim(),
       qty: Number(qty) || 1,
       total_amount: Number(amount),
       note: note.trim(),
@@ -90,58 +108,91 @@ export function ExpensesPage() {
 
   const byCategory = useMemo(() => {
     const m = {};
-    for (const x of items) {
+    for (const x of filtered) {
       m[x.category] = (m[x.category] || 0) + Number(x.total_amount || 0);
     }
     return Object.entries(m).sort((a, b) => b[1] - a[1]);
-  }, [items]);
+  }, [filtered]);
 
   return (
-    <div className="page">
+    <div className="page exp-page">
       <div className="page-head">
         <div>
           <h1>Xarajatlar</h1>
-          <div className="sub">Xaridlar va chiqimlar — kategoriyalar bilan</div>
+          <div className="sub">Do'kon xaridlari — yetkazuvchi firmalar bo'yicha</div>
         </div>
       </div>
 
-      {/* Kategoriya tanlash */}
-      <div className="exp-cats">
-        {CATEGORIES.map((c) => (
-          <button
-            key={c.k}
-            type="button"
-            className={`exp-cat ${category === c.k ? "active" : ""}`}
-            onClick={() => setCategory(c.k)}
-          >
-            <span className="exp-cat-emoji">{c.emoji}</span>
-            {c.label}
-          </button>
-        ))}
-      </div>
+      {/* Yetkazuvchi firmalar — tez tanlash */}
+      {suppliers.length > 0 && (
+        <div className="exp-suppliers">
+          <span className="exp-sup-label">🏪 Yetkazuvchilar:</span>
+          {suppliers.map(([name, sum]) => (
+            <button
+              key={name}
+              type="button"
+              className={`exp-sup-chip ${filterSupplier === name ? "active" : ""}`}
+              onClick={() =>
+                setFilterSupplier((f) => (f === name ? "all" : name))
+              }
+              title={`Jami: ${formatMoney(sum)} so'm`}
+            >
+              {name}
+            </button>
+          ))}
+          {filterSupplier !== "all" && (
+            <button
+              type="button"
+              className="exp-sup-clear"
+              onClick={() => setFilterSupplier("all")}
+            >
+              ✕ Tozalash
+            </button>
+          )}
+        </div>
+      )}
 
-      {/* Form */}
+      {/* Xarid qo'shish */}
       <form className="panel exp-form" onSubmit={submit}>
+        <div className="exp-form-title">🛒 Yangi xarid</div>
         <div className="exp-grid">
           <div className="field">
-            <label>Nima xarid qilindi *</label>
-            <input
-              className="input"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={
-                category === "xarid" ? "Masalan: Coca-Cola partiya" : catMeta(category).label + "..."
-              }
-            />
-          </div>
-          <div className="field">
-            <label>Sotuvchi / kimdan</label>
+            <label>🏪 Yetkazuvchi firma *</label>
             <input
               className="input"
               value={supplier}
               onChange={(e) => setSupplier(e.target.value)}
-              placeholder="Masalan: Optom savdo"
+              placeholder="Masalan: Qatiq, Musa, Cheers, Lays, Ays Tea..."
+              list="exp-suppliers-list"
             />
+            <datalist id="exp-suppliers-list">
+              {suppliers.map(([name]) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
+          </div>
+          <div className="field">
+            <label>Nima olindi *</label>
+            <input
+              className="input"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Masalan: Qatiq 10 karton, Lays 50 quti"
+            />
+          </div>
+          <div className="field">
+            <label>Kategoriya</label>
+            <select
+              className="input"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c.k} value={c.k}>
+                  {c.emoji} {c.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="field exp-qty">
             <label>Soni</label>
@@ -182,34 +233,31 @@ export function ExpensesPage() {
       {/* Statistikalar */}
       <div className="stat-grid">
         <div className="panel exp-stat">
-          <div className="muted small">💸 Jami xarajat</div>
+          <div className="muted small">💸 Jami xarid</div>
           <div className="exp-stat-num" style={{ color: "#f87171" }}>
             {formatMoney(grandTotal)}
           </div>
         </div>
         <div className="panel exp-stat">
+          <div className="muted small">🏪 Yetkazuvchilar</div>
+          <div className="exp-stat-num">{suppliers.length}</div>
+        </div>
+        <div className="panel exp-stat">
           <div className="muted small">🧾 Yozuvlar</div>
           <div className="exp-stat-num">{items.length}</div>
         </div>
-        <div className="panel exp-stat">
-          <div className="muted small">📊 Kategoriyalar</div>
-          <div className="exp-stat-num">{byCategory.length}</div>
-        </div>
       </div>
 
-      {/* Kategoriya bo'yicha taqsimot */}
-      {byCategory.length > 0 && (
+      {/* Yetkazuvchilar bo'yicha taqsimot */}
+      {suppliers.length > 0 && (
         <div className="panel exp-breakdown">
-          <b style={{ fontSize: 14 }}>📊 Kategoriyalar bo'yicha</b>
+          <b style={{ fontSize: 14 }}>🏪 Yetkazuvchilar bo'yicha</b>
           <div className="exp-break-list">
-            {byCategory.map(([k, sum]) => {
-              const meta = catMeta(k);
-              const pct = Math.round((sum / grandTotal) * 100);
+            {suppliers.map(([name, sum]) => {
+              const pct = grandTotal ? Math.round((sum / grandTotal) * 100) : 0;
               return (
-                <div key={k} className="exp-break-row">
-                  <span className="exp-break-label">
-                    {meta.emoji} {meta.label}
-                  </span>
+                <div key={name} className="exp-break-row">
+                  <span className="exp-break-label">🏪 {name}</span>
                   <div className="exp-break-bar">
                     <div style={{ width: `${pct}%` }} />
                   </div>
@@ -227,20 +275,20 @@ export function ExpensesPage() {
         <div className="flex" style={{ gap: 8, padding: "10px 12px", flexWrap: "wrap" }}>
           <button
             type="button"
-            className={`btn btn-sm ${filter === "all" ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => setFilter("all")}
+            className={`btn btn-sm ${filterCat === "all" ? "btn-primary" : "btn-ghost"}`}
+            onClick={() => setFilterCat("all")}
           >
-            Hammasi ({items.length})
+            Hammasi ({filtered.length})
           </button>
           {byCategory.map(([k, sum]) => {
             const meta = catMeta(k);
-            const cnt = items.filter((x) => x.category === k).length;
+            const cnt = filtered.filter((x) => x.category === k).length;
             return (
               <button
                 key={k}
                 type="button"
-                className={`btn btn-sm ${filter === k ? "btn-primary" : "btn-ghost"}`}
-                onClick={() => setFilter(k)}
+                className={`btn btn-sm ${filterCat === k ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => setFilterCat(k)}
               >
                 {meta.emoji} {meta.label} ({cnt})
               </button>
@@ -251,17 +299,19 @@ export function ExpensesPage() {
         {filtered.length === 0 ? (
           <div className="empty-state">
             <div className="big" aria-hidden="true">🛒</div>
-            <h3>Xarajatlar yo'q</h3>
-            <p className="muted">Yuqoridan kategoriya tanlab, birinchi xarajatni qo'shing</p>
+            <h3>Xaridlar yo'q</h3>
+            <p className="muted">
+              Yetkazuvchi firma nomini yozing (Qatiq, Musa, Cheers...) va birinchi
+              xaridni qo'shing
+            </p>
           </div>
         ) : (
           <div className="table-wrap">
             <table className="data">
               <thead>
                 <tr>
-                  <th>Kategoriya</th>
-                  <th>Nomi</th>
-                  <th>Sotuvchi</th>
+                  <th>🏪 Yetkazuvchi</th>
+                  <th>Nima olindi</th>
                   <th>Soni</th>
                   <th>Summa</th>
                   <th>Sana</th>
@@ -278,15 +328,15 @@ export function ExpensesPage() {
                       animate={{ opacity: 1, y: 0 }}
                     >
                       <td>
-                        <span className="exp-pill">
+                        <span className="exp-pill">🏪 {x.supplier || "—"}</span>
+                        <div className="muted small" style={{ marginTop: 3 }}>
                           {meta.emoji} {meta.label}
-                        </span>
+                        </div>
                       </td>
                       <td>
                         <b>{x.title}</b>
                         {x.note && <div className="muted small">{x.note}</div>}
                       </td>
-                      <td>{x.supplier || "—"}</td>
                       <td className="mono">{Number(x.qty)}</td>
                       <td className="mono" style={{ color: "#f87171", fontWeight: 700 }}>
                         {formatMoney(x.total_amount)}

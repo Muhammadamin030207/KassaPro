@@ -5164,3 +5164,68 @@ html, body, #root {
     flex: 0 0 110px;
   }
 }
+
+/* ================= XARAJATLAR v2 — yetkazuvchi firmalar ================= */
+.exp-page {
+  /* G'alati shaffof qatlam — mustahkam fon */
+  background: transparent;
+}
+.exp-page .panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.exp-page .exp-form {
+  background: var(--panel);
+}
+.exp-suppliers {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+.exp-sup-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.exp-sup-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.exp-sup-chip:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+.exp-sup-chip.active {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border-color: transparent;
+  color: #fff;
+}
+.exp-sup-clear {
+  border: none;
+  background: none;
+  color: #f87171;
+  font-size: 12px;
+  cursor: pointer;
+}
+.exp-form-title {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 12px;
+  color: var(--ink);
+}
