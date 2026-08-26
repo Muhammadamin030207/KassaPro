@@ -87,14 +87,23 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
           if (cancelled) return null;
           const scanner = new Html5Qrcode(readerId, {
             experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+            formatsToSupport: [
+              Html5QrcodeSupportedFormats.EAN_13,
+              Html5QrcodeSupportedFormats.EAN_8,
+              Html5QrcodeSupportedFormats.UPC_A,
+              Html5QrcodeSupportedFormats.UPC_E,
+              Html5QrcodeSupportedFormats.CODE_128,
+              Html5QrcodeSupportedFormats.CODE_39,
+              Html5QrcodeSupportedFormats.QR_CODE,
+            ],
           });
           scannerRef.current = scanner;
           const vw =
             typeof window !== "undefined" ? Math.min(window.innerWidth, 720) : 420;
-          const boxW = Math.round(Math.min(300, vw * 0.78));
+          const boxW = Math.round(Math.min(340, vw * 0.86));
           return scanner.start(
             { facingMode: facingRef.current },
-            { fps: 15, qrbox: { width: boxW, height: Math.round(boxW * 0.5) } },
+            { fps: 20, qrbox: { width: boxW, height: Math.round(boxW * 0.55) } },
             (decodedText) => {
               const text = decodedText.trim();
               if (!text) return;
@@ -111,7 +120,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
               setTimeout(() => setFlash(false), 350);
               // Duplikat urilmasligi uchun qisqa pauza.
               // Uzluksiz rejimda pauza qisqa — tezkor ketma-ket skanerlash.
-              const pauseMs = continuousRef.current ? 550 : 1300;
+              const pauseMs = continuousRef.current ? 250 : 1100;
               try {
                 scannerRef.current?.pause(true);
                 setTimeout(() => {
@@ -193,14 +202,23 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
       .then(({ Html5Qrcode }) => {
         const scanner = new Html5Qrcode(readerId, {
           experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.QR_CODE,
+          ],
         });
         scannerRef.current = scanner;
         const vw =
           typeof window !== "undefined" ? Math.min(window.innerWidth, 720) : 420;
-        const boxW = Math.round(Math.min(300, vw * 0.78));
+        const boxW = Math.round(Math.min(340, vw * 0.86));
         return scanner.start(
           { facingMode: next },
-          { fps: 15, qrbox: { width: boxW, height: Math.round(boxW * 0.5) } },
+          { fps: 20, qrbox: { width: boxW, height: Math.round(boxW * 0.55) } },
           (decodedText) => {
             const text = decodedText.trim();
             if (!text) return;
@@ -210,7 +228,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
             if (!continuousRef.current) onCloseRef.current?.();
             setFlash(true);
             setTimeout(() => setFlash(false), 350);
-            const pauseMs = continuousRef.current ? 550 : 1300;
+            const pauseMs = continuousRef.current ? 250 : 1100;
             try {
               scannerRef.current?.pause(true);
               setTimeout(() => {

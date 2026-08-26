@@ -55,6 +55,7 @@ export function CashierPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
+  const [lookupState, setLookupState] = useState(""); // "", "loading"
   const [lastCash, setLastCash] = useState(null);
 
   const inputRef = useRef(null);
@@ -152,7 +153,8 @@ export function CashierPage() {
           "info",
           3000
         );
-        // Global bazadan avtomatik taniydi (Open Food Facts) — nom avto-to'ladi
+        // Global bazalar (food+products+beauty) — nom va narx avtomatik
+        setLookupState("loading");
         try {
           const g = await api.get(`products/lookup/${encodeURIComponent(barcode)}/`);
           if (g?.found && g.name) {
@@ -165,9 +167,13 @@ export function CashierPage() {
               show(`🌍 Avtomatik topildi: ${g.name}`, "success", 2600);
               setTimeout(() => quickPriceRef.current?.focus(), 140);
             }
+          } else {
+            show("Global bazada ham yo'q — bir marta kiriting, keyin avtomatik eslaymiz", "info", 3200);
           }
         } catch {
-          /* global bazada ham yo'q yoki tarmoq — qo'lda kiritiladi */
+          /* tarmoq xatosi — qo'lda kiritiladi */
+        } finally {
+          setLookupState("");
         }
       } else {
         playBarcodeError();
@@ -412,7 +418,13 @@ export function CashierPage() {
                 <div className="quick-add-head">
                   <span className="listening-dot" />
                   <span>
-                    <b className="mono">{quickBarcode}</b> — Bunday mahsulot yo'q
+                    {lookupState === "loading" ? (
+                      <>🌍 Global bazadan tekshirilmoqda...</>
+                    ) : (
+                      <>
+                        <b className="mono">{quickBarcode}</b> — Bazada yo'q
+                      </>
+                    )}
                   </span>
                   <button className="ghost-btn" onClick={closeQuick} aria-label="Bekor qilish">
                     ✕

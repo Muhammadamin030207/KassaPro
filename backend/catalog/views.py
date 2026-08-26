@@ -203,36 +203,49 @@ class ProductGlobalLookupView(views.APIView):
                 "source": "memory",
             }
 
-        # 2) Global baza (Open Food Facts) — faqat xotirada yo'q bo'lsa
+        # 2) Global bazalar zanjiri (food → products → beauty)
         if result is None:
-            try:
-                url = (
-                    "https://world.openfoodfacts.org/api/v2/product/"
-                    f"{code}.json?fields=product_name,brands,quantity"
-                )
-                req = _ur.Request(url, headers={"User-Agent": "KassaPro-POS/1.0"})
-                with _ur.urlopen(req, timeout=6) as resp:
-                    payload = _json.loads(
-                        resp.read().decode("utf-8", errors="ignore")
+            hosts = (
+                "world.openfoodfacts.org",
+                "world.openproductsfacts.org",
+                "world.openbeautyfacts.org",
+            )
+            for host in hosts:
+                try:
+                    url = (
+                        f"https://{host}/api/v2/product/"
+                        f"{code}.json?fields=product_name,brands,quantity"
                     )
-                product = (payload or {}).get("product") or {}
-                name = (product.get("product_name") or "").strip()
-                brand = (product.get("brands") or "").split(",")[0].strip()
-                qty = (product.get("quantity") or "").strip()
-                if name:
-                    full = f"{brand} {name}".strip() if brand and brand.lower() not in name.lower() else name
-                    if qty and qty.lower() not in full.lower():
-                        full = f"{full} ({qty})"
-                    result = {
-                        "found": True,
-                        "name": full[:150],
-                        "brand": brand[:80],
-                        "quantity": qty[:30],
-                        "barcode": code,
-                        "source": "openfoodfacts",
-                    }
-            except Exception:  # noqa: BLE001
-                result = None
+                    req = _ur.Request(
+                        url, headers={"User-Agent": "KassaPro-POS/1.0"}
+                    )
+                    with _ur.urlopen(req, timeout=5) as resp:
+                        payload = _json.loads(
+                            resp.read().decode("utf-8", errors="ignore")
+                        )
+                    product = (payload or {}).get("product") or {}
+                    name = (product.get("product_name") or "").strip()
+                    brand = (product.get("brands") or "").split(",")[0].strip()
+                    qty = (product.get("quantity") or "").strip()
+                    if name:
+                        full = (
+                            f"{brand} {name}".strip()
+                            if brand and brand.lower() not in name.lower()
+                            else name
+                        )
+                        if qty and qty.lower() not in full.lower():
+                            full = f"{full} ({qty})"
+                        result = {
+                            "found": True,
+                            "name": full[:150],
+                            "brand": brand[:80],
+                            "quantity": qty[:30],
+                            "barcode": code,
+                            "source": host.split(".")[1],
+                        }
+                        break
+                except Exception:  # noqa: BLE001 — keyingi manbaga o'tamiz
+                    continue
 
         # 3) Xotira narxi global natijaga ham qo'shiladi
         if result and result.get("found") and not result.get("last_price") and mem:

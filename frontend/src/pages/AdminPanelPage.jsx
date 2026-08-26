@@ -244,7 +244,10 @@ export function AdminPanelPage() {
       <div className="page-head">
         <div>
           <h1>Admin panel</h1>
-          <p className="muted">Platforma boshqaruvi — arizalar va do'konlar</p>
+          <p className="muted">
+            🟡 Kutilmoqda — do'kon ochish arizalari · 📨 Murojaatlar — bot
+            savollari · 🏪 Do'konlar — barcha mijozlar
+          </p>
         </div>
         <button className="btn btn-primary" onClick={() => setCreateOpen(true)}>
           + Yangi do'kon
@@ -270,16 +273,20 @@ export function AdminPanelPage() {
       )}
 
       <div className="tabs">
-        {["pending", "approved", "rejected", "murojaatlar", "stores"].map((s) => (
+        {[
+          { k: "pending", label: "🟡 Kutilmoqda", count },
+          { k: "approved", label: "✅ Tasdiqlangan", count },
+          { k: "rejected", label: "❌ Rad etilgan", count },
+          { k: "murojaatlar", label: "📨 Murojaatlar", count: botCount },
+          { k: "stores", label: "🏪 Do'konlar", count: stores.length },
+        ].map((t) => (
           <button
-            key={s}
-            className={`tab ${tab === s ? "active" : ""}`}
-            onClick={() => setTab(s)}
+            key={t.k}
+            className={`tab ${tab === t.k ? "active" : ""}`}
+            onClick={() => setTab(t.k)}
           >
-            {s === "stores" ? "Do'konlar" : s === "murojaatlar" ? "Murojaatlar" : STATUS_LABEL[s]}
-            <span className="badge">
-              {s === tab ? (s === "stores" ? stores.length : s === "murojaatlar" ? botCount : count) : ""}
-            </span>
+            {t.label}
+            <span className="badge">{t.count}</span>
           </button>
         ))}
       </div>
