@@ -53,7 +53,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
   };
 
   const applyZoom = async (_scanner, value) => {
-    const v = Math.min(5, Math.max(1, value));
+    const v = Math.min(10, Math.max(1, Math.round(value * 10) / 10));
     const video = document.getElementById(readerId)?.querySelector("video");
     if (video) {
       video.style.transition = "transform 0.18s ease";
@@ -96,8 +96,12 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
             typeof window !== "undefined" ? Math.min(window.innerWidth, 720) : 420;
           const boxW = Math.round(Math.min(340, vw * 0.86));
           return scanner.start(
-            { facingMode: facingRef.current },
-            { fps: 20, qrbox: { width: boxW, height: Math.round(boxW * 0.55) } },
+            {
+              facingMode: facingRef.current,
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+            { fps: 25, qrbox: { width: boxW, height: Math.round(boxW * 0.55) } },
             (decodedText) => {
               const text = decodedText.trim();
               if (!text) return;
@@ -114,7 +118,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
               setTimeout(() => setFlash(false), 350);
               // Duplikat urilmasligi uchun qisqa pauza.
               // Uzluksiz rejimda pauza qisqa — tezkor ketma-ket skanerlash.
-              const pauseMs = continuousRef.current ? 250 : 1100;
+              const pauseMs = continuousRef.current ? 150 : 700;
               try {
                 scannerRef.current?.pause(true);
                 setTimeout(() => {
@@ -211,8 +215,12 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
           typeof window !== "undefined" ? Math.min(window.innerWidth, 720) : 420;
         const boxW = Math.round(Math.min(340, vw * 0.86));
         return scanner.start(
-          { facingMode: next },
-          { fps: 20, qrbox: { width: boxW, height: Math.round(boxW * 0.55) } },
+          {
+            facingMode: next,
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          { fps: 25, qrbox: { width: boxW, height: Math.round(boxW * 0.55) } },
           (decodedText) => {
             const text = decodedText.trim();
             if (!text) return;
@@ -222,7 +230,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
             if (!continuousRef.current) onCloseRef.current?.();
             setFlash(true);
             setTimeout(() => setFlash(false), 350);
-            const pauseMs = continuousRef.current ? 250 : 1100;
+            const pauseMs = continuousRef.current ? 150 : 700;
             try {
               scannerRef.current?.pause(true);
               setTimeout(() => {
@@ -289,7 +297,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
             const [a, b] = e.touches;
             const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
             const ratio = dist / pinchRef.current;
-            const next = Math.min(5, Math.max(1, Math.round(zoom * ratio * 2) / 2));
+            const next = Math.min(10, Math.max(1, Math.round(zoom * ratio * 10) / 10));
             pinchRef.current = dist;
             if (next !== zoom) applyZoom(scannerRef.current, next);
           }
@@ -297,7 +305,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
         onTouchEnd={() => {
           pinchRef.current = null;
         }}
-        onDoubleClick={() => applyZoom(scannerRef.current, zoom > 1 ? 1 : 2.5)}
+        onDoubleClick={() => applyZoom(scannerRef.current, zoom > 1 ? 1 : 3)}
       >
         <div id={readerId} className="camera-view" />
         <div className="camera-beam" />
