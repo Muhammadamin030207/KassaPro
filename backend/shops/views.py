@@ -355,16 +355,19 @@ class StoreAdminView(views.APIView):
   </div>
   <div style="background:#ffffff;border-radius:0 0 18px 18px;padding:26px 22px;border:1px solid #e5e7eb;border-top:none;">
     <p style="font-size:15px;color:#111827;margin:0 0 4px;">Assalomu alaykum! 🙌</p>
-    <p style="font-size:14px;color:#4b5563;margin:0 0 18px;line-height:1.5;">Hisobingiz tayyor — kirish ma'lumotlari quyida 👇</p>
+    <p style="font-size:14px;color:#4b5563;margin:0 0 18px;line-height:1.5;">Hisobingiz <b style="color:#22c55e;">✓ faol</b> — quyidagi login va parol bilan <b>darhol</b> kira olasiz 👇</p>
     <table style="width:100%;border-collapse:separate;border-spacing:0;background:#f8f9ff;border:1px solid #dfe3ff;border-radius:14px;overflow:hidden;">
       <tr><td style="padding:12px 16px;color:#6b7280;font-size:13px;white-space:nowrap;">🏬 Do'kon</td><td style="padding:12px 16px;font-weight:700;color:#111827;font-size:14px;">{data['store_name']}</td></tr>
-      <tr><td style="padding:12px 16px;color:#6b7280;font-size:13px;border-top:1px solid #eef0ff;white-space:nowrap;">👤 Login</td><td style="padding:12px 16px;font-weight:700;color:#4f46e5;font-size:15px;font-family:Consolas,monospace;">{data['username']}</td></tr>
-      <tr><td style="padding:12px 16px;color:#6b7280;font-size:13px;border-top:1px solid #eef0ff;white-space:nowrap;">🔑 Parol</td><td style="padding:12px 16px;font-weight:700;color:#4f46e5;font-size:15px;font-family:Consolas,monospace;">{data['password']}</td></tr>
+      <tr><td style="padding:12px 16px;color:#6b7280;font-size:13px;border-top:1px solid #eef0ff;white-space:nowrap;">👤 Login</td><td style="padding:12px 16px;font-weight:700;color:#4f46e5;font-size:15px;font-family:Consolas,monospace;user-select:all;-webkit-user-select:all;cursor:text;">{data['username']}</td></tr>
+      <tr><td style="padding:12px 16px;color:#6b7280;font-size:13px;border-top:1px solid #eef0ff;white-space:nowrap;">🔑 Parol</td><td style="padding:12px 16px;font-weight:700;color:#4f46e5;font-size:15px;font-family:Consolas,monospace;user-select:all;-webkit-user-select:all;cursor:text;">{data['password']}</td></tr>
     </table>
     <div style="text-align:center;margin:24px 0 6px;">
       <a href="https://smartkassa-1.onrender.com/login" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#ffffff;text-decoration:none;padding:15px 38px;border-radius:14px;font-weight:700;font-size:15px;box-shadow:0 6px 18px rgba(99,102,241,.35);">🚀 Kassaga kirish</a>
     </div>
-    <p style="font-size:12px;color:#9ca3af;text-align:center;margin:14px 0 0;">🔐 Birinchi kirishdan keyin parolingizni almashtiring</p>
+    <p style="font-size:12px;color:#6b7280;text-align:center;margin:14px 0 0;background:#f8f9ff;border-radius:10px;padding:10px 12px;">
+      📋 Login va parolni nusxalash uchun ustiga <b>1 marta bosing</b> (ko'k bo'lib tanlanadi) → "Nusxa olish"<br/>
+      🔐 Birinchi kirishdan keyin parolni almashtiring
+    </p>
   </div>
   <p style="text-align:center;color:#9ca3af;font-size:12px;margin:18px 0 0;line-height:1.6;">✨ <b>KassaPro</b> — Barcode POS<br/>📩 Bu xabar avtomatik yuborildi 🤖</p>
 </div>
