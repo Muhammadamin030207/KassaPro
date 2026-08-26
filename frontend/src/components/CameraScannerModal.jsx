@@ -296,21 +296,29 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
         onTouchStart={(e) => {
           if (e.touches.length === 2) {
             const [a, b] = e.touches;
-            pinchRef.current = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+            pinchRef.current = {
+              dist: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY),
+              zoom,
+            };
+            setShowZoomBadge(true);
           }
         }}
         onTouchMove={(e) => {
           if (e.touches.length === 2 && pinchRef.current) {
             const [a, b] = e.touches;
             const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-            const ratio = dist / pinchRef.current;
-            const next = Math.min(10, Math.max(0.5, Math.round(zoom * ratio * 10) / 10));
-            pinchRef.current = dist;
+            const next = Math.min(
+              10,
+              Math.max(
+                0.5,
+                Math.round(((pinchRef.current.zoom * dist) / pinchRef.current.dist) * 10) / 10
+              )
+            );
             if (next !== zoom) applyZoom(next);
           }
         }}
-        onTouchEnd={() => {
-          pinchRef.current = null;
+        onTouchEnd={(e) => {
+          if (e.touches.length < 2) pinchRef.current = null;
         }}
         onDoubleClick={() => applyZoom(zoom > 1 ? 1 : 3)}
       >

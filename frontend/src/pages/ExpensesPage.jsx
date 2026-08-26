@@ -20,6 +20,58 @@ const CATEGORIES = [
 
 const catMeta = (k) => CATEGORIES.find((c) => c.k === k) || CATEGORIES[CATEGORIES.length - 1];
 
+/** Har kategoriya uchun O'Z formasi */
+const CATEGORY_FORMS = {
+  xarid: {
+    supplier: { label: "🏪 Yetkazuvchi firma *", ph: "Qatiq, Musa, Cheers, Lays..." },
+    title: { label: "Nima olindi *", ph: "Masalan: Qatiq 10 karton" },
+    qty: true,
+    period: false,
+  },
+  ijara: {
+    supplier: { label: "🏠 Kimga / qayerga *", ph: "Masalan: Chilonzor tijorat" },
+    title: { label: "Nima uchun *", ph: "Masalan: Do'kon ijarasi" },
+    qty: false,
+    period: true,
+  },
+  kommunal: {
+    supplier: { label: "💡 Tashkilot *", ph: "Masalan: Toshkent energo" },
+    title: { label: "Xizmat turi *", ph: "Elektr / Gaz / Suv" },
+    qty: false,
+    period: true,
+  },
+  transport: {
+    supplier: { label: "🚗 Kim / qayerga", ph: "Masalan: Taksi" },
+    title: { label: "Nima uchun *", ph: "Masalan: Yetkazib berish" },
+    qty: false,
+    period: false,
+  },
+  maosh: {
+    supplier: { label: "👥 Kimga *", ph: "Xodim ismi" },
+    title: { label: "Nima uchun *", ph: "Masalan: Avgust oylik" },
+    qty: false,
+    period: true,
+  },
+  yetkazish: {
+    supplier: { label: "📦 Yetkazuvchi *", ph: "Masalan: Olib ketdi" },
+    title: { label: "Nima uchun *", ph: "Yetkazib berish" },
+    qty: false,
+    period: false,
+  },
+  reklama: {
+    supplier: { label: "📣 Qayerda *", ph: "Instagram, Telegram" },
+    title: { label: "Nima uchun *", ph: "Post reklama" },
+    qty: false,
+    period: false,
+  },
+  boshqa: {
+    supplier: { label: "Kimga / nimga", ph: "—" },
+    title: { label: "Nima uchun *", ph: "Izoh yozing" },
+    qty: false,
+    period: false,
+  },
+};
+
 /** Xarajatlar — do'kon xaridlari: yetkazuvchi firmalar (Qatiq, Musa, Cheers...). */
 export function ExpensesPage() {
   const qc = useQueryClient();
@@ -31,6 +83,7 @@ export function ExpensesPage() {
   const [qty, setQty] = useState("1");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
+  const [period, setPeriod] = useState("");
   const [saving, setSaving] = useState(false);
   const [filterSupplier, setFilterSupplier] = useState("all");
   const [filterCat, setFilterCat] = useState("all");
@@ -101,6 +154,7 @@ export function ExpensesPage() {
       title: title.trim(),
       qty: Number(qty) || 1,
       total_amount: Number(amount),
+      period: period.trim(),
       note: note.trim(),
     });
     setSaving(false);
@@ -155,55 +209,57 @@ export function ExpensesPage() {
       {/* Xarid qo'shish */}
       <form className="panel exp-form" onSubmit={submit}>
         <div className="exp-form-title">🛒 Yangi xarid</div>
+const form = CATEGORY_FORMS[category] || CATEGORY_FORMS.boshqa;
         <div className="exp-grid">
+          {form.supplier && (
+            <div className="field">
+              <label>{form.supplier.label}</label>
+              <input
+                className="input"
+                value={supplier}
+                onChange={(e) => setSupplier(e.target.value)}
+                placeholder={form.supplier.ph}
+                list="exp-suppliers-list"
+              />
+              <datalist id="exp-suppliers-list">
+                {suppliers.map(([name]) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+            </div>
+          )}
           <div className="field">
-            <label>🏪 Yetkazuvchi firma *</label>
-            <input
-              className="input"
-              value={supplier}
-              onChange={(e) => setSupplier(e.target.value)}
-              placeholder="Masalan: Qatiq, Musa, Cheers, Lays, Ays Tea..."
-              list="exp-suppliers-list"
-            />
-            <datalist id="exp-suppliers-list">
-              {suppliers.map(([name]) => (
-                <option key={name} value={name} />
-              ))}
-            </datalist>
-          </div>
-          <div className="field">
-            <label>Nima olindi *</label>
+            <label>{form.title.label}</label>
             <input
               className="input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Masalan: Qatiq 10 karton, Lays 50 quti"
+              placeholder={form.title.ph}
             />
           </div>
-          <div className="field">
-            <label>Kategoriya</label>
-            <select
-              className="input"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c.k} value={c.k}>
-                  {c.emoji} {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field exp-qty">
-            <label>Soni</label>
-            <input
-              className="input mono"
-              type="number"
-              min="1"
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-            />
-          </div>
+          {form.qty && (
+            <div className="field exp-qty">
+              <label>Soni</label>
+              <input
+                className="input mono"
+                type="number"
+                min="1"
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+              />
+            </div>
+          )}
+          {form.period && (
+            <div className="field">
+              <label>Qaysi oy uchun</label>
+              <input
+                className="input"
+                type="month"
+                value={period}
+                onChange={(e) => setPeriod(e.target.value)}
+              />
+            </div>
+          )}
           <div className="field">
             <label>Umumiy summa (so'm) *</label>
             <input
@@ -331,13 +387,14 @@ export function ExpensesPage() {
                         <span className="exp-pill">🏪 {x.supplier || "—"}</span>
                         <div className="muted small" style={{ marginTop: 3 }}>
                           {meta.emoji} {meta.label}
+                          {x.period ? ` · 📅 ${x.period}` : ""}
                         </div>
                       </td>
                       <td>
                         <b>{x.title}</b>
                         {x.note && <div className="muted small">{x.note}</div>}
                       </td>
-                      <td className="mono">{Number(x.qty)}</td>
+                      <td className="mono">{CATEGORY_FORMS[x.category]?.qty ? Number(x.qty) : "—"}</td>
                       <td className="mono" style={{ color: "#f87171", fontWeight: 700 }}>
                         {formatMoney(x.total_amount)}
                       </td>
