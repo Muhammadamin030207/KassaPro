@@ -606,10 +606,8 @@ class TestDataCleanupView(APIView):
             BotLog as _BL,
             BotSession as _BS,
         )
-        from accounts.models import (
-            BarcodePriceMemory as _BPM,
-            Device as _DEV,
-        )
+        from accounts.models import Device as _DEV
+        from catalog.models import BarcodePriceMemory as _BPM
         from shops.models import Shop as _SHOP
 
         wiped = {}
