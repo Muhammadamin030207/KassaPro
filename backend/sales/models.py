@@ -61,3 +61,31 @@ class SaleItem(models.Model):
 
     def __str__(self):
         return f"{self.product_name_snapshot} x{self.qty}"
+
+class Expense(models.Model):
+    """Xarajat — do'kon uchun xaridlar va chiqimlar (sotuvchi, summa)."""
+
+    shop = models.ForeignKey(
+        Shop, on_delete=models.CASCADE, related_name="expenses"
+    )
+    title = models.CharField(max_length=150)
+    supplier = models.CharField(max_length=150, blank=True)
+    qty = models.DecimalField(
+        max_digits=10, decimal_places=2, default=1
+    )
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    note = models.CharField(max_length=255, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="expenses",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.title} ({self.total_amount})"

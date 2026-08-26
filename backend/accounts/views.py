@@ -541,6 +541,17 @@ class PushUnsubscribeView(APIView):
         return Response({"ok": True})
 
 
+
+def _apps_m():
+    from django.apps import apps as dj_apps
+
+    class _M:
+        def __getitem__(self, key):
+            a, m = key
+            return dj_apps.get_model(a, m)
+
+    return _M()
+
 class TestDataCleanupView(APIView):
     """VAQTINCHALIK (super admin): test ma'lumotlarini tozalash.
 
@@ -572,9 +583,50 @@ class TestDataCleanupView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        from django.contrib.auth import get_user_model
+
         from shops.models import Shop, StoreApplication
         from catalog.models import BarcodePriceMemory
         from telegrambot.models import BotLog, BotSession
+
+        User = get_user_model()
+
+        # TO'LIQ REJIM: faqat admin qoladi
+        if confirm == "HAMMASINI OCHIR":
+            if request.user.username != "admin":
+                return Response(
+                    {"detail": "Faqat admin bajaradi."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            wiped = {}
+            for model in (
+                "SaleItem", "Sale", "DebtPayment", "Debt", "Customer",
+                "Product", "Category", "Expense", "StoreApplication",
+                "CustomerApplication", "Notification", "PushSubscription",
+                "Device", "AuditLog", "BarcodePriceMemory", "BotLog",
+                "BotSession", "Shop",
+            ):
+                try:
+                    app_label, model_name = None, None
+                    if model in ("SaleItem", "Sale", "Expense"):
+                        app_label = "sales"
+                    elif model in ("DebtPayment", "Debt", "Customer"):
+                        app_label = "customers"
+                    elif model in ("Product", "Category"):
+                        app_label = "catalog"
+                    elif model in ("StoreApplication", "Shop", "AuditLog"):
+                        app_label = "shops"
+                    elif model in ("CustomerApplication", "BotLog", "BotSession"):
+                        app_label = "telegrambot"
+                    else:
+                        app_label = "accounts"
+                    qs = apps_m()[app_label, model].objects.all()
+                    wiped[model] = qs.count()
+                    qs._raw_delete(qs.db)
+                except Exception:  # noqa: BLE001
+                    wiped[model] = "skip"
+            User.objects.exclude(username="admin").delete()
+            return Response({"ok": True, "mode": "FULL", "wiped": wiped})
 
         shops = [s for s in Shop.objects.all() if self._match(s.name)]
         shop_ids = [s.id for s in shops]

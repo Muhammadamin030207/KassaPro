@@ -11,6 +11,7 @@ import CashierPage from "./pages/CashierPage";
 import ProductsPage from "./pages/ProductsPage";
 import ReportsPage from "./pages/ReportsPage";
 import ProfilePage from "./pages/ProfilePage";
+import ExpensesPage from "./pages/ExpensesPage";
 import StaffPage from "./pages/StaffPage";
 import DebtsPage from "./pages/DebtsPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -144,6 +145,7 @@ export default function App() {
       <Route path="/products" element={<Protected><ProductsPage /></Protected>} />
       <Route path="/reports" element={<Protected><ReportsPage /></Protected>} />
       <Route path="/profile" element={<Protected><ProfilePage /></Protected>} />
+      <Route path="/expenses" element={<Protected><ExpensesPage /></Protected>} />
       <Route
         path="/debts"
         element={

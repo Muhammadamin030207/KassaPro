@@ -4968,3 +4968,30 @@ html, body, #root {
   padding: 2px 10px;
   border-radius: 999px;
 }
+
+/* ================= QR FAB — zamonaviy pulse ================= */
+@media (max-width: 768px) {
+  .bottom-qr {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    box-shadow:
+      0 0 0 5px rgba(99, 102, 241, 0.18),
+      0 10px 26px rgba(99, 102, 241, 0.5);
+    animation: fabPulse 2.6s ease-in-out infinite;
+  }
+  .bottom-qr svg {
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+  }
+  @keyframes fabPulse {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 5px rgba(99, 102, 241, 0.16),
+        0 10px 26px rgba(99, 102, 241, 0.45);
+    }
+    50% {
+      box-shadow:
+        0 0 0 9px rgba(99, 102, 241, 0.1),
+        0 12px 30px rgba(139, 92, 246, 0.55);
+    }
+  }
+}

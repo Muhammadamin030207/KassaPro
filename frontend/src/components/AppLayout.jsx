@@ -16,6 +16,7 @@ const MOBILE_LINKS = [
 
 const EXTRA_LINKS = [
   { to: "/debts", label: "Qarzdorlik", icon: "money", key: "qarzdorlik" },
+  { to: "/expenses", label: "Xarajatlar", icon: "download", ownerOnly: true, key: "xarajatlar" },
   { to: "/staff", label: "Kassirlar", icon: "users", ownerOnly: true, key: "kassirlar" },
   { to: "/devices", label: "Qurilmalar", icon: "devices", superAdminOnly: true, key: "qurilmalar" },
   { to: "/settings", label: "Sozlamalar", icon: "settings", ownerOnly: true, key: "sozlamalar" },

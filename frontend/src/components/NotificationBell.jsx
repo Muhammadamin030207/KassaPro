@@ -33,6 +33,33 @@ export function NotificationBell() {
     refetchInterval: 30000,
   });
 
+  /* Yangi xabar kelganda — desktop system notification (noutbukda o'qiladi) */
+  const lastSeenRef = useRef(0);
+  useEffect(() => {
+    const unread = data?.unread || 0;
+    const items = data?.results || [];
+    const newest = items.find((n) => !n.read);
+    if (
+      newest &&
+      unread > 0 &&
+      typeof Notification !== "undefined" &&
+      Notification.permission === "granted" &&
+      lastSeenRef.current &&
+      new Date(newest.created_at).getTime() > lastSeenRef.current
+    ) {
+      try {
+        new Notification(newest.title || "KassaPro", {
+          body: newest.body || "",
+          icon: "/favicon.svg",
+        });
+      } catch {
+        /* e'tiborsiz */
+      }
+    }
+    if (unread > 0) lastSeenRef.current = Date.now();
+  }, [data]);
+  if (data?.unread === 0) lastSeenRef.current = 0;
+
   const readOne = useMutation({
     mutationFn: (id) => api.post(`notifications/${id}/read/`, {}),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
@@ -61,6 +88,10 @@ export function NotificationBell() {
     (async () => {
       try {
         if (typeof Notification === "undefined" || !navigator.serviceWorker) return;
+        if (Notification.permission === "default") {
+          const perm = await Notification.requestPermission();
+          setPushState(perm);
+        }
         if (Notification.permission !== "granted") return;
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();

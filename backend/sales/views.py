@@ -9,8 +9,10 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.throttling import ScopedRateThrottle
 
 from accounts.permissions import IsShopMember
-from sales.models import Sale, SaleItem
+from sales.models import Expense, Sale, SaleItem
 from sales.serializers import (
+    ExpenseCreateSerializer,
+    ExpenseSerializer,
     SaleCreateSerializer,
     SaleDetailSerializer,
     SaleSerializer,
@@ -289,6 +291,29 @@ class SummaryReportView(views.APIView):
                 "to": str(to_param),
                 "total_revenue": totals["total_revenue"] or 0,
                 "total_profit": profit["total_profit"] or 0,
+                "total_expenses": Expense.objects.filter(
+                    shop=shop,
+                    created_at__date__gte=from_param,
+                    created_at__date__lte=to_param,
+                ).aggregate(
+                    t=Coalesce(
+                        Sum("total_amount"),
+                        Decimal("0"),
+                        output_field=DecimalField(max_digits=14, decimal_places=2),
+                    )
+                )["t"],
+                "net_profit": (profit["total_profit"] or 0)
+                - Expense.objects.filter(
+                    shop=shop,
+                    created_at__date__gte=from_param,
+                    created_at__date__lte=to_param,
+                ).aggregate(
+                    t=Coalesce(
+                        Sum("total_amount"),
+                        Decimal("0"),
+                        output_field=DecimalField(max_digits=14, decimal_places=2),
+                    )
+                )["t"],
                 "sale_count": sales.count(),
                 "items_sold": items.aggregate(
                     items=Coalesce(
@@ -305,3 +330,31 @@ class SummaryReportView(views.APIView):
                 ],
             }
         )
+
+class ExpenseListCreateView(generics.ListCreateAPIView):
+    """GET/POST /api/expenses/ — do'kon xarajatlari."""
+
+    permission_classes = [IsShopMember]
+
+    def get_serializer_class(self):
+        return (
+            ExpenseCreateSerializer
+            if self.request.method == "POST"
+            else ExpenseSerializer
+        )
+
+    def get_queryset(self):
+        return Expense.objects.filter(shop=self.request.user.shop)
+
+    def perform_create(self, serializer):
+        serializer.save()
+
+
+class ExpenseDetailView(generics.DestroyAPIView):
+    """DELETE /api/expenses/<id>/"""
+
+    permission_classes = [IsShopMember]
+    serializer_class = ExpenseSerializer
+
+    def get_queryset(self):
+        return Expense.objects.filter(shop=self.request.user.shop)

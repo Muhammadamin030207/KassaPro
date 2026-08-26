@@ -149,6 +149,11 @@ export function ReportsPage() {
             />
           </div>
 
+          <div className="stat-grid">
+            <AnimatedStat label="💸 Jami xarajat" value={data?.total_expenses} />
+            <AnimatedStat label="💰 Sof foyda" value={data?.net_profit} />
+          </div>
+
           {/* Qarzdorlik xulosasi */}
           {debtStats && (
             <>

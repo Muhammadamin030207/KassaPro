@@ -6,6 +6,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from catalog.models import Product
+from sales.models import Expense
 from customers.models import AuditLog, Customer, Debt
 from customers.utils import normalize_phone
 from sales.models import Sale, SaleItem
@@ -284,3 +285,27 @@ class SaleDetailSerializer(SaleSerializer):
 
     class Meta(SaleSerializer.Meta):
         fields = SaleSerializer.Meta.fields + ["items"]
+
+class ExpenseSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(
+        source="created_by.username", read_only=True
+    )
+
+    class Meta:
+        model = Expense
+        fields = [
+            "id", "title", "supplier", "qty", "total_amount",
+            "note", "created_by_name", "created_at",
+        ]
+        read_only_fields = fields
+
+
+class ExpenseCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Expense
+        fields = ["title", "supplier", "qty", "total_amount", "note"]
+
+    def create(self, validated_data):
+        validated_data["shop"] = self.context["request"].user.shop
+        validated_data["created_by"] = self.context["request"].user
+        return super().create(validated_data)

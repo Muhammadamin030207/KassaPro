@@ -50,7 +50,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
   const startRef = useRef(null);
 
   const applyZoom = (value) => {
-    const v = Math.min(10, Math.max(1, Math.round(value * 10) / 10));
+    const v = Math.min(10, Math.max(0.5, Math.round(value * 10) / 10));
     const track = streamRef.current?.getVideoTracks?.()[0];
     const caps = track?.getCapabilities?.();
     if (caps?.zoom && v <= caps.zoom.max) {
@@ -304,7 +304,7 @@ export function CameraScannerModal({ open, onClose, onDetected }) {
             const [a, b] = e.touches;
             const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
             const ratio = dist / pinchRef.current;
-            const next = Math.min(10, Math.max(1, Math.round(zoom * ratio * 10) / 10));
+            const next = Math.min(10, Math.max(0.5, Math.round(zoom * ratio * 10) / 10));
             pinchRef.current = dist;
             if (next !== zoom) applyZoom(next);
           }
