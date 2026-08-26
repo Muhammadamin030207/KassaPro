@@ -577,7 +577,7 @@ class TestDataCleanupView(APIView):
     def post(self, request):
         dry = bool(request.data.get("dry_run"))
         confirm = (request.data.get("confirm") or "").strip().upper()
-        if not dry and confirm != "TOZALA":
+        if not dry and confirm not in ("TOZALA", "HAMMASINI OCHIR"):
             return Response(
                 {"detail": "Tasdiqlash: confirm='TOZALA' yoki dry_run=true"},
                 status=status.HTTP_400_BAD_REQUEST,
