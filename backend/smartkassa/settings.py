@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(
     DEBUG=(bool, False),
     ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
-    CORS_ALLOWED_ORIGINS=(list, ["http://localhost:5173"]),
+CORS_ALLOWED_ORIGINS=(list, ["http://localhost:5173","http://127.0.0.1:5173","https://smartkassa-1.onrender.com","https://smartkassa.onrender.com"])
 )
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
