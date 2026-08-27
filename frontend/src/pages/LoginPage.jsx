@@ -50,9 +50,10 @@ export function LoginPage() {
   const fetchStatus = async (code) => {
     try {
       const data = await api.get(`applications/status/?code=${encodeURIComponent(code)}`);
-      setAppStatus(data);
+      if (data) setAppStatus(data);
       return data;
-    } catch {
+    } catch (e) {
+      // 404 — tracking code not found (stale localStorage), silently ignore
       return null;
     }
   };
